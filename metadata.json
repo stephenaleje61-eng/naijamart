@@ -1,0 +1,6 @@
+{
+  "name": "NaijaMart - Nigeria's Online Shopping Marketplace",
+  "description": "Nigeria's next-generation online shopping marketplace. Buy and sell phones, electronics, fashion, groceries, and more with direct WhatsApp seller chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
