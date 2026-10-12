@@ -465,7 +465,7 @@ function MainMarketplace() {
                 GROW YOUR NIGERIAN BUSINESS
               </span>
               <h3 className="text-2xl sm:text-3xl font-black mt-2 mb-2 leading-tight">
-                Turn Your Stock into Cash on NaijaMart
+                Turn Your Stock into Cash on ZangaMarket
               </h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-4">
                 Whether you sell phones in Computer Village, fabrics in Balogun, groceries in Wuse 2, or inverters in Port Harcourt — upload your goods in 60 seconds with genuine photos and get buyers reaching you directly on WhatsApp.
@@ -534,7 +534,7 @@ function MainMarketplace() {
           onSuccess={() => {
             loadCatalogProducts(1);
             loadCategories();
-            showToast('Your product was published live on NaijaMart (7-Day Active Period)!');
+            showToast('Your product was published live on ZangaMarket (7-Day Active Period)!');
           }}
           onRequireAuth={() => handleOpenAuth('login', 'seller')}
         />
@@ -547,7 +547,7 @@ function MainMarketplace() {
           defaultRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
           onSuccess={() => {
-            showToast('Authentication successful! Welcome to NaijaMart.');
+            showToast('Authentication successful! Welcome to ZangaMarket.');
             loadCatalogProducts(1);
           }}
         />

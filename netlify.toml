@@ -1,0 +1,23 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  VITE_BACKEND_URL = "https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/uploads/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

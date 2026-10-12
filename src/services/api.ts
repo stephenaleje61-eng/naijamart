@@ -9,11 +9,11 @@ import {
   AuditLogItem
 } from '../types.js';
 
-const TOKEN_KEY = 'naijamart_auth_token';
-const BACKEND_URL_KEY = 'naijamart_backend_url';
+const TOKEN_KEY = 'zangamarket_auth_token';
+const BACKEND_URL_KEY = 'zangamarket_backend_url';
 
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('naijamart_auth_token');
 };
 
 export const setAuthToken = (token: string | null) => {
@@ -21,19 +21,33 @@ export const setAuthToken = (token: string | null) => {
     localStorage.setItem(TOKEN_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('naijamart_auth_token');
   }
 };
 
 export const getApiBaseUrl = (): string => {
-  const custom = localStorage.getItem(BACKEND_URL_KEY);
+  // 1. User configured custom URL in localStorage
+  const custom = localStorage.getItem(BACKEND_URL_KEY) || localStorage.getItem('naijamart_backend_url');
   if (custom && custom.trim().length > 0) {
     return custom.trim().replace(/\/+$/, '');
   }
+
+  // 2. Build-time environment variable VITE_BACKEND_URL
   const envUrl = (import.meta as any).env?.VITE_BACKEND_URL;
   if (envUrl && envUrl.trim().length > 0) {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  return ''; // Default relative path
+
+  // 3. When running on Netlify or external static domains, route directly to live backend to prevent 404 HTML
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host.includes('netlify.app') || host.includes('vercel.app')) {
+      return 'https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app';
+    }
+  }
+
+  // 4. Default: relative path (local dev & full-stack server)
+  return '';
 };
 
 export const setApiBaseUrl = (url: string | null) => {
@@ -41,6 +55,7 @@ export const setApiBaseUrl = (url: string | null) => {
     localStorage.setItem(BACKEND_URL_KEY, url.trim().replace(/\/+$/, ''));
   } else {
     localStorage.removeItem(BACKEND_URL_KEY);
+    localStorage.removeItem('naijamart_backend_url');
   }
 };
 
@@ -56,13 +71,22 @@ const getHeaders = (isJson = true): Record<string, string> => {
   return headers;
 };
 
-// Robust fetch utility that parses JSON safely and catches HTML 404/500 responses
+// Robust fetch utility that parses JSON safely, handles status codes, and prevents raw HTML or [object Object] errors
 export const safeFetchJson = async (endpoint: string, options: RequestInit = {}) => {
   const base = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const fullUrl = base ? `${base}${cleanEndpoint}` : cleanEndpoint;
 
-  const res = await fetch(fullUrl, options);
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, options);
+  } catch (networkErr: any) {
+    console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
+    throw new Error(
+      `Unable to connect to ZangaMarket backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
+    );
+  }
+
   const text = await res.text();
   let data: any;
 
@@ -70,13 +94,23 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
     data = JSON.parse(text);
   } catch (err) {
     console.error(`[API Fetch Error] Server returned HTML not JSON from ${fullUrl} (HTTP ${res.status}):\n`, text);
+    if (res.status === 404) {
+      throw new Error(
+        `Backend API route (${cleanEndpoint}) was not found (HTTP 404). Please ensure the backend is running and requests are directed to the live server.`
+      );
+    }
     throw new Error(
-      `Server returned HTML (${res.status}) instead of JSON. Ensure your backend route begins with /api (e.g. /api/products, not /products).`
+      `Server returned an unexpected response (${res.status}) instead of JSON. The backend service may be waking up. Please try again in a few moments.`
     );
   }
 
   if (!res.ok) {
-    throw new Error(data.error || data.message || `Request failed with status ${res.status}`);
+    const errMsg = typeof data?.error === 'string'
+      ? data.error
+      : typeof data?.message === 'string'
+      ? data.message
+      : `Request failed with status ${res.status}`;
+    throw new Error(errMsg);
   }
 
   return data;
@@ -127,7 +161,7 @@ export async function triggerWhatsAppChat(id: string): Promise<{ link: string; m
   });
 }
 
-// Publish Product - Supports BOTH FormData and JSON payload!
+// Publish Product - Supports BOTH FormData and JSON payload
 export async function createProductListing(
   payload: FormData | Partial<Product>
 ): Promise<{ success: boolean; product: Product; message: string }> {
@@ -139,7 +173,6 @@ export async function createProductListing(
 
   let body: any;
   if (payload instanceof FormData) {
-    // When sending FormData, do NOT set Content-Type so browser sets boundary
     body = payload;
   } else {
     headers['Content-Type'] = 'application/json';
@@ -231,6 +264,22 @@ export async function registerUser(userData: any): Promise<{ user: User; token: 
   return data;
 }
 
+export async function sendForgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+  return safeFetchJson('/api/auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+}
+
+export async function submitResetPassword(email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  return safeFetchJson('/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, newPassword })
+  });
+}
+
 export async function fetchCurrentUser(): Promise<{ user: User; sellerProfile?: SellerProfile; favourites: string[] }> {
   return safeFetchJson('/api/auth/me', {
     headers: getHeaders()
@@ -311,7 +360,7 @@ export async function fetchAdminReports(): Promise<{ reports: ReportItem[] }> {
 }
 
 export async function adminResolveReport(id: string, status: 'resolved' | 'dismissed', adminNotes?: string): Promise<any> {
-  return safeFetchJson(`/api/admin/reports/${id}/resolve`, {
+  return safeFetchJson('/api/admin/reports/${id}/resolve', {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ status, adminNotes })

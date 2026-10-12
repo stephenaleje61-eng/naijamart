@@ -137,12 +137,12 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-2 group"
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#E07A15] to-[#F68B1F] flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition transform">
-                <span className="text-white font-black text-xl tracking-tighter">NM</span>
+                <span className="text-white font-black text-xl tracking-tighter">ZM</span>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
                   <span className="font-extrabold text-2xl tracking-tight text-[#222222]">
-                    NAIJA<span className="text-[#F68B1F]">MART</span>
+                    ZANGA<span className="text-[#F68B1F]">MARKET</span>
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#008751]" title="Nigeria"></span>
                 </div>

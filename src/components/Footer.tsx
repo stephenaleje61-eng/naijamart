@@ -84,14 +84,14 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-[#F68B1F] flex items-center justify-center font-black text-white text-sm">
-                NM
+                ZM
               </div>
               <span className="font-black text-xl tracking-tight text-white">
-                NAIJA<span className="text-[#F68B1F]">MART</span>
+                ZANGA<span className="text-[#F68B1F]">MARKET</span>
               </span>
             </div>
             <p className="text-gray-400 text-xs leading-relaxed max-w-sm mb-4">
-              Shop More. Save More. Sell to Everyone. Nigeria's next-generation e-commerce marketplace connecting buyers and sellers directly on WhatsApp.
+              Shop More. Save More. Sell to Everyone. ZangaMarket is Nigeria's next-generation e-commerce marketplace connecting buyers and sellers directly on WhatsApp.
             </p>
             <div className="text-[11px] text-gray-500 space-y-1">
               <p>Physical Presence: Ikeja (Lagos) • Wuse 2 (Abuja) • Port Harcourt (Rivers)</p>

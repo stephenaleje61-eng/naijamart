@@ -15,7 +15,8 @@ router.post('/register', async (req, res) => {
       password,
       role = 'buyer',
       phone,
-      whatsappNumber,
+      whatsapp,
+      whatsappNumber = whatsapp,
       state,
       city,
       shopName,
@@ -23,17 +24,17 @@ router.post('/register', async (req, res) => {
     } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
     const existing = db.users.find(u => u.email === normalizedEmail);
     if (existing) {
-      return res.status(400).json({ error: 'An account with this email address already exists.' });
+      return res.status(400).json({ success: false, error: 'An account with this email address already exists.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -47,7 +48,7 @@ router.post('/register', async (req, res) => {
       passwordHash,
       role: role === 'seller' ? 'seller' : 'buyer',
       phone: phone?.trim(),
-      whatsappNumber: whatsappNumber?.trim() || phone?.trim(),
+      whatsappNumber: whatsappNumber?.trim() || phone?.trim() || '08012345678',
       state: state?.trim() || 'Lagos',
       city: city?.trim() || 'Ikeja',
       createdAt: new Date().toISOString()
@@ -66,7 +67,7 @@ router.post('/register', async (req, res) => {
         userId: newUser.id,
         shopName: formattedShopName,
         shopSlug: `${shopSlug}-${Date.now().toString().slice(-4)}`,
-        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on NaijaMart. Chat with us on WhatsApp for fast orders and swift delivery!`,
+        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!`,
         whatsappNumber: newUser.whatsappNumber || newUser.phone || '',
         state: newUser.state || 'Lagos',
         city: newUser.city || 'Ikeja',
@@ -87,6 +88,7 @@ router.post('/register', async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: 'Account created successfully!',
       token,
       user: {
@@ -103,7 +105,8 @@ router.post('/register', async (req, res) => {
       sellerProfile
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Registration failed.' });
+    console.error('[Register Error]:', err);
+    res.status(500).json({ success: false, error: err.message || 'Registration failed.' });
   }
 });
 
@@ -112,18 +115,18 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+      return res.status(400).json({ success: false, error: 'Email and password are required.' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
     const user = db.users.find(u => u.email === normalizedEmail);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
     const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
     const token = generateToken({
@@ -136,6 +139,7 @@ router.post('/login', async (req, res) => {
     const sellerProfile = db.sellerProfiles.find(p => p.userId === user.id);
 
     res.json({
+      success: true,
       message: 'Login successful!',
       token,
       user: {
@@ -153,7 +157,8 @@ router.post('/login', async (req, res) => {
       sellerProfile
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Login failed.' });
+    console.error('[Login Error]:', err);
+    res.status(500).json({ success: false, error: err.message || 'Login failed.' });
   }
 });
 
@@ -164,6 +169,7 @@ router.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const favourites = db.favourites.filter(f => f.userId === user.id).map(f => f.productId);
 
   res.json({
+    success: true,
     user: {
       id: user.id,
       name: user.name,
@@ -183,81 +189,97 @@ router.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
 
 // Update Profile
 router.put('/profile', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const user = req.user!;
-  const { name, phone, whatsappNumber, state, city, avatarUrl } = req.body;
+  try {
+    const user = req.user!;
+    const { name, phone, whatsappNumber, state, city, avatarUrl } = req.body;
 
-  if (name) user.name = name.trim();
-  if (phone !== undefined) user.phone = phone.trim();
-  if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber.trim();
-  if (state !== undefined) user.state = state.trim();
-  if (city !== undefined) user.city = city.trim();
-  if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    if (name) user.name = name.trim();
+    if (phone !== undefined) user.phone = phone.trim();
+    if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber.trim();
+    if (state !== undefined) user.state = state.trim();
+    if (city !== undefined) user.city = city.trim();
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
 
-  // Also update corresponding sellerProfile WhatsApp number and location if exists
-  const sellerProfile = db.sellerProfiles.find(p => p.userId === user.id);
-  if (sellerProfile) {
-    if (whatsappNumber) sellerProfile.whatsappNumber = whatsappNumber.trim();
-    if (state) sellerProfile.state = state.trim();
-    if (city) sellerProfile.city = city.trim();
+    const sellerProfile = db.sellerProfiles.find(p => p.userId === user.id);
+    if (sellerProfile) {
+      if (whatsappNumber) sellerProfile.whatsappNumber = whatsappNumber.trim();
+      if (state) sellerProfile.state = state.trim();
+      if (city) sellerProfile.city = city.trim();
+    }
+
+    db.save();
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        whatsappNumber: user.whatsappNumber,
+        state: user.state,
+        city: user.city,
+        avatarUrl: user.avatarUrl
+      },
+      sellerProfile
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
-
-  db.save();
-
-  res.json({
-    message: 'Profile updated successfully',
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
-      whatsappNumber: user.whatsappNumber,
-      state: user.state,
-      city: user.city,
-      avatarUrl: user.avatarUrl
-    },
-    sellerProfile
-  });
 });
 
 // Password recovery / reset
 router.post('/forgot-password', (req, res) => {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json({ error: 'Please enter your registered email address.' });
+    return res.status(400).json({ success: false, error: 'Please enter your registered email address.' });
   }
 
   const user = db.users.find(u => u.email === email.toLowerCase().trim());
   if (!user) {
-    // For privacy, don't disclose whether email exists
-    return res.json({ message: 'If this email is registered on NaijaMart, a password recovery code will be dispatched.' });
+    return res.json({
+      success: true,
+      message: 'If this email is registered on ZangaMarket, instructions have been prepared.'
+    });
   }
 
-  // Create temporary reset token for this demo
   const resetToken = crypto.randomBytes(16).toString('hex');
   res.json({
-    message: 'Password reset link generated. In production, an email is sent.',
+    success: true,
+    message: 'Password recovery verification token generated.',
     resetToken,
-    instructions: 'You can now proceed to set a new password.'
+    instructions: 'You can now set a new password for your account.'
   });
 });
 
 router.post('/reset-password', async (req, res) => {
-  const { email, newPassword } = req.body;
-  if (!email || !newPassword || newPassword.length < 6) {
-    return res.status(400).json({ error: 'Email and new password (min 6 characters) are required.' });
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and new password (min 6 characters) are required.'
+      });
+    }
+
+    const user = db.users.find(u => u.email === email.toLowerCase().trim());
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'No user account found with this email.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    db.save();
+
+    res.json({
+      success: true,
+      message: 'Password has been updated successfully! You can now log in.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Password reset failed.' });
   }
-
-  const user = db.users.find(u => u.email === email.toLowerCase().trim());
-  if (!user) {
-    return res.status(404).json({ error: 'User not found.' });
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  user.passwordHash = await bcrypt.hash(newPassword, salt);
-  db.save();
-
-  res.json({ message: 'Password has been updated successfully! You can now log in.' });
 });
 
 export default router;

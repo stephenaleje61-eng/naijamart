@@ -1,0 +1,7 @@
+# Netlify Redirects for ZangaMarket
+# Proxy all API requests to the live backend server
+/api/*  https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/api/:splat  200!
+/uploads/*  https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/uploads/:splat  200!
+
+# SPA Routing: Fallback for all other pages to index.html
+/*  /index.html  200

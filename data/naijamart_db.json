@@ -62,6 +62,42 @@
       "city": "Port Harcourt",
       "avatarUrl": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150",
       "createdAt": "2026-10-10T18:42:13.699Z"
+    },
+    {
+      "id": "user-1791832551749-9f4027b9",
+      "name": "ALEJE STEPHEN AGBENYI",
+      "email": "stephenaleje61@gmail.com",
+      "passwordHash": "$2b$10$pTNIAFqvDNMrGIlkesVkveh6SzU1Dgg/.XSHG/ea0qDPzft2/lMiK",
+      "role": "buyer",
+      "phone": "",
+      "whatsappNumber": "08167258121",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-12T19:15:51.749Z"
+    },
+    {
+      "id": "user-1791835469972-bff79fb2",
+      "name": "Tunde Bakare",
+      "email": "testuser_1791835469806@zangamarket.ng",
+      "passwordHash": "$2b$10$IYOdZ9cjTyU1AGIUtuHCMOu.UYv45XBL4AfObCnEym9k1qpxbd.Tu",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-12T20:04:29.973Z"
+    },
+    {
+      "id": "user-1791835531560-0eda806c",
+      "name": "Tunde Bakare",
+      "email": "testuser_1791835531399@zangamarket.ng",
+      "passwordHash": "$2b$10$GuzEkcHaGVJDBwtKvrzF6eDHGaf1gVO1st702V7TEqr.QUhjd1Rzu",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-12T20:05:31.561Z"
     }
   ],
   "sellerProfiles": [
@@ -124,9 +160,85 @@
       "address": "88 Olu Obasanjo Road, Port Harcourt",
       "isVerified": true,
       "createdAt": "2026-10-10T18:42:13.699Z"
+    },
+    {
+      "id": "profile-1791835469973-d5f547a2",
+      "userId": "user-1791835469972-bff79fb2",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-9973",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-12T20:04:29.973Z"
+    },
+    {
+      "id": "profile-1791835531561-2fcdfa05",
+      "userId": "user-1791835531560-0eda806c",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-1561",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-12T20:05:31.561Z"
     }
   ],
   "products": [
+    {
+      "id": "prod-1791832380295-d01332",
+      "sellerId": "seller-ikeja-01",
+      "sellerName": "Chinedu Okeke",
+      "shopName": "Ikeja Computer Village Hub",
+      "whatsappNumber": "08167258121",
+      "title": "Shoes",
+      "description": "In good condition",
+      "price": 1000,
+      "originalPrice": 700,
+      "categoryId": "phones-tablets",
+      "condition": "new",
+      "images": [
+        "/uploads/naijamart-1791832380283-de2f1d32984b.png",
+        "blob:https://ais-dev-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/b1175ae0-c22a-4862-ab44-22dc9e554cc8"
+      ],
+      "state": "Benue",
+      "city": "Ikeja",
+      "quantity": 1,
+      "status": "active",
+      "views": 0,
+      "whatsappClicks": 1,
+      "createdAt": "2026-10-12T19:13:00.295Z",
+      "expiresAt": "2026-10-19T19:13:00.295Z",
+      "updatedAt": "2026-10-12T19:13:00.295Z"
+    },
+    {
+      "id": "prod-1791832020045-70e245",
+      "sellerId": "seller-ikeja-01",
+      "sellerName": "Chinedu Okeke",
+      "shopName": "Ikeja Computer Village Hub",
+      "whatsappNumber": "08012345678",
+      "title": "Fashion",
+      "description": "In a good condition",
+      "price": 1500,
+      "originalPrice": 1000,
+      "categoryId": "phones-tablets",
+      "condition": "new",
+      "images": [
+        "/uploads/naijamart-1791832020034-cc4a9172c26b.png",
+        "blob:https://ais-dev-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app/b009a374-34c9-4430-b110-27e8b2fffa58"
+      ],
+      "state": "Benue",
+      "city": "Oju",
+      "quantity": 1,
+      "status": "active",
+      "views": 0,
+      "whatsappClicks": 1,
+      "createdAt": "2026-10-12T19:07:00.045Z",
+      "expiresAt": "2026-10-19T19:07:00.045Z",
+      "updatedAt": "2026-10-12T19:07:00.045Z"
+    },
     {
       "id": "prod-1791831780649-fa8fb5",
       "sellerId": "seller-ikeja-01",

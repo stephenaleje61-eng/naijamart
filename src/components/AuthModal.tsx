@@ -9,10 +9,12 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { NIGERIA_STATES } from '../constants/states.js';
+import { sendForgotPassword, submitResetPassword } from '../services/api.js';
 
 interface AuthModalProps {
   initialMode?: 'login' | 'register';
@@ -40,6 +42,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [state, setState] = useState('Lagos');
   const [city, setCity] = useState('Ikeja');
   const [shopName, setShopName] = useState('');
+
+  // Password Reset states
+  const [resetStep, setResetStep] = useState<'request' | 'reset'>('request');
+  const [newPassword, setNewPassword] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,6 +91,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+    try {
+      const res = await sendForgotPassword(email);
+      setSuccessMsg(res.message || 'Password reset code verified. Enter your new password.');
+      setResetStep('reset');
+    } catch (err: any) {
+      setError(err.message || 'Failed to request password recovery.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+    try {
+      const res = await submitResetPassword(email, newPassword);
+      setSuccessMsg(res.message || 'Password updated successfully!');
+      setTimeout(() => {
+        setMode('login');
+        setResetStep('request');
+        setPassword(newPassword);
+        setSuccessMsg('You can now sign in with your new password.');
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Quick Demo fill buttons for fast testing
   const fillQuickDemo = (type: 'buyer' | 'seller' | 'admin') => {
     setError('');
@@ -108,16 +151,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden my-4">
         {/* Header */}
         <div className="bg-[#1C1917] text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#F68B1F] flex items-center justify-center font-black text-white text-sm">
-              NM
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#F68B1F] flex items-center justify-center font-black text-white text-sm shadow-sm">
+              ZM
             </div>
             <div>
               <h3 className="font-extrabold text-base leading-tight">
-                {mode === 'login' ? 'Welcome Back' : mode === 'register' ? 'Join NaijaMart' : 'Password Recovery'}
+                {mode === 'login' ? 'Welcome Back to ZangaMarket' : mode === 'register' ? 'Join ZangaMarket' : 'Password Recovery'}
               </h3>
               <p className="text-[11px] text-gray-400">
-                {mode === 'login' ? 'Sign in to your account' : mode === 'register' ? 'Start buying or selling today' : 'Recover your account access'}
+                {mode === 'login' ? 'Sign in to manage listings or browse deals' : mode === 'register' ? 'Create a buyer or seller account' : 'Recover your account access'}
               </p>
             </div>
           </div>
@@ -136,6 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => {
                 setMode('login');
                 setError('');
+                setSuccessMsg('');
               }}
               className={`py-3 transition ${
                 mode === 'login'
@@ -149,6 +193,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => {
                 setMode('register');
                 setError('');
+                setSuccessMsg('');
               }}
               className={`py-3 transition ${
                 mode === 'register'
@@ -165,7 +210,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <span className="break-words">{error}</span>
             </div>
           )}
 
@@ -199,7 +244,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <label className="text-xs font-bold text-gray-700">Password</label>
                   <button
                     type="button"
-                    onClick={() => setMode('forgot')}
+                    onClick={() => {
+                      setMode('forgot');
+                      setError('');
+                      setSuccessMsg('');
+                    }}
                     className="text-[11px] text-[#F68B1F] font-semibold hover:underline"
                   >
                     Forgot Password?
@@ -226,10 +275,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {loading ? 'Signing In...' : 'Sign In'}
               </button>
 
-              {/* Demo Account Fast-Fill Buttons */}
+              {/* Fast Account Switcher for Demo Testing */}
               <div className="pt-3 border-t border-gray-100">
                 <span className="block text-[11px] text-gray-600 uppercase font-bold text-center mb-2">
-                  Fast Demo Logins:
+                  Fast Demo Test Logins:
                 </span>
                 <div className="grid grid-cols-3 gap-1.5 text-xs">
                   <button
@@ -261,7 +310,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* REGISTER FORM */}
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3">
-              {/* Account Role Selector */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">I want to:</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -285,7 +333,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'border-gray-200 text-gray-600'
                     }`}
                   >
-                    Sell on NaijaMart
+                    Sell on ZangaMarket
                   </button>
                 </div>
               </div>
@@ -393,35 +441,83 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </form>
           )}
 
-          {/* FORGOT PASSWORD FORM */}
+          {/* REAL PASSWORD RECOVERY & RESET FORM */}
           {mode === 'forgot' && (
             <div className="space-y-4">
               <p className="text-xs text-gray-600">
-                Enter your registered email address to receive password recovery instructions.
+                {resetStep === 'request'
+                  ? 'Enter your registered email address to receive password recovery authorization.'
+                  : 'Enter your new password below to update your account.'}
               </p>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none"
-                />
-              </div>
+
+              {resetStep === 'request' ? (
+                <form onSubmit={handleForgotPassword} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Registered Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full p-2.5 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white font-bold text-xs rounded-xl shadow transition disabled:opacity-50"
+                  >
+                    {loading ? 'Verifying...' : 'Request Password Recovery'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleResetPassword} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Account Email</label>
+                    <input
+                      type="email"
+                      disabled
+                      value={email}
+                      className="w-full p-2 text-xs bg-gray-100 text-gray-600 border border-gray-200 rounded-xl outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">New Password (min 6 chars)</label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white font-bold text-xs rounded-xl shadow transition disabled:opacity-50"
+                  >
+                    {loading ? 'Updating Password...' : 'Save New Password'}
+                  </button>
+                </form>
+              )}
 
               <button
                 type="button"
-                onClick={() => setSuccessMsg('Password recovery instructions sent to your email.')}
-                className="w-full py-2.5 bg-[#F68B1F] text-white font-bold text-xs rounded-xl"
-              >
-                Send Recovery Code
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('login')}
+                onClick={() => {
+                  setMode('login');
+                  setError('');
+                  setSuccessMsg('');
+                  setResetStep('request');
+                }}
                 className="w-full text-center text-xs text-gray-500 hover:text-gray-800 font-semibold"
               >
                 Back to Sign In
