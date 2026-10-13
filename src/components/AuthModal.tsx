@@ -10,11 +10,14 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
-  KeyRound
+  KeyRound,
+  Server,
+  RefreshCw,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { NIGERIA_STATES } from '../constants/states.js';
-import { sendForgotPassword, submitResetPassword } from '../services/api.js';
+import { sendForgotPassword, submitResetPassword, getApiBaseUrl, setApiBaseUrl } from '../services/api.js';
 
 interface AuthModalProps {
   initialMode?: 'login' | 'register';
@@ -50,6 +53,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Backend API URL Configuration
+  const [showBackendConfig, setShowBackendConfig] = useState(false);
+  const [backendUrlInput, setBackendUrlInput] = useState(getApiBaseUrl() || '');
+  const [testingBackend, setTestingBackend] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<string | null>(null);
+
+  const handleTestBackend = async () => {
+    setTestingBackend(true);
+    setBackendStatus(null);
+    try {
+      const urlToTest = (backendUrlInput.trim() || window.location.origin).replace(/\/+$/, '');
+      const testRes = await fetch(`${urlToTest}/api/health`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await testRes.json();
+      if (testRes.ok && data?.status === 'ok') {
+        setBackendStatus('✅ Backend is online & healthy!');
+      } else {
+        setBackendStatus(`⚠️ Server responded with HTTP ${testRes.status}`);
+      }
+    } catch (err: any) {
+      setBackendStatus(`❌ Connection failed: ${err.message}`);
+    } finally {
+      setTestingBackend(false);
+    }
+  };
+
+  const handleSaveBackend = () => {
+    const cleanUrl = backendUrlInput.trim();
+    setApiBaseUrl(cleanUrl || null);
+    setSuccessMsg(`Backend API URL updated to: ${cleanUrl || '(current host)'}`);
+    setShowBackendConfig(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -524,6 +561,79 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
           )}
+
+          {/* Backend Connection & API Diagnostics Panel */}
+          <div className="mt-5 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowBackendConfig(!showBackendConfig)}
+              className="w-full flex items-center justify-between text-[11px] text-gray-500 hover:text-gray-700 py-1 transition"
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                <Server className="w-3.5 h-3.5 text-[#F68B1F]" />
+                Backend Connection Settings
+              </span>
+              <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                {getApiBaseUrl() ? 'Custom API' : 'Direct Full-Stack'}
+              </span>
+            </button>
+
+            {showBackendConfig && (
+              <div className="mt-2.5 p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2 text-xs">
+                <div className="text-[11px] text-gray-600">
+                  Configure custom API base URL for deployed backends (e.g. Render, Railway):
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="url"
+                    placeholder="https://your-backend.onrender.com"
+                    value={backendUrlInput}
+                    onChange={(e) => setBackendUrlInput(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg outline-none focus:border-[#F68B1F]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestBackend}
+                    disabled={testingBackend}
+                    className="px-2.5 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 text-[11px] font-bold rounded-lg transition shrink-0 flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${testingBackend ? 'animate-spin' : ''}`} />
+                    Test
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveBackend}
+                    className="px-3 py-1.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white text-[11px] font-bold rounded-lg transition shrink-0"
+                  >
+                    Save
+                  </button>
+                </div>
+
+                {backendStatus && (
+                  <p className="text-[11px] font-mono p-1.5 bg-white rounded border border-gray-200">
+                    {backendStatus}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1">
+                  <span>Current Endpoint: {getApiBaseUrl() || '(Local / Relative /api)'}</span>
+                  {getApiBaseUrl() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBackendUrlInput('');
+                        setApiBaseUrl(null);
+                        setSuccessMsg('Reset to default backend endpoint');
+                      }}
+                      className="text-[#F68B1F] hover:underline"
+                    >
+                      Reset Default
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

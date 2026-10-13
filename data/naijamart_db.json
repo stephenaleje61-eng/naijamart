@@ -98,6 +98,18 @@
       "state": "Lagos",
       "city": "Ikeja",
       "createdAt": "2026-10-12T20:05:31.561Z"
+    },
+    {
+      "id": "user-1791856764299-007e57f2",
+      "name": "Tunde Bakare",
+      "email": "testuser_1791856764147@zangamarket.ng",
+      "passwordHash": "$2b$10$.hz65xMLj.ABNIDlcuwVp.w0WDEie8fJKzGEql6vHiXtpiPyIXUVu",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-13T01:59:24.300Z"
     }
   ],
   "sellerProfiles": [
@@ -184,6 +196,18 @@
       "city": "Ikeja",
       "isVerified": false,
       "createdAt": "2026-10-12T20:05:31.561Z"
+    },
+    {
+      "id": "profile-1791856764300-2d05455c",
+      "userId": "user-1791856764299-007e57f2",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-4300",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-13T01:59:24.300Z"
     }
   ],
   "products": [

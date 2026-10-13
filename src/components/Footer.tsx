@@ -174,7 +174,7 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* Bottom Disclaimer */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-500">
-          <p>© 2026 NaijaMart Nigeria. All rights reserved.</p>
+          <p>© 2026 ZangaMarket Nigeria. All rights reserved.</p>
           <p className="text-center sm:text-right">
             Always inspect items before paying • Never transfer upfront transport fares • Deal safely
           </p>

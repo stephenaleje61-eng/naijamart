@@ -26,7 +26,7 @@ export const setAuthToken = (token: string | null) => {
 };
 
 export const getApiBaseUrl = (): string => {
-  // 1. User configured custom URL in localStorage
+  // 1. User configured custom URL in localStorage (explicit override)
   const custom = localStorage.getItem(BACKEND_URL_KEY) || localStorage.getItem('naijamart_backend_url');
   if (custom && custom.trim().length > 0) {
     return custom.trim().replace(/\/+$/, '');
@@ -38,15 +38,7 @@ export const getApiBaseUrl = (): string => {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // 3. When running on Netlify or external static domains, route directly to live backend to prevent 404 HTML
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host.includes('netlify.app') || host.includes('vercel.app')) {
-      return 'https://ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app';
-    }
-  }
-
-  // 4. Default: relative path (local dev & full-stack server)
+  // 3. Default: relative path (in full-stack Express + Vite environment)
   return '';
 };
 
@@ -60,7 +52,9 @@ export const setApiBaseUrl = (url: string | null) => {
 };
 
 const getHeaders = (isJson = true): Record<string, string> => {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    'Accept': 'application/json'
+  };
   if (isJson) {
     headers['Content-Type'] = 'application/json';
   }
@@ -77,9 +71,17 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const fullUrl = base ? `${base}${cleanEndpoint}` : cleanEndpoint;
 
+  const mergedHeaders: Record<string, string> = {
+    'Accept': 'application/json',
+    ...(options.headers as Record<string, string> || {})
+  };
+
   let res: Response;
   try {
-    res = await fetch(fullUrl, options);
+    res = await fetch(fullUrl, {
+      ...options,
+      headers: mergedHeaders
+    });
   } catch (networkErr: any) {
     console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
     throw new Error(
@@ -87,20 +89,35 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
     );
   }
 
+  const contentType = res.headers.get('content-type') || '';
   const text = await res.text();
   let data: any;
 
   try {
     data = JSON.parse(text);
   } catch (err) {
-    console.error(`[API Fetch Error] Server returned HTML not JSON from ${fullUrl} (HTTP ${res.status}):\n`, text);
-    if (res.status === 404) {
+    console.error(`[API Fetch Error] Server returned non-JSON response from ${fullUrl} (HTTP ${res.status}, Content-Type: ${contentType}):\n`, text.slice(0, 500));
+    
+    // Provide precise, actionable diagnostics
+    if (res.status === 200 && text.trim().length === 0) {
       throw new Error(
-        `Backend API route (${cleanEndpoint}) was not found (HTTP 404). Please ensure the backend is running and requests are directed to the live server.`
+        `Server returned an empty response (200 OK with 0 bytes). The endpoint (${cleanEndpoint}) is currently returning empty data instead of JSON.`
       );
     }
+
+    if (contentType.includes('text/html') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+      if (res.status === 404) {
+        throw new Error(
+          `Backend API route (${cleanEndpoint}) was not found (HTTP 404). Please ensure the backend is running and requests are directed to the live server.`
+        );
+      }
+      throw new Error(
+        `Server returned HTML page (${res.status}) instead of JSON. Ensure your backend route begins with /api and the API server is active.`
+      );
+    }
+
     throw new Error(
-      `Server returned an unexpected response (${res.status}) instead of JSON. The backend service may be waking up. Please try again in a few moments.`
+      `Server returned an unexpected response (${res.status}) instead of JSON. The backend service may be starting up or misconfigured.`
     );
   }
 
