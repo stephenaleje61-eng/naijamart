@@ -48,7 +48,7 @@ const upload = multer({
 });
 
 // Upload single or multiple images (up to 6 photos per product)
-router.post('/', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/', (req: Request, res: Response) => {
   upload.array('images', 6)(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {

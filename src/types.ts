@@ -8,6 +8,8 @@ export interface User {
   state?: string;
   city?: string;
   avatarUrl?: string;
+  isSuspended?: boolean;
+  suspensionReason?: string;
   createdAt: string;
 }
 
@@ -24,6 +26,7 @@ export interface SellerProfile {
   city: string;
   address?: string;
   isVerified: boolean;
+  isSuspended?: boolean;
   createdAt: string;
 }
 
@@ -44,6 +47,8 @@ export interface Product {
   city: string;
   quantity: number;
   status: 'active' | 'sold' | 'unavailable' | 'expired';
+  moderationStatus?: 'approved' | 'pending_review' | 'rejected';
+  moderationFlags?: string[];
   views: number;
   whatsappClicks: number;
   isFeatured?: boolean;

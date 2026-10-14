@@ -329,6 +329,16 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             >
                               {item.status}
                             </span>
+                            {item.moderationStatus === 'pending_review' && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" /> Pending Admin Review
+                              </span>
+                            )}
+                            {item.moderationStatus === 'rejected' && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 text-red-600" /> Rejected
+                              </span>
+                            )}
                           </div>
 
                           {/* 7-Day Expiration Tag */}

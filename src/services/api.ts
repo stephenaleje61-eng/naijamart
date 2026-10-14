@@ -377,10 +377,26 @@ export async function fetchAdminReports(): Promise<{ reports: ReportItem[] }> {
 }
 
 export async function adminResolveReport(id: string, status: 'resolved' | 'dismissed', adminNotes?: string): Promise<any> {
-  return safeFetchJson('/api/admin/reports/${id}/resolve', {
+  return safeFetchJson(`/api/admin/reports/${id}/resolve`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ status, adminNotes })
+  });
+}
+
+export async function adminModerateProduct(id: string, status: 'approved' | 'rejected' | 'pending_review', notes?: string): Promise<any> {
+  return safeFetchJson(`/api/admin/products/${id}/moderate`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ status, notes })
+  });
+}
+
+export async function adminToggleUserSuspension(id: string, reason?: string): Promise<any> {
+  return safeFetchJson(`/api/admin/users/${id}/toggle-suspend`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ reason })
   });
 }
 

@@ -129,6 +129,13 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        error: `Account suspended by marketplace moderation: ${user.suspensionReason || 'Violation of trust & safety policy.'}`
+      });
+    }
+
     const token = generateToken({
       userId: user.id,
       email: user.email,

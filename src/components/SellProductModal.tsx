@@ -14,9 +14,11 @@ import {
   Globe,
   MessageCircle,
   Phone,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  Check
 } from 'lucide-react';
-import { Category } from '../types.js';
+import { Category, Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
   uploadProductImages,
@@ -25,19 +27,22 @@ import {
   setApiBaseUrl
 } from '../services/api.js';
 import { NIGERIA_STATES } from '../constants/states.js';
+import { formatNaira } from './ProductCard.js';
 
 interface SellProductModalProps {
   categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
   onRequireAuth: () => void;
+  onViewProduct?: (product: Product) => void;
 }
 
 export const SellProductModal: React.FC<SellProductModalProps> = ({
   categories,
   onClose,
   onSuccess,
-  onRequireAuth
+  onRequireAuth,
+  onViewProduct
 }) => {
   const { user, sellerProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +72,21 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [createdProduct, setCreatedProduct] = useState<Product | null>(null);
+
+  const handleResetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPrice('');
+    setOriginalPrice('');
+    setCategory(categories[0]?.id || 'phones-tablets');
+    setCondition('new');
+    setQuantity('1');
+    setUploadedImageUrls([]);
+    setRawFiles([]);
+    setCreatedProduct(null);
+    setErrorMessage('');
+  };
 
   // Handle image files selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,16 +143,36 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
+    // Ensure seller is authenticated before posting
+    if (!user) {
+      setErrorMessage('You must be signed in as a registered seller to post products on NaijaMart.');
+      onRequireAuth();
+      return;
+    }
+
+    if (user.isSuspended) {
+      setErrorMessage(`Your seller account has been suspended: ${user.suspensionReason || 'Violation of trust & safety policy'}. Contact support.`);
+      return;
+    }
 
     if (!title.trim() || !description.trim() || !price) {
       setErrorMessage('Please fill out product title, description, and price.');
       return;
     }
 
+    if (title.trim().length < 3) {
+      setErrorMessage('Product title is too short. Please provide a clear, descriptive name (minimum 3 characters).');
+      return;
+    }
+
     const numericPrice = Number(price);
     if (isNaN(numericPrice) || numericPrice <= 0) {
       setErrorMessage('Please enter a valid price in Nigerian Naira (₦).');
+      return;
+    }
+
+    if (numericPrice > 1000000000) {
+      setErrorMessage('Price is suspiciously high. Please verify the amount in Naira.');
       return;
     }
 
@@ -176,7 +216,11 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
       console.log('[Publish Product] Response received:', res);
 
       onSuccess();
-      onClose();
+      if (res && res.product) {
+        setCreatedProduct(res.product);
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       console.error('[Publish Product Error]:', err);
       setErrorMessage(err.message || 'Failed to publish listing. Please check backend connection.');
@@ -243,15 +287,115 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
           </div>
         )}
 
-        {/* 7-Day Expiration Policy Warning Banner */}
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-900 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#F68B1F] shrink-0" />
-          <span>
-            <strong>Automatic 7-Day Listing:</strong> All products automatically expire in 168 hours (7 days) to maintain active stock.
-          </span>
-        </div>
+        {createdProduct ? (
+          <div className="p-6 sm:p-8 space-y-6 text-center max-h-[85vh] overflow-y-auto">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+            <div>
+              <span className="text-[11px] font-black tracking-widest uppercase text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
+                Saved Permanently to Database
+              </span>
+              <h3 className="text-2xl font-black text-gray-900 mt-2">Product posted successfully!</h3>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto mt-1">
+                Your listing details, price in Naira (₦), and photographs have been committed to the marketplace database.
+              </p>
+            </div>
+
+            {/* Product summary card */}
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-left flex items-center gap-4 max-w-lg mx-auto shadow-sm">
+              <img
+                src={createdProduct.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
+                alt={createdProduct.title}
+                className="w-20 h-20 rounded-xl object-cover border border-gray-200 shrink-0 bg-white"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-100 text-[#F68B1F]">
+                    {createdProduct.categoryId}
+                  </span>
+                  <span className="text-xs text-gray-400">•</span>
+                  <span className="text-xs text-gray-500 capitalize">{createdProduct.condition} condition</span>
+                </div>
+                <h4 className="font-bold text-gray-900 text-sm truncate mt-1">{createdProduct.title}</h4>
+                <div className="text-lg font-black text-[#F68B1F] mt-0.5">
+                  {formatNaira(createdProduct.price)}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                  <span>{createdProduct.city}, {createdProduct.state}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Moderation Status Feedback */}
+            {createdProduct.moderationStatus === 'pending_review' ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left max-w-lg mx-auto text-xs text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Pending Administrator Review</span>
+                </div>
+                <p className="leading-relaxed">
+                  Our anti-fraud watchdog flagged this item for safety verification ({createdProduct.moderationFlags?.join(', ') || 'routine check'}). It will appear in public marketplace search once an administrator approves it.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-left max-w-lg mx-auto text-xs text-emerald-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Live &amp; Visible Across Nigeria</span>
+                </div>
+                <p className="leading-relaxed">
+                  Your listing is active and publicly visible to shoppers on the homepage, category pages, and search feeds. Buyers can message your WhatsApp directly.
+                </p>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onViewProduct) {
+                    onViewProduct(createdProduct);
+                  }
+                  onClose();
+                }}
+                className="w-full sm:w-auto px-6 py-3 bg-[#F68B1F] hover:bg-[#E07A15] text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition"
+              >
+                <Eye className="w-4 h-4" />
+                <span>View Product in Marketplace</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="w-full sm:w-auto px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post Another Product</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-5 py-3 text-gray-500 hover:text-gray-800 font-bold text-xs sm:text-sm transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* 7-Day Expiration Policy Warning Banner */}
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#F68B1F] shrink-0" />
+              <span>
+                <strong>Automatic 7-Day Listing:</strong> All products automatically expire in 168 hours (7 days) to maintain active stock.
+              </span>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           {errorMessage && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -568,7 +712,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+    )}
+  </div>
+</div>
   );
 };

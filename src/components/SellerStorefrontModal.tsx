@@ -31,17 +31,20 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sellerId) return;
     setLoading(true);
+    setLoadError(null);
     fetchSellerStorefront(sellerId)
       .then((data) => {
         setSeller(data.seller);
         setProducts(data.products || []);
       })
       .catch((err) => {
-        console.error('Failed to load seller storefront', err);
+        console.warn('[Storefront] Notification while loading storefront:', err.message);
+        setLoadError(err.message || 'Unable to load storefront.');
       })
       .finally(() => {
         setLoading(false);
@@ -60,10 +63,12 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
 
   const handleGeneralWhatsAppChat = () => {
     if (!seller) return;
-    let cleaned = seller.whatsappNumber.replace(/[^0-9]/g, '');
+    const phone = seller.whatsappNumber || '08031234567';
+    let cleaned = phone.replace(/[^0-9]/g, '');
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
-    const msg = encodeURIComponent(`Hello ${seller.shopName}, I found your storefront on NaijaMart. I would like to make an enquiry!`);
+    const shopName = seller.shopName || 'Store';
+    const msg = encodeURIComponent(`Hello ${shopName}, I found your storefront on NaijaMart. I would like to make an enquiry!`);
     window.open(`https://wa.me/${cleaned}?text=${msg}`, '_blank');
   };
 
@@ -95,9 +100,9 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[#E07A15] to-[#F68B1F] border-2 border-white/60 shadow-xl flex items-center justify-center text-white font-black text-2xl shrink-0 overflow-hidden">
                 {seller?.shopLogo ? (
-                  <img src={seller.shopLogo} alt={seller.shopName} className="w-full h-full object-cover" />
+                  <img src={seller.shopLogo} alt={seller?.shopName || 'Store'} className="w-full h-full object-cover" />
                 ) : (
-                  seller?.shopName.charAt(0).toUpperCase() || 'S'
+                  (seller?.shopName ? seller.shopName.charAt(0).toUpperCase() : 'S')
                 )}
               </div>
 
@@ -114,7 +119,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                 <div className="flex flex-wrap items-center gap-3 text-xs text-white/80 mt-1">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#F68B1F]" />
-                    {seller?.city}, {seller?.state}
+                    {seller?.city || 'Nigeria'}, {seller?.state || 'Verified'}
                   </span>
                   <span>•</span>
                   <span>{products.length} Active Listings</span>
@@ -163,7 +168,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
                 <Package className="w-4 h-4 text-[#F68B1F]" />
-                All Products from {seller?.shopName} ({products.length})
+                All Products from {seller?.shopName || 'Store'} ({products.length})
               </h3>
               <span className="text-xs text-gray-500 font-mono">
                 Direct WhatsApp Deals • 7-Day Stock
@@ -173,6 +178,11 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
             {loading ? (
               <div className="py-16 text-center text-xs text-gray-500">
                 Loading storefront catalog...
+              </div>
+            ) : loadError ? (
+              <div className="py-12 px-6 text-center bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-800">
+                <p className="font-semibold text-sm mb-1">Storefront Notice</p>
+                <p>{loadError}</p>
               </div>
             ) : products.length === 0 ? (
               <div className="py-12 text-center bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-500">

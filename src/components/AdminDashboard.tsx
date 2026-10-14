@@ -26,6 +26,8 @@ import {
   adminToggleSellerVerification,
   fetchAdminReports,
   adminResolveReport,
+  adminModerateProduct,
+  adminToggleUserSuspension,
   adminTriggerExpirationPurge
 } from '../services/api.js';
 import { formatNaira } from './ProductCard.js';
@@ -367,8 +369,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span className="font-bold block">{p.shopName}</span>
                             <span className="text-[10px] text-gray-500 font-mono">{p.whatsappNumber}</span>
                           </td>
-                          <td className="p-3 font-bold text-gray-900">
-                            {formatNaira(p.price)}
+                          <td className="p-3">
+                            <span className="font-bold text-gray-900">
+                              {formatNaira(p.price)}
+                            </span>
+                            {p.moderationStatus && (
+                              <div className="mt-1">
+                                <span className={`inline-flex items-center text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                                  p.moderationStatus === 'approved'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : p.moderationStatus === 'rejected'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-amber-100 text-amber-800 animate-pulse'
+                                }`}>
+                                  {p.moderationStatus.toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            {p.moderationFlags && p.moderationFlags.length > 0 && (
+                              <div className="text-[9px] text-red-600 font-semibold mt-1 max-w-[140px] truncate" title={p.moderationFlags.join('; ')}>
+                                ⚠ {p.moderationFlags[0]}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3">
                             <span className="text-[11px] font-bold text-amber-700 block">
@@ -384,22 +406,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </span>
                           </td>
                           <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleToggleFeatured(p.id)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition ${
-                                  p.isFeatured ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                {p.isFeatured ? 'Featured ★' : 'Feature'}
-                              </button>
-                              <button
-                                onClick={() => handleRemoveProduct(p.id)}
-                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                                title="Remove listing"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await adminModerateProduct(p.id, 'approved');
+                                      await loadData();
+                                    } catch (err: any) {
+                                      alert(err.message);
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition"
+                                  title="Approve listing for public feed"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const reason = prompt('Reason for rejecting listing:');
+                                    if (!reason) return;
+                                    try {
+                                      await adminModerateProduct(p.id, 'rejected', reason);
+                                      await loadData();
+                                    } catch (err: any) {
+                                      alert(err.message);
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold transition"
+                                  title="Reject listing from public feed"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => handleToggleFeatured(p.id)}
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition ${
+                                    p.isFeatured ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {p.isFeatured ? 'Featured ★' : 'Feature'}
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveProduct(p.id)}
+                                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                                  title="Permanently Delete Listing"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -504,17 +561,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {u.whatsappNumber || u.phone || 'N/A'}
                       </td>
                       <td className="p-3">
-                        {u.role === 'seller' ? (
-                          <button
-                            onClick={() => handleToggleVerifySeller(u.id)}
-                            className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Toggle Verified Badge
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 text-[11px]">Buyer</span>
-                        )}
+                        <div className="flex flex-col gap-1.5">
+                          {u.isSuspended && (
+                            <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full self-start">
+                              SUSPENDED
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2">
+                            {u.role === 'seller' && (
+                              <button
+                                onClick={() => handleToggleVerifySeller(u.id)}
+                                className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                Toggle Verified
+                              </button>
+                            )}
+                            {u.role !== 'admin' && (
+                              <button
+                                onClick={async () => {
+                                  const reason = !u.isSuspended ? prompt('Enter reason for account suspension:') : undefined;
+                                  if (!u.isSuspended && !reason) return;
+                                  try {
+                                    await adminToggleUserSuspension(u.id, reason || undefined);
+                                    await loadData();
+                                  } catch (err: any) {
+                                    alert(err.message);
+                                  }
+                                }}
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition ${
+                                  u.isSuspended
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                }`}
+                              >
+                                {u.isSuspended ? 'Lift Suspension' : 'Suspend Account'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}

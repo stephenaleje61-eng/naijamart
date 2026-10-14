@@ -25,6 +25,8 @@ export interface User {
   state?: string;
   city?: string;
   avatarUrl?: string;
+  isSuspended?: boolean;
+  suspensionReason?: string;
   createdAt: string;
 }
 
@@ -41,6 +43,8 @@ export interface SellerProfile {
   city: string;
   address?: string;
   isVerified: boolean;
+  isSuspended?: boolean;
+  trustScore?: number;
   createdAt: string;
 }
 
@@ -61,6 +65,8 @@ export interface Product {
   city: string;
   quantity: number;
   status: 'active' | 'sold' | 'unavailable' | 'expired';
+  moderationStatus?: 'approved' | 'pending_review' | 'rejected';
+  moderationFlags?: string[];
   views: number;
   whatsappClicks: number;
   isFeatured?: boolean;
@@ -212,12 +218,7 @@ class Database {
       modified = true;
     }
 
-    // Seed realistic Nigerian demo sellers & products if database is empty
-    if (this.data.products.length === 0) {
-      this.seedInitialSellersAndProducts();
-      modified = true;
-    }
-
+    // Do not seed fake or demo products: only real listings posted by users remain
     if (modified) {
       this.save();
     }

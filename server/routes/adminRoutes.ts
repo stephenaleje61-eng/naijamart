@@ -83,7 +83,39 @@ router.post('/products/:id/toggle-featured', requireAdmin, (req: AuthenticatedRe
   res.json({ isFeatured: product.isFeatured, message: `Product is now ${product.isFeatured ? 'Featured' : 'Standard'}.` });
 });
 
-// GET all users
+// Moderate product: Approve or Reject
+router.post('/products/:id/moderate', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  const { status, notes } = req.body;
+  const product = db.products.find(p => p.id === req.params.id);
+
+  if (!product) {
+    return res.status(404).json({ error: 'Product not found.' });
+  }
+
+  if (!['approved', 'rejected', 'pending_review'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid moderation status. Must be approved, rejected, or pending_review.' });
+  }
+
+  product.moderationStatus = status;
+  db.auditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    action: `MODERATION_${status.toUpperCase()}`,
+    actor: `${user.name} (${user.email})`,
+    details: `Product "${product.title}" moderation status set to ${status}. Notes: ${notes || 'None'}`,
+    timestamp: new Date().toISOString()
+  });
+
+  db.save();
+
+  res.json({
+    success: true,
+    message: `Product "${product.title}" has been ${status}.`,
+    product
+  });
+});
+
+// GET all users (with suspension status and role details)
 router.get('/users', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
   const users = db.users.map(u => ({
     id: u.id,
@@ -94,10 +126,57 @@ router.get('/users', requireAdmin, (_req: AuthenticatedRequest, res: Response) =
     whatsappNumber: u.whatsappNumber,
     state: u.state,
     city: u.city,
+    isSuspended: !!u.isSuspended,
+    suspensionReason: u.suspensionReason,
     createdAt: u.createdAt
   }));
 
   res.json({ users });
+});
+
+// Toggle User/Seller Suspension
+router.post('/users/:id/toggle-suspend', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const admin = req.user!;
+  const { reason } = req.body;
+  const targetUser = db.users.find(u => u.id === req.params.id);
+
+  if (!targetUser) {
+    return res.status(404).json({ error: 'User account not found.' });
+  }
+
+  if (targetUser.role === 'admin') {
+    return res.status(400).json({ error: 'Administrator accounts cannot be suspended.' });
+  }
+
+  targetUser.isSuspended = !targetUser.isSuspended;
+  if (targetUser.isSuspended) {
+    targetUser.suspensionReason = reason || 'Suspended by Trust & Safety administrator for suspected fraud.';
+  } else {
+    delete targetUser.suspensionReason;
+  }
+
+  // Update seller profile suspension too if seller
+  const sellerProf = db.sellerProfiles.find(s => s.userId === targetUser.id);
+  if (sellerProf) {
+    sellerProf.isSuspended = targetUser.isSuspended;
+  }
+
+  // Log action
+  db.auditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    action: targetUser.isSuspended ? 'ADMIN_SUSPENDED_USER' : 'ADMIN_UNSUSPENDED_USER',
+    actor: `${admin.name} (${admin.email})`,
+    details: `Admin ${targetUser.isSuspended ? 'suspended' : 're-activated'} account "${targetUser.name}" (${targetUser.email}). Reason: ${targetUser.suspensionReason || 'N/A'}`,
+    timestamp: new Date().toISOString()
+  });
+
+  db.save();
+
+  res.json({
+    success: true,
+    isSuspended: targetUser.isSuspended,
+    message: `Account "${targetUser.name}" is now ${targetUser.isSuspended ? 'SUSPENDED' : 'ACTIVE'}.`
+  });
 });
 
 // Toggle Seller Verification Badge
@@ -148,3 +227,4 @@ router.post('/trigger-cleanup', requireAdmin, (req: AuthenticatedRequest, res: R
 });
 
 export default router;
+

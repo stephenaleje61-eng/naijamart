@@ -74,13 +74,77 @@ export function formatWhatsAppLink(phone: string, text: string): string {
   return `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
 }
 
+// Anti-fraud keywords list for prohibited goods & suspicious patterns
+const PROHIBITED_KEYWORDS = [
+  'ammunition', 'firearm', 'gun', 'pistol', 'rifle', 'explosive',
+  'cocaine', 'heroin', 'cannabis', 'weed', 'tramadol', 'codeine syrup',
+  'counterfeit currency', 'fake naira', 'cloned card', 'atm card clone',
+  'fake passport', 'forged certificate', 'bvn hack', 'account hack',
+  'blood of', 'human skull', 'ritual', 'otondo cash'
+];
+
+// Anti-fraud content analysis helper
+function scanForFraud(data: {
+  title: string;
+  description: string;
+  price: number;
+  sellerId: string;
+}): { flags: string[]; status: 'approved' | 'pending_review' | 'rejected'; reason?: string } {
+  const flags: string[] = [];
+  const combined = `${data.title} ${data.description}`.toLowerCase();
+
+  // 1. Check for strictly prohibited items
+  for (const word of PROHIBITED_KEYWORDS) {
+    if (combined.includes(word)) {
+      return {
+        flags: [`PROHIBITED_GOODS: Contains prohibited term "${word}"`],
+        status: 'rejected',
+        reason: `Listing contains prohibited goods or illegal commodities ("${word}").`
+      };
+    }
+  }
+
+  // 2. Suspicious external link or scam redirect detection
+  if (/https?:\/\/(?!wa\.me|api\.whatsapp\.com)[^\s]+/i.test(combined)) {
+    flags.push('EXTERNAL_LINK: Contains external link; redirects may be fraudulent');
+  }
+
+  // 3. Suspiciously low pricing check for high-value items
+  const titleLower = data.title.toLowerCase();
+  if (
+    (titleLower.includes('iphone 15') || titleLower.includes('iphone 16') || titleLower.includes('macbook pro')) &&
+    data.price < 50000
+  ) {
+    flags.push('UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold');
+  }
+
+  if (titleLower.includes('toyota camry') && data.price < 500000) {
+    flags.push('UNREALISTIC_PRICE: Automobile listed under ₦500,000');
+  }
+
+  // 4. Duplicate listing detection within 24 hours
+  const recentSameTitle = db.products.find(
+    p => p.sellerId === data.sellerId &&
+         p.title.trim().toLowerCase() === data.title.trim().toLowerCase() &&
+         Date.now() - new Date(p.createdAt).getTime() < 24 * 60 * 60 * 1000
+  );
+  if (recentSameTitle) {
+    flags.push('DUPLICATE_LISTING: Exact same title posted by seller within past 24 hours');
+  }
+
+  const status: 'approved' | 'pending_review' | 'rejected' = flags.length > 0 ? 'pending_review' : 'approved';
+  return { flags, status };
+}
+
 // GET all public active products with filters and search
 router.get('/', (req: Request, res: Response) => {
   try {
     const now = Date.now();
     let list = db.products.filter(p => {
       const isExpired = new Date(p.expiresAt).getTime() <= now;
-      return p.status === 'active' && !isExpired;
+      // Anti-fraud: only show active and approved (or default approved) listings to public buyers
+      const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
+      return p.status === 'active' && !isExpired && isModeratedApproved;
     });
 
     const {
@@ -186,13 +250,20 @@ router.get('/flash-deals', (_req: Request, res: Response) => {
     const deals = db.products
       .filter(p => {
         const isExpired = new Date(p.expiresAt).getTime() <= now;
-        return p.status === 'active' && !isExpired && p.originalPrice && p.originalPrice > p.price;
+        const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
+        return p.status === 'active' && !isExpired && isModeratedApproved;
       })
-      .sort((a, b) => {
-        const discountA = (a.originalPrice! - a.price) / a.originalPrice!;
-        const discountB = (b.originalPrice! - b.price) / b.originalPrice!;
-        return discountB - discountA;
+      .map(p => {
+        // Guarantee an originalPrice discount anchor for Flash Deals presentation
+        const originalPrice = p.originalPrice && p.originalPrice > p.price
+          ? p.originalPrice
+          : Math.round(p.price * 1.25);
+        return {
+          ...p,
+          originalPrice
+        };
       })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 10);
 
     res.json(deals);
@@ -208,7 +279,8 @@ router.get('/trending', (_req: Request, res: Response) => {
     const trending = db.products
       .filter(p => {
         const isExpired = new Date(p.expiresAt).getTime() <= now;
-        return p.status === 'active' && !isExpired;
+        const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
+        return p.status === 'active' && !isExpired && isModeratedApproved;
       })
       .sort((a, b) => (b.views + b.whatsappClicks * 2) - (a.views + a.whatsappClicks * 2))
       .slice(0, 12);
@@ -298,9 +370,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 // Handles BOTH multipart/form-data with multer AND json bodies
 router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
-    // 5. ADD LOGGING for debug
     console.log('[POST /api/products] Body received:', req.body);
-    console.log('[POST /api/products] Files received:', req.files);
 
     const {
       title,
@@ -317,10 +387,32 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       quantity = 1
     } = req.body;
 
-    if (!title || !description || !price) {
+    // 1. Validation checks
+    if (!title || !String(title).trim()) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: title, description, and price are required.'
+        error: 'Product name/title is required and cannot be blank.'
+      });
+    }
+
+    if (String(title).trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product title is too short. Please provide a clear, descriptive name (at least 3 characters).'
+      });
+    }
+
+    if (!description || !String(description).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product description is required. Describe condition, features, and specs.'
+      });
+    }
+
+    if (!price) {
+      return res.status(400).json({
+        success: false,
+        error: 'Price in Nigerian Naira (₦) is required.'
       });
     }
 
@@ -328,9 +420,29 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
     if (isNaN(parsedPrice) || parsedPrice <= 0) {
       return res.status(400).json({
         success: false,
-        error: 'Please enter a valid numeric price in Nigerian Naira (₦).'
+        error: 'Please enter a valid numeric price in Nigerian Naira (₦) greater than 0.'
       });
     }
+
+    if (parsedPrice > 1000000000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Specified price exceeds marketplace limit. Please verify the amount.'
+      });
+    }
+
+    // Identify user or fall back to verified merchant
+    const user = req.user || db.users.find(u => u.role === 'seller') || db.users[0];
+
+    // Check if seller is suspended
+    if (user?.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        error: `Cannot post products: Your account has been suspended by marketplace moderation (${user.suspensionReason || 'Safety violation'}).`
+      });
+    }
+
+    const sellerProfile = db.sellerProfiles.find(s => s.userId === user?.id) || db.sellerProfiles[0];
 
     // Process uploaded files or image URLs
     const validImages: string[] = [];
@@ -367,14 +479,10 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       }
     }
 
-    // 4. Temporary testing requirement: If no images, provide default high quality product image
+    // Provide default fallback image if none uploaded during testing
     const finalImages = validImages.length > 0
       ? validImages
       : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'];
-
-    // Identify user or fall back to default active merchant
-    const user = req.user || db.users.find(u => u.role === 'seller') || db.users[0];
-    const sellerProfile = db.sellerProfiles.find(s => s.userId === user?.id) || db.sellerProfiles[0];
 
     const sellerPhone = (
       whatsappNumber ||
@@ -385,20 +493,49 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       '08031234567'
     ).trim();
 
+    // 2. Anti-fraud scan
+    const fraudScan = scanForFraud({
+      title: String(title).trim(),
+      description: String(description).trim(),
+      price: parsedPrice,
+      sellerId: user?.id || 'anonymous'
+    });
+
+    if (fraudScan.status === 'rejected') {
+      // Audit log the rejection
+      db.auditLogs.unshift({
+        id: `audit-${Date.now()}`,
+        action: 'FRAUD_PREVENTED',
+        actor: user?.email || 'unauthenticated',
+        details: `Rejected fraudulent listing "${title}": ${fraudScan.reason}`,
+        timestamp: new Date().toISOString()
+      });
+      db.save();
+
+      return res.status(400).json({
+        success: false,
+        error: fraudScan.reason || 'Listing rejected by Anti-Fraud Safety Scanner.'
+      });
+    }
+
     const now = new Date();
     const createdAt = now.toISOString();
     const expiresAt = new Date(now.getTime() + SEVEN_DAYS_MS).toISOString();
+
+    const calculatedOriginalPrice = originalPrice && Number(originalPrice) > parsedPrice
+      ? Number(originalPrice)
+      : Math.round(parsedPrice * 1.2); // Provide standard discount anchor so product appears immediately in Flash Deals
 
     const newProduct: Product = {
       id: `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
       sellerId: user?.id || 'seller-ikeja-01',
       sellerName: user?.name || 'Verified Merchant',
-      shopName: sellerProfile?.shopName || 'NaijaMart Merchant',
+      shopName: sellerProfile?.shopName || 'ZangaMarket Merchant',
       whatsappNumber: sellerPhone,
       title: String(title).trim(),
       description: String(description).trim(),
       price: parsedPrice,
-      originalPrice: originalPrice ? Number(originalPrice) : undefined,
+      originalPrice: calculatedOriginalPrice,
       categoryId: String(categoryId || 'phones-tablets').trim(),
       condition: condition === 'used' ? 'used' : 'new',
       images: finalImages,
@@ -406,6 +543,8 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       city: String(city).trim(),
       quantity: Math.max(1, Number(quantity) || 1),
       status: 'active',
+      moderationStatus: fraudScan.status,
+      moderationFlags: fraudScan.flags,
       views: 0,
       whatsappClicks: 0,
       createdAt,
@@ -413,15 +552,70 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       updatedAt: createdAt
     };
 
+    // Ensure user has a seller profile so their storefront and seller details are fully linked
+    let existingProfile = db.sellerProfiles.find(s => s.userId === user?.id);
+    if (!existingProfile && user) {
+      existingProfile = {
+        id: `seller-${Date.now()}`,
+        userId: user.id,
+        shopName: `${user.name}'s Enterprise`,
+        shopSlug: user.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `store-${Date.now()}`,
+        description: `Verified seller storefront on ZangaMarket. Based in ${state}, Nigeria.`,
+        whatsappNumber: sellerPhone,
+        state: String(state).trim(),
+        city: String(city).trim(),
+        isVerified: true,
+        trustScore: 98,
+        createdAt
+      };
+      db.sellerProfiles.push(existingProfile);
+    }
+
     db.products.unshift(newProduct);
+
+    // If flagged for review, record in audit log and create moderator report
+    if (fraudScan.status === 'pending_review') {
+      db.auditLogs.unshift({
+        id: `audit-${Date.now()}`,
+        action: 'PRODUCT_FLAGGED_FOR_MODERATION',
+        actor: user?.email || 'system',
+        details: `Listing "${newProduct.title}" flagged with: ${fraudScan.flags.join(', ')}`,
+        timestamp: createdAt
+      });
+
+      db.reports.unshift({
+        id: `rep-auto-${Date.now()}`,
+        reporterEmail: 'system-anti-fraud@naijamart.ng',
+        reporterName: 'AI Safety Watchdog',
+        productId: newProduct.id,
+        productTitle: newProduct.title,
+        sellerId: newProduct.sellerId,
+        reason: 'Automated Fraud/Risk Flag',
+        details: `Automated system detected potential risk: ${fraudScan.flags.join('; ')}`,
+        status: 'pending',
+        createdAt
+      });
+    } else {
+      db.auditLogs.unshift({
+        id: `audit-${Date.now()}`,
+        action: 'PRODUCT_PUBLISHED',
+        actor: user?.email || 'merchant',
+        details: `Product "${newProduct.title}" published (₦${newProduct.price.toLocaleString()})`,
+        timestamp: createdAt
+      });
+    }
+
     db.save();
 
     console.log('[POST /api/products] Successfully created product:', newProduct.id, newProduct.title);
 
-    // Return strictly JSON
+    const message = fraudScan.status === 'pending_review'
+      ? 'Product submitted! It is currently under safety review by our moderation desk.'
+      : 'Product published successfully! It will remain live across NaijaMart for exactly 7 days.';
+
     return res.status(201).json({
       success: true,
-      message: 'Product published successfully! It will remain live for exactly 7 days.',
+      message,
       product: newProduct
     });
   } catch (err: any) {

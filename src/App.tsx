@@ -74,8 +74,35 @@ function MainMarketplace() {
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
 
   const productCatalogRef = useRef<HTMLDivElement>(null);
+  const flashDealsRef = useRef<HTMLElement>(null);
 
-  // Load initial catalog data
+  const handleProductPostSuccess = async () => {
+    // Reset filters so user sees newly posted items in flash deals and all category
+    setSelectedCategory('all');
+    setSelectedState('all');
+    setSearchQuery('');
+    setViewingFavouritesOnly(false);
+
+    // Refresh all feeds
+    await Promise.all([
+      loadCatalogProducts(1),
+      loadFlashAndTrending(),
+      loadCategories()
+    ]);
+
+    // Show toast message
+    showToast('Product posted successfully');
+
+    // Smooth scroll to NAIJA FLASH DEALS
+    setTimeout(() => {
+      const el = document.getElementById('naija-flash-deals') || flashDealsRef.current;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (productCatalogRef.current) {
+        productCatalogRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 350);
+  };
   const loadCategories = async () => {
     try {
       const data = await fetchCategories();
@@ -204,7 +231,7 @@ function MainMarketplace() {
       <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
         {/* FLASH DEALS SECTION (Only shown when browsing all and no search query) */}
         {!viewingFavouritesOnly && !searchQuery && selectedCategory === 'all' && flashDeals.length > 0 && (
-          <section className="mb-8">
+          <section id="naija-flash-deals" ref={flashDealsRef} className="mb-8 scroll-mt-24">
             <div className="bg-gradient-to-r from-red-600 to-[#F68B1F] p-4 sm:p-5 rounded-3xl text-white shadow-lg mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black">
@@ -532,9 +559,11 @@ function MainMarketplace() {
           categories={categories}
           onClose={() => setShowSellModal(false)}
           onSuccess={() => {
-            loadCatalogProducts(1);
-            loadCategories();
-            showToast('Your product was published live on ZangaMarket (7-Day Active Period)!');
+            handleProductPostSuccess();
+          }}
+          onViewProduct={(product) => {
+            setShowSellModal(false);
+            setSelectedProduct(product);
           }}
           onRequireAuth={() => handleOpenAuth('login', 'seller')}
         />
