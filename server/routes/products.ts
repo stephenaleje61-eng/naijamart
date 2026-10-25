@@ -122,16 +122,6 @@ function scanForFraud(data: {
     flags.push('UNREALISTIC_PRICE: Automobile listed under ₦500,000');
   }
 
-  // 4. Duplicate listing detection within 24 hours
-  const recentSameTitle = db.products.find(
-    p => p.sellerId === data.sellerId &&
-         p.title.trim().toLowerCase() === data.title.trim().toLowerCase() &&
-         Date.now() - new Date(p.createdAt).getTime() < 24 * 60 * 60 * 1000
-  );
-  if (recentSameTitle) {
-    flags.push('DUPLICATE_LISTING: Exact same title posted by seller within past 24 hours');
-  }
-
   const status: 'approved' | 'pending_review' | 'rejected' = flags.length > 0 ? 'pending_review' : 'approved';
   return { flags, status };
 }
@@ -139,12 +129,10 @@ function scanForFraud(data: {
 // GET all public active products with filters and search
 router.get('/', (req: Request, res: Response) => {
   try {
-    const now = Date.now();
     let list = db.products.filter(p => {
-      const isExpired = new Date(p.expiresAt).getTime() <= now;
-      // Anti-fraud: only show active and approved (or default approved) listings to public buyers
+      // Show active and approved listings to public buyers (never expire)
       const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
-      return p.status === 'active' && !isExpired && isModeratedApproved;
+      return p.status === 'active' && isModeratedApproved;
     });
 
     const {
@@ -246,12 +234,10 @@ router.get('/', (req: Request, res: Response) => {
 // GET Flash Deals
 router.get('/flash-deals', (_req: Request, res: Response) => {
   try {
-    const now = Date.now();
     const deals = db.products
       .filter(p => {
-        const isExpired = new Date(p.expiresAt).getTime() <= now;
         const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
-        return p.status === 'active' && !isExpired && isModeratedApproved;
+        return p.status === 'active' && isModeratedApproved;
       })
       .map(p => {
         // Guarantee an originalPrice discount anchor for Flash Deals presentation
@@ -275,12 +261,10 @@ router.get('/flash-deals', (_req: Request, res: Response) => {
 // GET Trending products
 router.get('/trending', (_req: Request, res: Response) => {
   try {
-    const now = Date.now();
     const trending = db.products
       .filter(p => {
-        const isExpired = new Date(p.expiresAt).getTime() <= now;
         const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
-        return p.status === 'active' && !isExpired && isModeratedApproved;
+        return p.status === 'active' && isModeratedApproved;
       })
       .sort((a, b) => (b.views + b.whatsappClicks * 2) - (a.views + a.whatsappClicks * 2))
       .slice(0, 12);
@@ -299,29 +283,12 @@ router.get('/:id', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Product not found.' });
     }
 
-    const now = Date.now();
-    const isExpired = new Date(product.expiresAt).getTime() <= now;
-
-    if (isExpired) {
-      return res.status(410).json({
-        success: false,
-        error: 'This listing has expired.',
-        message: 'Product listings on NaijaMart automatically expire after 7 days to maintain fresh stock.',
-        isExpired: true
-      });
-    }
-
     const seller = db.sellerProfiles.find(s => s.userId === product.sellerId);
     const sellerUser = db.users.find(u => u.id === product.sellerId);
-
-    const remainingMs = Math.max(0, new Date(product.expiresAt).getTime() - now);
-    const remainingHours = Math.floor(remainingMs / (1000 * 3600));
 
     res.json({
       success: true,
       ...product,
-      remainingMs,
-      remainingHours,
       sellerProfile: seller || null,
       sellerJoinDate: sellerUser?.createdAt || product.createdAt
     });
@@ -368,7 +335,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 
 // CREATE Product listing: POST /api/products
 // Handles BOTH multipart/form-data with multer AND json bodies
-router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('[POST /api/products] Body received:', req.body);
 
@@ -450,7 +417,15 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
     // Check if files were uploaded via multipart form
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       const files = req.files as Express.Multer.File[];
-      files.forEach(f => validImages.push(`/uploads/${f.filename}`));
+      for (const f of files) {
+        try {
+          const buf = fs.readFileSync(f.path);
+          const mime = f.mimetype || 'image/jpeg';
+          validImages.push(`data:${mime};base64,${buf.toString('base64')}`);
+        } catch {
+          validImages.push(`/uploads/${f.filename}`);
+        }
+      }
     }
 
     // Check if images were passed in body (array or string)
@@ -479,10 +454,28 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       }
     }
 
-    // Provide default fallback image if none uploaded during testing
-    const finalImages = validImages.length > 0
-      ? validImages
-      : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'];
+    // Filter out dummy markers and sort persistent images first
+    const cleanedImages = validImages
+      .filter(img => typeof img === 'string' && img.trim().length > 10 && !img.includes('persistent_image_proof') && !img.startsWith('blob:'))
+      .sort((a, b) => {
+        const score = (url: string) => {
+          if (url.startsWith('https://firebasestorage.googleapis.com')) return 100;
+          if (url.startsWith('https://')) return 90;
+          if (url.startsWith('data:image/')) return 80;
+          if (url.startsWith('http://')) return 70;
+          return 10;
+        };
+        return score(b) - score(a);
+      });
+
+    if (cleanedImages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one valid product photograph is required to publish a listing.'
+      });
+    }
+
+    const finalImages = cleanedImages;
 
     const sellerPhone = (
       whatsappNumber ||
@@ -539,6 +532,7 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       categoryId: String(categoryId || 'phones-tablets').trim(),
       condition: condition === 'used' ? 'used' : 'new',
       images: finalImages,
+      imageUrl: finalImages[0] || '',
       state: String(state).trim(),
       city: String(city).trim(),
       quantity: Math.max(1, Number(quantity) || 1),
@@ -571,47 +565,14 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
       db.sellerProfiles.push(existingProfile);
     }
 
-    db.products.unshift(newProduct);
+    // 1. Commit and save to permanent production Firestore database BEFORE returning success
+    await db.persistProduct(newProduct);
 
-    // If flagged for review, record in audit log and create moderator report
-    if (fraudScan.status === 'pending_review') {
-      db.auditLogs.unshift({
-        id: `audit-${Date.now()}`,
-        action: 'PRODUCT_FLAGGED_FOR_MODERATION',
-        actor: user?.email || 'system',
-        details: `Listing "${newProduct.title}" flagged with: ${fraudScan.flags.join(', ')}`,
-        timestamp: createdAt
-      });
-
-      db.reports.unshift({
-        id: `rep-auto-${Date.now()}`,
-        reporterEmail: 'system-anti-fraud@naijamart.ng',
-        reporterName: 'AI Safety Watchdog',
-        productId: newProduct.id,
-        productTitle: newProduct.title,
-        sellerId: newProduct.sellerId,
-        reason: 'Automated Fraud/Risk Flag',
-        details: `Automated system detected potential risk: ${fraudScan.flags.join('; ')}`,
-        status: 'pending',
-        createdAt
-      });
-    } else {
-      db.auditLogs.unshift({
-        id: `audit-${Date.now()}`,
-        action: 'PRODUCT_PUBLISHED',
-        actor: user?.email || 'merchant',
-        details: `Product "${newProduct.title}" published (₦${newProduct.price.toLocaleString()})`,
-        timestamp: createdAt
-      });
-    }
-
-    db.save();
-
-    console.log('[POST /api/products] Successfully created product:', newProduct.id, newProduct.title);
+    console.log('[POST /api/products] Successfully created product in permanent production DB:', newProduct.id, newProduct.title);
 
     const message = fraudScan.status === 'pending_review'
       ? 'Product submitted! It is currently under safety review by our moderation desk.'
-      : 'Product published successfully! It will remain live across NaijaMart for exactly 7 days.';
+      : 'Product published successfully to the permanent production database!';
 
     return res.status(201).json({
       success: true,
@@ -628,8 +589,7 @@ router.post('/', handleUploadOrJson, optionalAuth, (req: AuthenticatedRequest, r
 });
 
 // UPDATE Product listing (Seller only - must own product, or Admin)
-// CRITICAL: NEVER RESET 7-DAY EXPIRATION COUNTDOWN ON EDIT
-router.put('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user!;
     const product = db.products.find(p => p.id === req.params.id);
@@ -679,10 +639,10 @@ router.put('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
       product.status = status;
     }
 
-    // Preserve 7-day expiration (never reset countdown)
     product.updatedAt = new Date().toISOString();
 
-    db.save();
+    // Persist changes to permanent Firestore database
+    await db.persistProduct(product);
 
     res.json({
       success: true,
@@ -695,24 +655,23 @@ router.put('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
 });
 
 // DELETE Product listing
-router.delete('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user!;
-    const productIndex = db.products.findIndex(p => p.id === req.params.id);
+    const product = db.products.find(p => p.id === req.params.id);
 
-    if (productIndex === -1) {
+    if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found.' });
     }
 
-    const product = db.products[productIndex];
     if (product.sellerId !== user.id && user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Forbidden: You can only delete your own products.' });
     }
 
-    db.products.splice(productIndex, 1);
-    db.save();
+    // Permanently remove from production database
+    await db.removeProduct(req.params.id);
 
-    res.json({ success: true, message: 'Product deleted successfully.' });
+    res.json({ success: true, message: 'Product deleted permanently from database.' });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

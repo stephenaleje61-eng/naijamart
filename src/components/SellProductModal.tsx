@@ -16,18 +16,22 @@ import {
   Phone,
   ExternalLink,
   Eye,
-  Check
+  Check,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { Category, Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
-  uploadProductImages,
   createProductListing,
   getApiBaseUrl,
   setApiBaseUrl
 } from '../services/api.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { formatNaira } from './ProductCard.js';
+import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
+import { isValidImageFormat } from '../utils/imagePersistence.js';
+import { ProductImage } from './ProductImage.js';
 
 interface SellProductModalProps {
   categories: Category[];
@@ -35,6 +39,17 @@ interface SellProductModalProps {
   onSuccess: () => void;
   onRequireAuth: () => void;
   onViewProduct?: (product: Product) => void;
+}
+
+export interface PhotoSlot {
+  id: string;
+  file: File;
+  previewUrl: string;
+  progress: number;
+  status: 'compressing' | 'uploading' | 'success' | 'error';
+  errorMessage?: string;
+  downloadUrl?: string;
+  task?: any;
 }
 
 export const SellProductModal: React.FC<SellProductModalProps> = ({
@@ -65,11 +80,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   );
   const [quantity, setQuantity] = useState('1');
 
-  // Images state
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
-  const [rawFiles, setRawFiles] = useState<File[]>([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [uploadProgressText, setUploadProgressText] = useState('');
+  // Photo Slots State (immediate thumbnail previews, 0-100% progress, retry & remove)
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [createdProduct, setCreatedProduct] = useState<Product | null>(null);
@@ -82,58 +95,121 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     setCategory(categories[0]?.id || 'phones-tablets');
     setCondition('new');
     setQuantity('1');
-    setUploadedImageUrls([]);
-    setRawFiles([]);
+    setPhotoSlots([]);
     setCreatedProduct(null);
     setErrorMessage('');
   };
 
-  // Handle image files selection
+  // Upload a single photo slot with 30s timeout, canvas compression, and real progress
+  const uploadSingleSlot = async (slotId: string, file: File) => {
+    setPhotoSlots(prev =>
+      prev.map(s => (s.id === slotId ? { ...s, status: 'compressing', progress: 10, errorMessage: undefined } : s))
+    );
+
+    try {
+      const result = await uploadImageToFirebaseStorage(file, {
+        folder: 'products',
+        timeoutMs: 30000,
+        onProgress: (pct) => {
+          setPhotoSlots(prev =>
+            prev.map(s => (s.id === slotId ? { ...s, progress: pct, status: 'uploading' } : s))
+          );
+        },
+        onTaskCreated: (task) => {
+          setPhotoSlots(prev =>
+            prev.map(s => (s.id === slotId ? { ...s, task } : s))
+          );
+        },
+        allowPersistentFallback: true
+      });
+
+      setPhotoSlots(prev =>
+        prev.map(s =>
+          s.id === slotId
+            ? {
+                ...s,
+                status: 'success',
+                progress: 100,
+                downloadUrl: result.downloadUrl,
+                previewUrl: result.previewUrl || s.previewUrl
+              }
+            : s
+        )
+      );
+    } catch (err: any) {
+      console.error('[Upload slot error]:', err);
+      setPhotoSlots(prev =>
+        prev.map(s =>
+          s.id === slotId
+            ? {
+                ...s,
+                status: 'error',
+                errorMessage: err.message || 'Upload failed. Please check internet or enable Storage.'
+              }
+            : s
+        )
+      );
+    }
+  };
+
+  // Handle image files selection: immediate thumbnails & one-by-one sequential upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setErrorMessage('');
-    const fileList = Array.from(files);
+    const incoming = Array.from(files);
 
-    // Validate types client-side
-    for (const file of fileList) {
-      if (!file.type.startsWith('image/')) {
-        setErrorMessage('Only image files (JPEG, PNG, WebP) are accepted.');
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setErrorMessage('Each image file must not exceed 10MB.');
+    if (photoSlots.length + incoming.length > 6) {
+      setErrorMessage(`You can upload a maximum of 6 photographs. You currently have ${photoSlots.length}.`);
+      return;
+    }
+
+    // Validate format: JPG, PNG, WEBP only
+    for (const file of incoming) {
+      if (!isValidImageFormat(file)) {
+        setErrorMessage('Only JPG, PNG, and WebP images are allowed.');
         return;
       }
     }
 
-    setRawFiles(prev => [...prev, ...fileList]);
-    setUploadingImages(true);
-    setUploadProgressText(`Processing ${fileList.length} photograph(s)...`);
+    // 1. Immediately create preview thumbnails for all selected files
+    const newSlots: PhotoSlot[] = incoming.map(file => ({
+      id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      status: 'compressing'
+    }));
 
-    try {
-      // Upload images to backend
-      const urls = await uploadProductImages(fileList);
-      setUploadedImageUrls(prev => [...prev, ...urls]);
-      setUploadProgressText('');
-    } catch (err: any) {
-      console.warn('Image server upload notice (fallback preview active):', err);
-      // Create local object URLs as fallback so seller can still see previews and publish!
-      const fallbackUrls = fileList.map(f => URL.createObjectURL(f));
-      setUploadedImageUrls(prev => [...prev, ...fallbackUrls]);
-      setUploadProgressText('');
-    } finally {
-      setUploadingImages(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+    setPhotoSlots(prev => [...prev, ...newSlots]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
+
+    // 2. Upload one by one sequentially (not all at once)
+    setIsProcessingQueue(true);
+    for (const slot of newSlots) {
+      await uploadSingleSlot(slot.id, slot.file);
+    }
+    setIsProcessingQueue(false);
   };
 
-  const handleRemoveImage = (indexToRemove: number) => {
-    setUploadedImageUrls(prev => prev.filter((_, idx) => idx !== indexToRemove));
-    setRawFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  const handleRetryUpload = async (slotId: string) => {
+    const slot = photoSlots.find(s => s.id === slotId);
+    if (!slot) return;
+    await uploadSingleSlot(slot.id, slot.file);
+  };
+
+  const handleRemoveSlot = (slotId: string) => {
+    setPhotoSlots(prev => {
+      const target = prev.find(s => s.id === slotId);
+      if (target?.task && typeof target.task.cancel === 'function') {
+        try { target.task.cancel(); } catch {}
+      }
+      return prev.filter(s => s.id !== slotId);
+    });
   };
 
   const handleSaveBackendUrl = () => {
@@ -143,7 +219,6 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure seller is authenticated before posting
     if (!user) {
       setErrorMessage('You must be signed in as a registered seller to post products on NaijaMart.');
       onRequireAuth();
@@ -152,6 +227,28 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
     if (user.isSuspended) {
       setErrorMessage(`Your seller account has been suspended: ${user.suspensionReason || 'Violation of trust & safety policy'}. Contact support.`);
+      return;
+    }
+
+    // Check if any photograph is still uploading
+    if (photoSlots.some(s => s.status === 'compressing' || s.status === 'uploading') || isProcessingQueue) {
+      setErrorMessage('Photographs are currently uploading. Please wait for upload to complete before publishing.');
+      return;
+    }
+
+    // Check if any slot has an error
+    const failedSlots = photoSlots.filter(s => s.status === 'error');
+    if (failedSlots.length > 0) {
+      setErrorMessage('One or more photographs failed to upload. Please retry them or click remove on the failed photo.');
+      return;
+    }
+
+    const successfulUrls = photoSlots
+      .filter(s => s.status === 'success' && s.downloadUrl)
+      .map(s => s.downloadUrl!);
+
+    if (successfulUrls.length === 0) {
+      setErrorMessage('Please upload at least 1 genuine photograph of your product before publishing.');
       return;
     }
 
@@ -179,40 +276,25 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     setSubmitting(true);
 
     try {
-      // Build FormData with EXACT field names as requested:
-      // title, price, description, state, city, whatsapp, category, condition, images
-      const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('price', String(numericPrice));
-      formData.append('description', description.trim());
-      formData.append('state', state.trim());
-      formData.append('city', city.trim());
-      formData.append('whatsapp', whatsapp.trim());
-      formData.append('whatsappNumber', whatsapp.trim());
-      formData.append('category', category.trim());
-      formData.append('categoryId', category.trim());
-      formData.append('condition', condition);
-      formData.append('quantity', String(Math.max(1, Number(quantity) || 1)));
-      if (originalPrice) {
-        formData.append('originalPrice', String(Number(originalPrice)));
-      }
+      const productPayload = {
+        title: title.trim(),
+        price: numericPrice,
+        description: description.trim(),
+        state: state.trim(),
+        city: city.trim(),
+        whatsapp: whatsapp.trim(),
+        whatsappNumber: whatsapp.trim(),
+        category: category.trim(),
+        categoryId: category.trim(),
+        condition,
+        quantity: Math.max(1, Number(quantity) || 1),
+        originalPrice: originalPrice ? Number(originalPrice) : undefined,
+        images: successfulUrls,
+        imageUrl: successfulUrls[0]
+      };
 
-      // Append image files if available
-      if (rawFiles.length > 0) {
-        rawFiles.forEach((file) => {
-          formData.append('images', file);
-        });
-      }
-
-      // Also append image URLs if pre-uploaded
-      if (uploadedImageUrls.length > 0) {
-        formData.append('images', JSON.stringify(uploadedImageUrls));
-      }
-
-      console.log('[Publish Product] Submitting listing to backend...');
-
-      // createProductListing handles safe JSON parsing and catches any HTML responses
-      const res = await createProductListing(formData);
+      console.log('[Publish Product] Submitting listing with genuine images:', successfulUrls.length);
+      const res = await createProductListing(productPayload);
       console.log('[Publish Product] Response received:', res);
 
       onSuccess();
@@ -305,11 +387,14 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             {/* Product summary card */}
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-left flex items-center gap-4 max-w-lg mx-auto shadow-sm">
-              <img
-                src={createdProduct.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
-                alt={createdProduct.title}
-                className="w-20 h-20 rounded-xl object-cover border border-gray-200 shrink-0 bg-white"
-              />
+              <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shrink-0 bg-white">
+                <ProductImage
+                  src={createdProduct.images?.[0]}
+                  alt={createdProduct.title}
+                  category={createdProduct.categoryId}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-100 text-[#F68B1F]">
@@ -411,52 +496,111 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-[#F68B1F]" />
-                Product Photographs <span className="text-gray-500 font-normal">(Multiple allowed, up to 6)</span>
+                Product Photographs <span className="text-gray-500 font-normal">(Max 6 • JPG, PNG, WebP)</span>
               </label>
-              <span className="text-[11px] text-gray-500">
-                {uploadedImageUrls.length} selected (max 6)
+              <span className="text-[11px] text-gray-500 font-medium">
+                {photoSlots.length}/6 photos ({photoSlots.filter(s => s.status === 'success').length} ready)
               </span>
             </div>
 
-            <p className="text-[11px] text-gray-500 mb-3">
-              Upload photos of your goods so buyers can see the quality. (A default high-quality photo is assigned if none uploaded during testing).
+            <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+              Upload genuine photographs of your actual item. Photos larger than 1MB are automatically optimized in your browser for fast Nigerian mobile data loading.
             </p>
 
-            {/* Image Preview Grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
-              {uploadedImageUrls.map((url, idx) => (
+            {/* Photo Cards Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
+              {photoSlots.map((slot, idx) => (
                 <div
-                  key={idx}
-                  className="relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-200 bg-gray-50 group shadow-sm"
+                  key={slot.id}
+                  className="relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-200 bg-gray-100 group shadow-sm flex flex-col justify-between"
                 >
-                  <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(idx)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-90 hover:opacity-100 transition shadow"
-                    title="Remove image"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  {idx === 0 && (
-                    <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                      Cover
+                  {/* Immediate Preview Thumbnail */}
+                  <img
+                    src={slot.previewUrl}
+                    alt={`Product photo ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Top Badges */}
+                  <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+                    {idx === 0 && (
+                      <span className="bg-black/75 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
+                        Cover Photo
+                      </span>
+                    )}
+                    <span className="ml-auto pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSlot(slot.id)}
+                        className="w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow transition active:scale-95"
+                        title="Remove photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </span>
-                  )}
+                  </div>
+
+                  {/* Bottom Status Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/60 to-transparent p-2 text-white">
+                    {slot.status === 'success' && (
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Ready &amp; Uploaded</span>
+                      </div>
+                    )}
+
+                    {(slot.status === 'compressing' || slot.status === 'uploading') && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[10px] font-bold">
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin text-[#F68B1F]" />
+                            {slot.status === 'compressing' ? 'Optimizing...' : 'Uploading...'}
+                          </span>
+                          <span>{slot.progress}%</span>
+                        </div>
+                        <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-[#F68B1F] h-full transition-all duration-300 rounded-full"
+                            style={{ width: `${slot.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {slot.status === 'error' && (
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-red-300 font-semibold line-clamp-2 leading-tight">
+                          {slot.errorMessage || 'Upload failed'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRetryUpload(slot.id)}
+                          className="w-full py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold flex items-center justify-center gap-1 transition"
+                        >
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Retry Upload</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
 
-              {/* Upload Action Tile */}
-              {uploadedImageUrls.length < 6 && (
+              {/* Upload Trigger Button */}
+              {photoSlots.length < 6 && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImages}
-                  className="aspect-square rounded-2xl border-2 border-dashed border-[#F68B1F]/60 hover:border-[#F68B1F] bg-orange-50/40 hover:bg-orange-50 transition flex flex-col items-center justify-center p-2 text-center text-xs font-semibold text-[#E07A15] cursor-pointer disabled:opacity-50"
+                  disabled={isProcessingQueue}
+                  className="aspect-square rounded-2xl border-2 border-dashed border-[#F68B1F]/60 hover:border-[#F68B1F] bg-orange-50/50 hover:bg-orange-50 transition flex flex-col items-center justify-center p-3 text-center text-xs font-semibold text-[#E07A15] cursor-pointer disabled:opacity-50"
                 >
-                  <Upload className="w-5 h-5 mb-1" />
-                  <span>{uploadingImages ? 'Processing...' : 'Upload Photos'}</span>
-                  <span className="text-[9px] text-gray-500 font-normal">JPG, PNG, WebP</span>
+                  <Upload className="w-6 h-6 mb-1 text-[#F68B1F]" />
+                  <span className="font-bold">
+                    {isProcessingQueue ? 'Uploading...' : 'Add Photos'}
+                  </span>
+                  <span className="text-[9px] text-gray-500 font-normal mt-0.5">
+                    JPG, PNG, WebP
+                  </span>
                 </button>
               )}
             </div>
@@ -465,18 +609,10 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               ref={fileInputRef}
               type="file"
               multiple
-              name="images"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={handleFileChange}
             />
-
-            {uploadProgressText && (
-              <div className="text-xs text-[#E07A15] font-semibold flex items-center gap-1.5 animate-pulse">
-                <div className="w-3 h-3 rounded-full border-2 border-[#F68B1F] border-t-transparent animate-spin"></div>
-                <span>{uploadProgressText}</span>
-              </div>
-            )}
           </div>
 
           {/* Product Title */}
@@ -702,12 +838,16 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || isProcessingQueue || photoSlots.some(s => s.status === 'compressing' || s.status === 'uploading')}
               className="px-6 py-3 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center gap-2 bg-[#F68B1F] hover:bg-[#E07A15] text-white shadow-orange-500/25 active:scale-95 disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>
-                {submitting ? 'Publishing Listing...' : 'Publish Product (Live for 7 Days)'}
+                {submitting
+                  ? 'Publishing Listing...'
+                  : isProcessingQueue
+                  ? 'Uploading Photos...'
+                  : 'Publish Product Listing'}
               </span>
             </button>
           </div>

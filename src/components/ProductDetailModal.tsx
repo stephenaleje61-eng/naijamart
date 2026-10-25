@@ -20,6 +20,8 @@ import { Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { formatNaira } from './ProductCard.js';
 import { triggerWhatsAppChat, recordProductView, reportProduct } from '../services/api.js';
+import { ProductImage } from './ProductImage.js';
+import { getValidProductImages } from '../utils/productImages.js';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -54,13 +56,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const favourited = isFavourite(product.id);
-
-  // Expiration calculation
-  const now = Date.now();
-  const expiresTime = new Date(product.expiresAt).getTime();
-  const remainingMs = Math.max(0, expiresTime - now);
-  const remainingHours = Math.floor(remainingMs / (1000 * 3600));
-  const remainingDays = Math.floor(remainingHours / 24);
 
   const discountPercent =
     product.originalPrice && product.originalPrice > product.price
@@ -112,9 +107,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   };
 
-  const images = product.images && product.images.length > 0 ? product.images : [
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'
-  ];
+  const images = getValidProductImages(product.images, product.imageUrl);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
@@ -133,10 +126,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div>
               {/* Main Image with Navigation */}
               <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white shadow-inner flex items-center justify-center">
-                <img
+                <ProductImage
                   src={images[activeImageIndex]}
                   alt={product.title}
+                  category={product.categoryId}
                   className="w-full h-full object-contain"
+                  loading="eager"
                 />
 
                 {images.length > 1 && (
@@ -161,10 +156,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {product.condition === 'new' ? 'Brand New' : 'Direct Used'}
                 </span>
 
-                {/* Expiration warning banner */}
-                <span className="absolute bottom-3 left-3 bg-red-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  <span>Expires strictly in {remainingDays}d {remainingHours % 24}h (7-Day Rule)</span>
+                {/* Verified Active Listing Badge */}
+                <span className="absolute bottom-3 left-3 bg-emerald-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                  <ShieldCheck className="w-3 h-3 text-white" />
+                  <span>Verified Active Listing</span>
                 </span>
               </div>
 
@@ -179,7 +174,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         activeImageIndex === idx ? 'border-[#F68B1F] scale-105' : 'border-gray-200 opacity-70 hover:opacity-100'
                       }`}
                     >
-                      <img src={img} alt="thumbnail" className="w-full h-full object-cover" />
+                      <ProductImage src={img} alt="thumbnail" category={product.categoryId} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>

@@ -23,6 +23,7 @@ interface CategoryBarProps {
   categories: Category[];
   selectedCategory: string;
   onSelectCategory: (categoryId: string) => void;
+  onOpenBikeRiders?: () => void;
 }
 
 export const getCategoryIcon = (iconName: string) => {
@@ -48,7 +49,8 @@ export const getCategoryIcon = (iconName: string) => {
 export const CategoryBar: React.FC<CategoryBarProps> = ({
   categories,
   selectedCategory,
-  onSelectCategory
+  onSelectCategory,
+  onOpenBikeRiders
 }) => {
   return (
     <div className="bg-white border-b border-gray-200">
@@ -66,6 +68,18 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             <Grid className="w-3.5 h-3.5" />
             <span>All Categories</span>
           </button>
+
+          {/* Wukari Bike Riders Shortcut */}
+          {onOpenBikeRiders && (
+            <button
+              onClick={onOpenBikeRiders}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition shrink-0 bg-orange-50 hover:bg-orange-100 text-[#E07A15] border border-orange-300 active:scale-95 shadow-sm"
+              title="Call Bike Man in Wukari"
+            >
+              <span>🏍️</span>
+              <span>Wukari Bike Riders</span>
+            </button>
+          )}
 
           {/* Individual Category Buttons */}
           {categories.map((cat) => {

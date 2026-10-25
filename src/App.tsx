@@ -41,9 +41,72 @@ import { SellerStorefrontModal } from './components/SellerStorefrontModal.js';
 import { AdminDashboard } from './components/AdminDashboard.js';
 import { SafetyModal } from './components/SafetyModal.js';
 import { Footer } from './components/Footer.js';
+import { BikeRidersPage } from './components/BikeRidersPage.js';
+import { SingleHubPage } from './components/SingleHubPage.js';
+import { FriendsPage } from './components/FriendsPage.js';
+import { HuxPage } from './components/HuxPage.js';
+import { BottomNav, AppView } from './components/BottomNav.js';
+import { subscribeToFriendRequests } from './services/firebase.js';
+import { getLocalStudentSession } from './utils/studentAuth.js';
+
+function resolveViewFromPath(): AppView {
+  if (typeof window === 'undefined') return 'marketplace';
+  const path = window.location.pathname.toLowerCase();
+  if (path.startsWith('/hub') || path.includes('hub.html')) return 'hub';
+  if (path.startsWith('/friends') || path.includes('friends.html')) return 'friends';
+  if (path.startsWith('/hux') || path.includes('hux.html')) return 'hux';
+  if (path.startsWith('/bike-riders') || path.includes('bike-riders.html')) return 'bike-riders';
+  return 'marketplace';
+}
 
 function MainMarketplace() {
   const { user, favourites } = useAuth();
+
+  // Multi-page route state: marketplace | hub | friends | hux | bike-riders
+  const [currentView, setCurrentView] = useState<AppView>(() => resolveViewFromPath());
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentView(resolveViewFromPath());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Listen for incoming friend requests to show badge on Friends bottom tab
+  useEffect(() => {
+    const student = getLocalStudentSession();
+    const studentId = student?.id || user?.id;
+    if (studentId) {
+      const unsub = subscribeToFriendRequests(studentId, (requests) => {
+        const pending = requests.filter(r => r.toId === studentId && r.status === 'pending');
+        setPendingRequestsCount(pending.length);
+      });
+      return () => unsub();
+    }
+  }, [user?.id]);
+
+  const navigateToView = (view: AppView) => {
+    setCurrentView(view);
+    const targetPath =
+      view === 'hub' ? '/hub.html' :
+      view === 'friends' ? '/friends.html' :
+      view === 'hux' ? '/hux.html' :
+      view === 'bike-riders' ? '/bike-riders.html' :
+      '/';
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToBikeRiders = () => navigateToView('bike-riders');
+  const navigateToMarketplace = () => navigateToView('marketplace');
+  const navigateToHub = () => navigateToView('hub');
+  const navigateToFriends = () => navigateToView('friends');
+  const navigateToHux = () => navigateToView('hux');
 
   // Data states
   const [categories, setCategories] = useState<Category[]>([]);
@@ -203,17 +266,46 @@ function MainMarketplace() {
         onOpenAdminDashboard={() => setShowAdminDashboard(true)}
         onOpenFavourites={() => setViewingFavouritesOnly(!viewingFavouritesOnly)}
         onOpenSafetyModal={() => setShowSafetyModal(true)}
+        onOpenBikeRiders={navigateToBikeRiders}
+        isBikeRidersActive={currentView === 'bike-riders'}
+        onOpenHub={navigateToHub}
+        onOpenFriends={navigateToFriends}
+        onOpenHux={navigateToHux}
+        activeView={currentView}
       />
 
-      {/* Categories Bar */}
-      <CategoryBar
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={(catId) => {
-          setSelectedCategory(catId);
-          setViewingFavouritesOnly(false);
-        }}
-      />
+      {currentView === 'hub' ? (
+        <SingleHubPage
+          onBackToHome={navigateToMarketplace}
+          onNavigateToFriends={navigateToFriends}
+          onNavigateToHux={navigateToHux}
+        />
+      ) : currentView === 'friends' ? (
+        <FriendsPage
+          onBackToHome={navigateToMarketplace}
+          onNavigateToHub={navigateToHub}
+          onNavigateToHux={navigateToHux}
+        />
+      ) : currentView === 'hux' ? (
+        <HuxPage
+          onBackToHome={navigateToMarketplace}
+          onNavigateToHub={navigateToHub}
+          onNavigateToFriends={navigateToFriends}
+        />
+      ) : currentView === 'bike-riders' ? (
+        <BikeRidersPage onBackToMarketplace={navigateToMarketplace} />
+      ) : (
+        <>
+          {/* Categories Bar */}
+          <CategoryBar
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={(catId) => {
+              setSelectedCategory(catId);
+              setViewingFavouritesOnly(false);
+            }}
+            onOpenBikeRiders={navigateToBikeRiders}
+          />
 
       {/* Hero Banner (Shown when not filtering by specific favourites) */}
       {!viewingFavouritesOnly && !searchQuery && (
@@ -446,27 +538,35 @@ function MainMarketplace() {
           ) : displayedProducts.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-gray-200 shadow-sm max-w-lg mx-auto my-8">
               <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-gray-900">No Matching Products Found</h3>
-              <p className="text-xs text-gray-500 mt-1 mb-5">
-                We couldn't find any active listings matching your current filters. Try selecting a different state or category!
+              <h3 className="text-base sm:text-lg font-black text-gray-900">
+                {products.length === 0
+                  ? 'No products yet — Be the first to publish.'
+                  : 'No Matching Products Found'}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1 mb-5 leading-relaxed">
+                {products.length === 0
+                  ? 'There are currently no active listings. Be the very first merchant to post your items with genuine photos and get buyers reaching you directly on WhatsApp!'
+                  : "We couldn't find any active listings matching your current filters. Try selecting a different state or category!"}
               </p>
               <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSelectedState('all');
-                    setSearchQuery('');
-                    setConditionFilter('all');
-                  }}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition"
-                >
-                  Reset Filters
-                </button>
+                {products.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSelectedState('all');
+                      setSearchQuery('');
+                      setConditionFilter('all');
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition"
+                  >
+                    Reset Filters
+                  </button>
+                )}
                 <button
                   onClick={() => setShowSellModal(true)}
-                  className="px-4 py-2 bg-[#F68B1F] hover:bg-[#E07A15] text-white text-xs font-bold rounded-xl shadow-md transition"
+                  className="px-5 py-2.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white text-xs font-extrabold rounded-xl shadow-md shadow-orange-500/25 active:scale-95 transition"
                 >
-                  Sell This Item
+                  Publish Product
                 </button>
               </div>
             </div>
@@ -539,6 +639,8 @@ function MainMarketplace() {
         onOpenSellModal={() => setShowSellModal(true)}
         onOpenSafetyModal={() => setShowSafetyModal(true)}
       />
+        </>
+      )}
 
       {/* MODALS */}
       {/* 1. Product Details Modal */}
@@ -618,6 +720,13 @@ function MainMarketplace() {
       {showSafetyModal && (
         <SafetyModal onClose={() => setShowSafetyModal(false)} />
       )}
+
+      {/* Bottom Navigation for Mobile & Quick switching */}
+      <BottomNav
+        currentView={currentView}
+        onNavigate={navigateToView}
+        pendingRequestsCount={pendingRequestsCount}
+      />
     </div>
   );
 }

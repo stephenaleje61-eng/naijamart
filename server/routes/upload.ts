@@ -64,12 +64,22 @@ router.post('/', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No image file uploaded. At least one image is mandatory.' });
     }
 
-    const uploadedUrls = files.map(file => ({
-      url: `/uploads/${file.filename}`,
-      originalName: file.originalname,
-      size: file.size,
-      mimetype: file.mimetype
-    }));
+    const uploadedUrls = files.map(file => {
+      let persistentUrl: string = `/uploads/${file.filename}`;
+      try {
+        const buf = fs.readFileSync(file.path);
+        persistentUrl = `data:${file.mimetype || 'image/jpeg'};base64,${buf.toString('base64')}`;
+      } catch {
+        // Fall back to relative /uploads/ path
+      }
+      return {
+        url: persistentUrl,
+        localPath: `/uploads/${file.filename}`,
+        originalName: file.originalname,
+        size: file.size,
+        mimetype: file.mimetype
+      };
+    });
 
     res.json({
       success: true,

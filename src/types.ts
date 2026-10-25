@@ -43,6 +43,7 @@ export interface Product {
   categoryId: string;
   condition: 'new' | 'used';
   images: string[];
+  imageUrl?: string;
   state: string;
   city: string;
   quantity: number;
@@ -53,7 +54,7 @@ export interface Product {
   whatsappClicks: number;
   isFeatured?: boolean;
   createdAt: string;
-  expiresAt: string;
+  expiresAt?: string;
   updatedAt: string;
   remainingMs?: number;
   remainingHours?: number;
@@ -118,4 +119,141 @@ export interface AuditLogItem {
   actor: string;
   details: string;
   timestamp: string;
+}
+
+export interface BikeRider {
+  id: string;
+  name: string;
+  photoUrl: string;
+  phoneNumber: string;
+  whatsappNumber: string;
+  area: string;
+  isAvailable: boolean;
+  createdAt: string;
+  userId?: string;
+}
+
+// ============================================================================
+// SINGLE HUB - FUWukari (Open Group Chat)
+// ============================================================================
+export interface HubMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  matricNumber?: string;
+  text?: string;
+  imageUrl?: string;
+  createdAt: string;
+  timestamp?: number;
+}
+
+export interface HubActiveUser {
+  userId: string;
+  name: string;
+  matricNumber?: string;
+  lastActiveAt: number;
+}
+
+// ============================================================================
+// FRIEND SYSTEM & PRIVATE 1-ON-1 CHAT
+// ============================================================================
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  matricNumber?: string;
+  email?: string;
+  phone?: string;
+  whatsappNumber?: string;
+  avatarUrl?: string;
+  isOnline?: boolean;
+  lastSeen?: string | number;
+  department?: string;
+  bio?: string;
+  createdAt?: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  fromId: string;
+  fromName: string;
+  fromMatric?: string;
+  fromAvatar?: string;
+  toId: string;
+  toName: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
+export interface Friend {
+  id: string;
+  userId: string;
+  name: string;
+  matricNumber?: string;
+  avatarUrl?: string;
+  friendSince: string;
+  isOnline?: boolean;
+  lastSeen?: string | number;
+  chatId: string;
+  unreadCount?: number;
+}
+
+export interface PrivateMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName: string;
+  text?: string;
+  imageUrl?: string;
+  createdAt: string;
+  timestamp?: number;
+  seen: boolean;
+  seenAt?: string;
+}
+
+export interface ChatMetadata {
+  chatId: string;
+  participants: string[];
+  lastMessageText?: string;
+  lastMessageTime?: string;
+  lastSenderId?: string;
+  typing?: Record<string, number>;
+}
+
+// ============================================================================
+// HOUSING - WUKARI HUX HUB (Rent & Roommate)
+// ============================================================================
+export type HuxCategory = 'rent' | 'roommate';
+export type HuxType = 'Self-contain' | 'Single room' | '2-Bedroom' | 'Flat' | 'Shared room';
+
+export interface HuxListing {
+  id: string;
+  category: HuxCategory;
+  title: string;
+  location: string;
+  price: number;
+  pricePer: 'year' | 'semester' | 'month';
+  phone: string;
+  whatsapp: string;
+  images: string[];
+  imageUrl?: string;
+  description: string;
+  type: HuxType;
+  isAgent?: boolean;
+  agentName?: string;
+  userId: string;
+  userName: string;
+  matricNumber?: string;
+  createdAt: string;
+  savedCount?: number;
+}
+
+export interface HuxReport {
+  id: string;
+  huxId: string;
+  huxTitle: string;
+  reason: string;
+  details: string;
+  reporterName?: string;
+  reporterContact?: string;
+  createdAt: string;
 }

@@ -30,6 +30,12 @@ interface HeaderProps {
   onOpenAdminDashboard: () => void;
   onOpenFavourites: () => void;
   onOpenSafetyModal: () => void;
+  onOpenBikeRiders?: () => void;
+  isBikeRidersActive?: boolean;
+  onOpenHub?: () => void;
+  onOpenFriends?: () => void;
+  onOpenHux?: () => void;
+  activeView?: string;
 }
 
 import { NIGERIA_STATES } from '../constants/states.js';
@@ -52,7 +58,13 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSellerDashboard,
   onOpenAdminDashboard,
   onOpenFavourites,
-  onOpenSafetyModal
+  onOpenSafetyModal,
+  onOpenBikeRiders,
+  isBikeRidersActive,
+  onOpenHub,
+  onOpenFriends,
+  onOpenHux,
+  activeView
 }) => {
   const { user, sellerProfile, favourites, logout } = useAuth();
   const [showLocationMenu, setShowLocationMenu] = useState(false);
@@ -280,6 +292,70 @@ export const Header: React.FC<HeaderProps> = ({
               )}
               <span className="hidden md:inline text-xs font-semibold">Saved</span>
             </button>
+
+            {/* Campus Hub Link */}
+            {onOpenHub && (
+              <button
+                onClick={onOpenHub}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
+                  activeView === 'hub'
+                    ? 'bg-[#008751] text-white shadow-md'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
+                }`}
+                title="Single Hub - FUWukari"
+              >
+                <span>💬</span>
+                <span className="whitespace-nowrap">Single Hub</span>
+              </button>
+            )}
+
+            {/* Friends Link */}
+            {onOpenFriends && (
+              <button
+                onClick={onOpenFriends}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
+                  activeView === 'friends'
+                    ? 'bg-[#008751] text-white shadow-md'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
+                }`}
+                title="Friends & Private Chat"
+              >
+                <span>👥</span>
+                <span className="whitespace-nowrap">Friends</span>
+              </button>
+            )}
+
+            {/* Hux Hub Link */}
+            {onOpenHux && (
+              <button
+                onClick={onOpenHux}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
+                  activeView === 'hux'
+                    ? 'bg-[#008751] text-white shadow-md'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
+                }`}
+                title="Wukari Hux Hub"
+              >
+                <span>🏠</span>
+                <span className="whitespace-nowrap">Hux Hub</span>
+              </button>
+            )}
+
+            {/* Bike Man Okada Directory Button */}
+            {onOpenBikeRiders && (
+              <button
+                onClick={onOpenBikeRiders}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
+                  isBikeRidersActive
+                    ? 'bg-[#F68B1F] text-white shadow-md shadow-orange-500/25'
+                    : 'bg-orange-50 hover:bg-orange-100 text-[#E07A15] border border-orange-200'
+                }`}
+                title="Wukari Bike Riders Directory"
+              >
+                <span className="text-sm">🏍️</span>
+                <span className="whitespace-nowrap">Bike Man</span>
+              </button>
+            )}
 
             {/* User Account Menu */}
             <div className="relative" ref={userMenuRef}>

@@ -31,6 +31,8 @@ import {
   adminTriggerExpirationPurge
 } from '../services/api.js';
 import { formatNaira } from './ProductCard.js';
+import { ProductImage } from './ProductImage.js';
+import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -354,11 +356,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <tr key={p.id} className="hover:bg-gray-50 transition">
                           <td className="p-3">
                             <div className="flex items-center gap-2.5">
-                              <img
-                                src={p.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}
-                                alt=""
-                                className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0"
-                              />
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 shrink-0 bg-gray-50">
+                                <ProductImage
+                                  src={getProductDisplayImage(p.images, p.imageUrl)}
+                                  fallbackSrcs={getValidProductImages(p.images, p.imageUrl)}
+                                  alt=""
+                                  category={p.categoryId}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
                               <div>
                                 <p className="font-bold text-gray-900 line-clamp-1 max-w-xs">{p.title}</p>
                                 <span className="text-[10px] text-gray-500 capitalize">{p.categoryId} • {p.condition}</span>
@@ -608,40 +614,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
-          {/* TAB 5: 7-DAY EXPIRATION ENGINE INSPECTOR */}
+          {/* TAB 5: PERMANENT PRODUCTION DATABASE */}
           {activeTab === 'cleanup' && (
             <div className="space-y-4">
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-[#F68B1F]" />
-                  Automatic 7-Day (168-Hour) Expiration Rules & Scheduler
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  Permanent Production Database: Google Cloud Firestore
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed mb-4">
-                  Every product published on NaijaMart receives an immutable server timestamp <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-purple-700">expires_at = created_at + 7 days</code>. Editing a product never resets this timer. The node server process runs an autonomous background sweep every 60 seconds to purge expired records and their associated images from disk storage.
+                  NaijaMart is powered by Google Cloud Firestore. Automatic listing deletion and 24-hour expiration sweeps have been permanently disabled. Every product published by sellers is committed to durable, distributed cloud storage and remains permanently active across all user devices, sessions, and reloads.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                    <span className="text-gray-500 block">Total Items Ever Purged:</span>
-                    <strong className="text-lg text-gray-900">{cleanupStats?.totalExpiredDeleted || 0} listings</strong>
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
+                    <span className="text-emerald-700 block font-semibold">Database Engine:</span>
+                    <strong className="text-base text-emerald-950">Cloud Firestore</strong>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                    <span className="text-gray-500 block">Last Sweep Execution:</span>
-                    <strong className="text-xs text-gray-800">{new Date(cleanupStats?.lastRun || Date.now()).toLocaleTimeString()}</strong>
+                    <span className="text-gray-500 block">Persistence Mode:</span>
+                    <strong className="text-xs text-gray-800">Permanent (No Auto-Delete)</strong>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                    <span className="text-gray-500 block">Current Server UTC:</span>
-                    <strong className="text-xs text-gray-800 font-mono">{new Date().toISOString()}</strong>
+                    <span className="text-gray-500 block">Security Rules Status:</span>
+                    <strong className="text-xs text-emerald-700 font-bold">ABAC Fortress Deployed</strong>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleManualPurge}
-                  disabled={purgeRunning}
-                  className="px-6 py-2.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white font-extrabold text-xs rounded-xl shadow-md transition"
-                >
-                  {purgeRunning ? 'Executing Cleanup...' : 'Test Expiration Sweep Now'}
-                </button>
               </div>
             </div>
           )}

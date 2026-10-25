@@ -26,6 +26,8 @@ import {
 } from '../services/api.js';
 import { formatNaira } from './ProductCard.js';
 import { NIGERIA_STATES } from '../constants/states.js';
+import { ProductImage } from './ProductImage.js';
+import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
 
 interface SellerDashboardProps {
   onClose: () => void;
@@ -300,11 +302,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     >
                       {/* Product Thumbnail & Details */}
                       <div className="flex items-center gap-3.5">
-                        <img
-                          src={item.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
-                          alt={item.title}
-                          className="w-16 h-16 rounded-xl object-cover border border-gray-200 shrink-0"
-                        />
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shrink-0 bg-gray-50">
+                          <ProductImage
+                            src={getProductDisplayImage(item.images, item.imageUrl)}
+                            fallbackSrcs={getValidProductImages(item.images, item.imageUrl)}
+                            alt={item.title}
+                            category={item.categoryId}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div>
                           <h4 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-1">
                             {item.title}

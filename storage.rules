@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+    
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Products: images uploaded to products/{sellerId}/{fileName}
+    match /products/{sellerId}/{fileName} {
+      allow read: if true;
+      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == sellerId);
+    }
+
+    // Okada Riders: photos uploaded to riders/{userId}/{fileName}
+    match /riders/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+    }
+
+    // BikeRiders alternate path
+    match /bikeRiders/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+    }
+  }
+}

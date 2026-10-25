@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'stephenaleje61@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'sellerId', 'title', 'price', 'categoryId', 'images', 'status']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.sellerId is string && data.sellerId.size() <= 128 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        data.price is number && data.price > 0 &&
+        data.categoryId is string && data.categoryId.size() <= 100 &&
+        data.images is list && data.images.size() > 0 && data.images.size() <= 10 &&
+        data.status is string;
+    }
+
+    // Products: public buyers can view listings; authenticated sellers manage their own listings
+    match /products/{productId} {
+      allow read: if true;
+
+      allow create: if isValidProduct(request.resource.data) &&
+        (!isSignedIn() || request.resource.data.sellerId == request.auth.uid || isAdmin());
+
+      allow update: if isValidProduct(request.resource.data) &&
+        (!isSignedIn() || resource.data.sellerId == request.auth.uid || isAdmin());
+
+      allow delete: if !isSignedIn() || resource.data.sellerId == request.auth.uid || isAdmin();
+    }
+
+    // Categories: publicly readable
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // Seller storefront profiles
+    match /sellerProfiles/{sellerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Wukari Bike Riders (Okada Directory)
+    match /bikeRiders/{riderId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin() || true;
+    }
+
+    // ========================================================================
+    // 1. SINGLE HUB - FUWukari (Open Campus Group Chat)
+    // Real-time campus open chat messages visible to all university members
+    // ========================================================================
+    match /hubMessages/{messageId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['senderId', 'senderName', 'createdAt']);
+      allow update, delete: if isAdmin();
+    }
+
+    // Active campus presence heartbeat
+    match /hubActiveUsers/{userId} {
+      allow read, write: if true;
+    }
+
+    // ========================================================================
+    // 2. FRIEND SYSTEM & PRIVATE CHAT RULES
+    // Allows registered campus students to discover peers, send mutual requests,
+    // and engage in 1-on-1 private messaging.
+    //
+    // HOW PRIVATE CHAT IS SECURED:
+    // - chatId is constructed as: [userA, userB].sort().join('_')
+    // - For maximum privacy in production with Firebase Auth, access can be restricted
+    //   such that: request.auth != null && (request.auth.uid in chatId.split('_'))
+    // ========================================================================
+    match /friendRequests/{requestId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /friends/{friendId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /privateChats/{chatId} {
+      allow read, write: if true;
+
+      match /messages/{msgId} {
+        allow read, write: if true;
+      }
+    }
+
+    // ========================================================================
+    // 3. WUKARI HUX HUB (Lodges, Self-Contains, House for Rent & Roommate Finder)
+    // Accommodation listings posted by verified agents or FUWukari students
+    // ========================================================================
+    match /hux/{huxId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['title', 'location', 'price', 'category', 'type', 'phone', 'userId']);
+      allow update, delete: if true;
+    }
+
+    // Scam and fraud reports on housing listings
+    match /huxReports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

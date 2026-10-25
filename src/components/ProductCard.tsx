@@ -10,6 +10,8 @@ import {
 import { Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { triggerWhatsAppChat } from '../services/api.js';
+import { ProductImage } from './ProductImage.js';
+import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
 
 interface ProductCardProps {
   product: Product;
@@ -28,27 +30,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const { isFavourite, toggleFavourite } = useAuth();
   const favourited = isFavourite(product.id);
-
-  // Compute 7-day expiration countdown
-  const now = Date.now();
-  const expiresTime = new Date(product.expiresAt).getTime();
-  const remainingMs = Math.max(0, expiresTime - now);
-  const remainingHours = Math.floor(remainingMs / (1000 * 3600));
-  const remainingDays = Math.floor(remainingHours / 24);
-
-  let expiryBadgeText = '';
-  let isExpiringSoon = false;
-
-  if (remainingDays >= 1) {
-    expiryBadgeText = `${remainingDays}d ${remainingHours % 24}h left`;
-  } else if (remainingHours > 0) {
-    expiryBadgeText = `${remainingHours}h left`;
-    isExpiringSoon = true;
-  } else {
-    const mins = Math.max(1, Math.floor(remainingMs / 60000));
-    expiryBadgeText = `${mins}m left`;
-    isExpiringSoon = true;
-  }
 
   // Calculate discount percentage
   const discountPercent =
@@ -75,9 +56,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     toggleFavourite(product.id);
   };
 
-  const mainImage = product.images && product.images.length > 0
-    ? product.images[0]
-    : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600';
+  const primaryImage = getProductDisplayImage(product.images, product.imageUrl);
+  const allValidImages = getValidProductImages(product.images, product.imageUrl);
 
   return (
     <div
@@ -86,15 +66,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Product Image Container */}
       <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
-        <img
-          src={mainImage}
+        <ProductImage
+          src={primaryImage}
+          fallbackSrcs={allValidImages}
           alt={product.title}
+          category={product.categoryId}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
-          onError={(e) => {
-            // Safe fallback if an uploaded image is removed
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600';
-          }}
         />
 
         {/* Top Floating Badges */}
@@ -131,18 +109,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           />
         </button>
 
-        {/* 7-Day Expiration Tag (Prompt Requirement 15) */}
+        {/* Permanent Active Listing Badge */}
         <div className="absolute bottom-2 left-2 z-10">
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 shadow-sm ${
-              isExpiringSoon
-                ? 'bg-red-600 text-white animate-pulse'
-                : 'bg-black/70 text-yellow-300'
-            }`}
-            title={`Published: ${new Date(product.createdAt).toLocaleDateString()} • Expires strictly 7 days after publication`}
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 shadow-sm bg-black/70 text-emerald-300"
           >
-            <Clock className="w-3 h-3" />
-            <span>{expiryBadgeText}</span>
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <span>Active Listing</span>
           </span>
         </div>
       </div>

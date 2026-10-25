@@ -61,6 +61,7 @@ export interface Product {
   categoryId: string;
   condition: 'new' | 'used';
   images: string[]; // Minimum 1 required
+  imageUrl?: string;
   state: string;
   city: string;
   quantity: number;
@@ -71,7 +72,7 @@ export interface Product {
   whatsappClicks: number;
   isFeatured?: boolean;
   createdAt: string; // Server UTC
-  expiresAt: string; // Exactly 7 days after createdAt
+  expiresAt?: string; // Optional legacy field
   updatedAt: string;
 }
 
@@ -350,317 +351,71 @@ class Database {
     this.data.users.push(...sellerUsers);
     this.data.sellerProfiles.push(...profiles);
 
-    // Initial products with realistic photos, valid 7-day expiration
-    // Calculated from now - (X hours) so they have plenty of time remaining on 7-day clock
-    const initialProducts: Product[] = [
-      {
-        id: 'prod-001',
-        sellerId: 'seller-ikeja-01',
-        sellerName: 'Chinedu Okeke',
-        shopName: 'Ikeja Computer Village Hub',
-        whatsappNumber: '08031234567',
-        title: 'Apple iPhone 15 Pro Max 256GB Natural Titanium (Direct UK Used)',
-        description: 'Clean UK used iPhone 15 Pro Max, 100% battery health, factory unlocked, complete with original type-C cable and box. No scratches, face ID and true tone active. Tested with 30-day warranty.',
-        price: 1350000,
-        originalPrice: 1480000,
-        categoryId: 'phones-tablets',
-        condition: 'used',
-        images: [
-          'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800',
-          'https://images.unsplash.com/photo-1695048065051-51ee68d0684f?w=800'
-        ],
-        state: 'Lagos',
-        city: 'Ikeja',
-        quantity: 4,
-        status: 'active',
-        views: 248,
-        whatsappClicks: 32,
-        isFeatured: true,
-        createdAt: new Date(now - 1000 * 3600 * 18).toISOString(), // 18 hours ago
-        expiresAt: new Date(now - 1000 * 3600 * 18 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 18).toISOString()
-      },
-      {
-        id: 'prod-002',
-        sellerId: 'seller-ikeja-01',
-        sellerName: 'Chinedu Okeke',
-        shopName: 'Ikeja Computer Village Hub',
-        whatsappNumber: '08031234567',
-        title: 'MacBook Air M2 13.6-inch (8GB RAM, 256GB SSD) - Space Grey',
-        description: 'Sleek, lightweight powerhouse with Apple Silicon M2. Liquid Retina display, MagSafe 3 charging, 18-hour battery life. Brand new sealed in original Apple box.',
-        price: 1120000,
-        originalPrice: 1250000,
-        categoryId: 'computers',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
-          'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800'
-        ],
-        state: 'Lagos',
-        city: 'Ikeja',
-        quantity: 3,
-        status: 'active',
-        views: 185,
-        whatsappClicks: 21,
-        isFeatured: true,
-        createdAt: new Date(now - 1000 * 3600 * 24).toISOString(), // 1 day ago
-        expiresAt: new Date(now - 1000 * 3600 * 24 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 24).toISOString()
-      },
-      {
-        id: 'prod-003',
-        sellerId: 'seller-balogun-02',
-        sellerName: 'Yetunde Adeleke',
-        shopName: 'Yetty Chic & Fabric Empire',
-        whatsappNumber: '08129876543',
-        title: 'Original Premium 100% Cotton Senator Material (4 Yards) - Navy Blue',
-        description: 'High-grade Irish cashmere wool senator fabric for men. Perfect drape, does not fade or stretch after washing. Ideal for agbada, kaftan, and executive corporate native wear.',
-        price: 32000,
-        originalPrice: 40000,
-        categoryId: 'fashion',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800',
-          'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?w=800'
-        ],
-        state: 'Lagos',
-        city: 'Lagos Island',
-        quantity: 15,
-        status: 'active',
-        views: 310,
-        whatsappClicks: 47,
-        isFeatured: true,
-        createdAt: new Date(now - 1000 * 3600 * 12).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 12 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 12).toISOString()
-      },
-      {
-        id: 'prod-004',
-        sellerId: 'seller-balogun-02',
-        sellerName: 'Yetunde Adeleke',
-        shopName: 'Yetty Chic & Fabric Empire',
-        whatsappNumber: '08129876543',
-        title: 'Handcrafted Nigerian Genuine Leather Chelsea Boots - Tan Brown',
-        description: 'Made by Aba master cobblers with imported cowhide leather. Goodyear welted sole, cushioned memory foam insole, durable rubber traction outsole. Sizes 40-46 available.',
-        price: 45000,
-        originalPrice: 55000,
-        categoryId: 'shoes-bags',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1638247025967-b4e38f787b76?w=800',
-          'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800'
-        ],
-        state: 'Lagos',
-        city: 'Lagos Island',
-        quantity: 10,
-        status: 'active',
-        views: 142,
-        whatsappClicks: 19,
-        isFeatured: false,
-        createdAt: new Date(now - 1000 * 3600 * 6).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 6 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 6).toISOString()
-      },
-      {
-        id: 'prod-005',
-        sellerId: 'seller-abuja-03',
-        sellerName: 'Musa Ibrahim',
-        shopName: 'Northern Harvest & Foodstuffs',
-        whatsappNumber: '09055554433',
-        title: 'Original Benue Tubers of Large Yam (Bundle of 5 Tubers)',
-        description: 'Farm-fresh, sweet and dry Benue yams straight from Zaki Biam market. Pounding yam tested, no rotten parts. Fast delivery across Abuja and express waybill to other states.',
-        price: 28000,
-        originalPrice: 35000,
-        categoryId: 'food-groceries',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?w=800',
-          'https://images.unsplash.com/photo-1518843875459-f738682238a6?w=800'
-        ],
-        state: 'Abuja (FCT)',
-        city: 'Wuse 2',
-        quantity: 20,
-        status: 'active',
-        views: 405,
-        whatsappClicks: 63,
-        isFeatured: true,
-        createdAt: new Date(now - 1000 * 3600 * 30).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 30 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 30).toISOString()
-      },
-      {
-        id: 'prod-006',
-        sellerId: 'seller-abuja-03',
-        sellerName: 'Musa Ibrahim',
-        shopName: 'Northern Harvest & Foodstuffs',
-        whatsappNumber: '09055554433',
-        title: 'Pure Unadulterated Nsukka Red Palm Oil (25 Litres Keg)',
-        description: 'Zero coloring, thick aroma, clear residue-free red palm oil straight from local mill in Enugu/Nsukka. Pure traditional taste for egusi, ogbono, and ofada stew.',
-        price: 36000,
-        originalPrice: 42000,
-        categoryId: 'food-groceries',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=800'
-        ],
-        state: 'Abuja (FCT)',
-        city: 'Wuse 2',
-        quantity: 12,
-        status: 'active',
-        views: 198,
-        whatsappClicks: 29,
-        isFeatured: false,
-        createdAt: new Date(now - 1000 * 3600 * 40).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 40 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 40).toISOString()
-      },
-      {
-        id: 'prod-007',
-        sellerId: 'seller-ph-04',
-        sellerName: 'Emeka Nwachukwu',
-        shopName: 'Garden City Smart Living',
-        whatsappNumber: '07088990011',
-        title: '3.5kVA / 24V Pure Sine Wave Hybrid Solar Inverter with MPPT',
-        description: 'Heavy duty copper transformer inverter. Automatic switchover from NEPA to battery within 10ms. Runs freezers, TVs, fans, laptops, and lighting points seamlessly. 1-year warranty.',
-        price: 495000,
-        originalPrice: 550000,
-        categoryId: 'furniture-appliances',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=800',
-          'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800'
-        ],
-        state: 'Rivers',
-        city: 'Port Harcourt',
-        quantity: 5,
-        status: 'active',
-        views: 320,
-        whatsappClicks: 44,
-        isFeatured: true,
-        createdAt: new Date(now - 1000 * 3600 * 8).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 8 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 8).toISOString()
-      },
-      {
-        id: 'prod-008',
-        sellerId: 'seller-ph-04',
-        sellerName: 'Emeka Nwachukwu',
-        shopName: 'Garden City Smart Living',
-        whatsappNumber: '07088990011',
-        title: 'Sony PlayStation 5 Console (Disc Edition) with Extra DualSense Controller',
-        description: 'Brand new European spec PS5 console. Comes with 825GB ultra-fast SSD, 2 DualSense wireless controllers, HDMI 2.1 cable, and God of War Ragnarök voucher.',
-        price: 780000,
-        originalPrice: 850000,
-        categoryId: 'computers',
-        condition: 'new',
-        images: [
-          'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800',
-          'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'
-        ],
-        state: 'Rivers',
-        city: 'Port Harcourt',
-        quantity: 2,
-        status: 'active',
-        views: 290,
-        whatsappClicks: 38,
-        isFeatured: false,
-        createdAt: new Date(now - 1000 * 3600 * 50).toISOString(),
-        expiresAt: new Date(now - 1000 * 3600 * 50 + SEVEN_DAYS_MS).toISOString(),
-        updatedAt: new Date(now - 1000 * 3600 * 50).toISOString()
-      }
-    ];
-
-    this.data.products.push(...initialProducts);
+    // Real Firestore-only products: no mock or hardcoded products
+    this.data.products = [];
   }
 
-  // --- 7-DAY EXPIRATION ENGINE ---
-  /**
-   * Scans all products and permanently deletes any listing whose expiresAt <= now.
-   * Also cleans up local uploaded image files from disk.
-   */
-  public purgeExpiredProducts(actor = 'System Background Worker'): { deletedCount: number; purgedIds: string[] } {
-    const now = Date.now();
-    const activeProducts = this.data.products;
-    const expiredList = activeProducts.filter(p => new Date(p.expiresAt).getTime() <= now);
-
-    if (expiredList.length === 0) {
-      return { deletedCount: 0, purgedIds: [] };
+  // --- PERMANENT PRODUCTION PERSISTENCE ---
+  public async initFirestoreSync(): Promise<void> {
+    try {
+      const { firestoreSync } = await import('./firestore.js');
+      // Load permanent products directly from Firestore
+      const firestoreProducts = await firestoreSync.loadProducts();
+      this.data.products = firestoreProducts || [];
+      this.save();
+      console.log(`[Database] Production sync active: ${this.data.products.length} genuine permanent products loaded.`);
+    } catch (err) {
+      console.error('[Database] initFirestoreSync error:', err);
     }
+  }
 
-    const purgedIds: string[] = [];
-
-    for (const prod of expiredList) {
-      purgedIds.push(prod.id);
-
-      // Clean up uploaded image files stored on disk if they point to local /uploads/
-      if (Array.isArray(prod.images)) {
-        for (const imgUrl of prod.images) {
-          if (imgUrl && imgUrl.startsWith('/uploads/')) {
-            const fileName = path.basename(imgUrl);
-            const filePath = path.join(UPLOADS_DIR, fileName);
-            try {
-              if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-              }
-            } catch (err) {
-              console.error(`Failed to delete expired image file ${filePath}:`, err);
-            }
-          }
-        }
-      }
-
-      // Remove any favourites for this product
-      this.data.favourites = this.data.favourites.filter(f => f.productId !== prod.id);
-
-      // Log audit entry
-      this.data.auditLogs.unshift({
-        id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-        action: 'PRODUCT_EXPIRED_7DAYS_PURGED',
-        actor,
-        details: `Product "${prod.title}" (ID: ${prod.id}, Seller: ${prod.shopName}) reached 7-day expiration (published: ${prod.createdAt}, expired: ${prod.expiresAt}) and was permanently deleted.`,
-        timestamp: new Date().toISOString()
-      });
+  // Save product directly to both in-memory cache and Firestore permanent production storage
+  public async persistProduct(product: Product): Promise<void> {
+    const existingIndex = this.data.products.findIndex(p => p.id === product.id);
+    if (existingIndex >= 0) {
+      this.data.products[existingIndex] = product;
+    } else {
+      this.data.products.unshift(product);
     }
-
-    // Permanently remove expired products from the database
-    const initialCount = this.data.products.length;
-    this.data.products = this.data.products.filter(p => new Date(p.expiresAt).getTime() > now);
-    const deletedCount = initialCount - this.data.products.length;
-
-    this.data.cleanupStats.lastRun = new Date().toISOString();
-    this.data.cleanupStats.totalExpiredDeleted += deletedCount;
-
-    // Keep audit logs trimmed to last 200 items
-    if (this.data.auditLogs.length > 200) {
-      this.data.auditLogs = this.data.auditLogs.slice(0, 200);
-    }
-
     this.save();
 
-    console.log(`[7-Day Expiration Job] Purged ${deletedCount} expired products at ${new Date().toISOString()}`);
-    return { deletedCount, purgedIds };
-  }
-
-  // Helper query for active, non-expired products
-  public getActiveProducts(): Product[] {
-    const now = Date.now();
-    return this.data.products.filter(p => {
-      const isExpired = new Date(p.expiresAt).getTime() <= now;
-      return p.status === 'active' && !isExpired;
-    });
-  }
-
-  // Get single product if not expired (or seller/admin can view)
-  public getProductById(id: string, includeExpired = false): Product | undefined {
-    const prod = this.data.products.find(p => p.id === id);
-    if (!prod) return undefined;
-    if (!includeExpired) {
-      const now = Date.now();
-      if (new Date(prod.expiresAt).getTime() <= now) {
-        return undefined; // Expired products cannot be accessed through old direct links or public APIs
-      }
+    try {
+      const { firestoreSync } = await import('./firestore.js');
+      await firestoreSync.saveProduct(product);
+    } catch (err) {
+      console.error(`[Database] Failed to persist product ${product.id} to Firestore:`, err);
+      throw err;
     }
-    return prod;
+  }
+
+  // Delete product from both in-memory cache and Firestore permanent storage
+  public async removeProduct(productId: string): Promise<void> {
+    this.data.products = this.data.products.filter(p => p.id !== productId);
+    this.data.favourites = this.data.favourites.filter(f => f.productId !== productId);
+    this.save();
+
+    try {
+      const { firestoreSync } = await import('./firestore.js');
+      await firestoreSync.deleteProduct(productId);
+    } catch (err) {
+      console.error(`[Database] Failed to remove product ${productId} from Firestore:`, err);
+    }
+  }
+
+  // Unintended expiration purge neutralized: products are permanent and never deleted automatically
+  public purgeExpiredProducts(actor = 'System Background Worker'): { deletedCount: number; purgedIds: string[] } {
+    console.log(`[Database] Automatic purge disabled: listings remain permanently stored in production database.`);
+    return { deletedCount: 0, purgedIds: [] };
+  }
+
+  // Helper query for active products (never expires)
+  public getActiveProducts(): Product[] {
+    return this.data.products.filter(p => p.status === 'active');
+  }
+
+  // Get single product (never blocked by expiration)
+  public getProductById(id: string): Product | undefined {
+    return this.data.products.find(p => p.id === id);
   }
 
   // Raw accessors

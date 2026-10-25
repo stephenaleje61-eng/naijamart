@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A marketplace product listing published by a merchant or seller",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique product ID" },
+        "sellerId": { "type": "string", "description": "ID of the seller who created this listing" },
+        "sellerName": { "type": "string", "description": "Seller display name" },
+        "shopName": { "type": "string", "description": "Shop or business name" },
+        "whatsappNumber": { "type": "string", "description": "Direct WhatsApp contact number" },
+        "title": { "type": "string", "description": "Product title" },
+        "description": { "type": "string", "description": "Detailed description of the product" },
+        "price": { "type": "number", "description": "Selling price in Naira" },
+        "originalPrice": { "type": "number", "description": "Anchor or original price before discount" },
+        "categoryId": { "type": "string", "description": "Category identifier" },
+        "condition": { "type": "string", "enum": ["new", "used"], "description": "Condition of item" },
+        "images": { "type": "array", "description": "Persistent URLs of product images" },
+        "state": { "type": "string", "description": "Nigerian state location" },
+        "city": { "type": "string", "description": "City or LGA location" },
+        "quantity": { "type": "number", "description": "Available stock quantity" },
+        "status": { "type": "string", "enum": ["active", "sold", "unavailable"], "description": "Listing status" },
+        "moderationStatus": { "type": "string", "enum": ["approved", "pending_review", "rejected"], "description": "Moderation status" },
+        "views": { "type": "number", "description": "Number of views" },
+        "whatsappClicks": { "type": "number", "description": "Number of WhatsApp clicks" },
+        "isFeatured": { "type": "boolean", "description": "Whether featured" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["id", "sellerId", "title", "price", "categoryId", "images", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User UID" },
+        "name": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "role": { "type": "string", "enum": ["buyer", "seller", "admin"], "description": "User role" },
+        "phone": { "type": "string", "description": "User phone number" },
+        "whatsappNumber": { "type": "string", "description": "User WhatsApp number" },
+        "state": { "type": "string", "description": "State" },
+        "city": { "type": "string", "description": "City" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "SellerProfile": {
+      "title": "SellerProfile",
+      "description": "Verified seller and shop profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Seller profile ID" },
+        "userId": { "type": "string", "description": "Associated user UID" },
+        "shopName": { "type": "string", "description": "Store name" },
+        "shopSlug": { "type": "string", "description": "Unique shop slug" },
+        "description": { "type": "string", "description": "Store description" },
+        "whatsappNumber": { "type": "string", "description": "Business contact WhatsApp" },
+        "state": { "type": "string", "description": "State" },
+        "city": { "type": "string", "description": "City" },
+        "isVerified": { "type": "boolean", "description": "Verification badge status" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "userId", "shopName", "whatsappNumber", "state", "city"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Category ID" },
+        "name": { "type": "string", "description": "Category display name" },
+        "slug": { "type": "string", "description": "Category URL slug" },
+        "icon": { "type": "string", "description": "Lucide icon name" },
+        "itemCount": { "type": "number", "description": "Count of items" }
+      },
+      "required": ["id", "name", "slug"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all marketplace product listings"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Registered buyer and seller profiles"
+    },
+    "/sellerProfiles/{sellerId}": {
+      "schema": "SellerProfile",
+      "description": "Merchant storefront profiles"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Marketplace categories"
+    }
+  }
+}

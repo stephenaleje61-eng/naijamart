@@ -15,6 +15,7 @@ interface AuthContextType {
   favourites: string[];
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -64,6 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
     setSellerProfile(data.sellerProfile || null);
     await loadUser();
+  };
+
+  const loginWithGoogle = async () => {
+    const { signInWithGoogle } = await import('../services/firebase.js');
+    const { user: appUser } = await signInWithGoogle();
+    setUser(appUser);
   };
 
   const register = async (data: any) => {
@@ -122,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         favourites,
         loading,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshUser,

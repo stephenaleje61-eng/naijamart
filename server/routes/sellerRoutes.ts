@@ -85,10 +85,9 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
   const sellerUser = db.users.find(u => u.id === profile.userId);
   const now = Date.now();
 
-  // Active non-expired products
+  // Active products
   const products = db.products.filter(p => {
-    const isExpired = new Date(p.expiresAt).getTime() <= now;
-    return (p.sellerId === profile.userId || p.sellerId === identifier) && p.status === 'active' && !isExpired;
+    return (p.sellerId === profile.userId || p.sellerId === identifier) && p.status === 'active';
   });
 
   res.json({
@@ -119,30 +118,23 @@ router.get('/my-listings', requireSeller, (req: AuthenticatedRequest, res: Respo
 
   const allSellerProducts = db.products.filter(p => p.sellerId === user.id);
 
-  // Map with 7-day countdown details and expiration alerts
+  // Listings with permanent active status
   const enrichedListings = allSellerProducts.map(p => {
-    const expiresTime = new Date(p.expiresAt).getTime();
-    const remainingMs = Math.max(0, expiresTime - now);
-    const remainingHours = Math.floor(remainingMs / (1000 * 3600));
-    const remainingDays = Math.floor(remainingHours / 24);
-    const isExpired = remainingMs === 0;
-    const isExpiringSoon = remainingHours <= 24 && !isExpired; // Less than 24 hours warning
-
     return {
       ...p,
-      remainingMs,
-      remainingHours,
-      remainingDays,
-      isExpired,
-      isExpiringSoon
+      remainingMs: 999999999999,
+      remainingHours: 999999,
+      remainingDays: 9999,
+      isExpired: false,
+      isExpiringSoon: false
     };
   });
 
   // Calculate seller stats
   const totalViews = allSellerProducts.reduce((sum, p) => sum + (p.views || 0), 0);
   const totalWhatsAppClicks = allSellerProducts.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0);
-  const activeCount = enrichedListings.filter(p => p.status === 'active' && !p.isExpired).length;
-  const expiringSoonCount = enrichedListings.filter(p => p.isExpiringSoon).length;
+  const activeCount = allSellerProducts.filter(p => p.status === 'active').length;
+  const expiringSoonCount = 0;
 
   res.json({
     listings: enrichedListings,

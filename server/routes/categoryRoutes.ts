@@ -5,11 +5,7 @@ const router = Router();
 
 // GET all categories with active product count
 router.get('/', (_req: Request, res: Response) => {
-  const now = Date.now();
-  const activeProducts = db.products.filter(p => {
-    const isExpired = new Date(p.expiresAt).getTime() <= now;
-    return p.status === 'active' && !isExpired;
-  });
+  const activeProducts = db.products.filter(p => p.status === 'active');
 
   const categoriesWithCounts = db.categories.map(cat => {
     const count = activeProducts.filter(p => p.categoryId === cat.id).length;

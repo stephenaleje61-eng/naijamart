@@ -8,7 +8,7 @@ const router = Router();
 router.get('/metrics', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
   const now = Date.now();
   const allProducts = db.products;
-  const activeProducts = allProducts.filter(p => p.status === 'active' && new Date(p.expiresAt).getTime() > now);
+  const activeProducts = allProducts.filter(p => p.status === 'active');
   const totalViews = allProducts.reduce((sum, p) => sum + (p.views || 0), 0);
   const totalWhatsAppClicks = allProducts.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0);
 
@@ -35,11 +35,10 @@ router.get('/metrics', requireAdmin, (_req: AuthenticatedRequest, res: Response)
 
 // GET all products for moderation (including status & expiration)
 router.get('/products', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
-  const now = Date.now();
   const list = db.products.map(p => ({
     ...p,
-    isExpired: new Date(p.expiresAt).getTime() <= now,
-    remainingHours: Math.max(0, Math.floor((new Date(p.expiresAt).getTime() - now) / 3600000))
+    isExpired: false,
+    remainingHours: 999999
   }));
 
   res.json({ products: list });

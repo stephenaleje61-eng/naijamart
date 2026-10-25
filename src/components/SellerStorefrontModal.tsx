@@ -14,7 +14,6 @@ import {
 import { Product, SellerProfile } from '../types.js';
 import { fetchSellerStorefront } from '../services/api.js';
 import { ProductCard } from './ProductCard.js';
-import { formatWhatsAppLink } from '../../server/routes/products.js';
 
 interface SellerStorefrontModalProps {
   sellerId: string | null;

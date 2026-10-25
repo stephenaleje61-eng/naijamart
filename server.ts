@@ -10,6 +10,7 @@ import sellerRoutes from './server/routes/sellerRoutes.js';
 import categoryRoutes from './server/routes/categoryRoutes.js';
 import adminRoutes from './server/routes/adminRoutes.js';
 import uploadRoutes from './server/routes/upload.js';
+import bikeRiderRoutes from './server/routes/bikeRiderRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,16 +33,13 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir, { maxAge: '1d' }));
 
-// 7-DAY EXPIRATION BACKGROUND RUNNER
-console.log('Initializing NaijaMart 7-Day Automatic Expiration Worker...');
-db.purgeExpiredProducts('Server Startup Purge');
-setInterval(() => {
-  try {
-    db.purgeExpiredProducts('Background Periodic Purge');
-  } catch (err) {
-    console.error('Error during automatic 7-day expiration cleanup:', err);
-  }
-}, 60 * 1000);
+// INITIALIZE FIRESTORE PRODUCTION DATABASE SYNC
+import { firestoreSync } from './server/firestore.js';
+
+console.log('Connecting NaijaMart to permanent production database (Google Cloud Firestore)...');
+db.initFirestoreSync().catch(err => {
+  console.error('Failed to initialize Firestore sync on startup:', err);
+});
 
 // API Routes mounted on both /api/* and root aliases so frontend calls never get 404 HTML
 app.use('/api/auth', authRoutes);
@@ -61,6 +59,9 @@ app.use('/admin-api', adminRoutes);
 
 app.use('/api/upload', uploadRoutes);
 app.use('/upload', uploadRoutes);
+
+app.use('/api/bike-riders', bikeRiderRoutes);
+app.use('/bike-riders-api', bikeRiderRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({

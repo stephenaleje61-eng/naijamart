@@ -6,8 +6,21 @@ import {
   ProductFilter,
   AdminMetrics,
   ReportItem,
-  AuditLogItem
+  AuditLogItem,
+  BikeRider
 } from '../types.js';
+import {
+  getProductsFromFirestore,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  getProductByIdFromFirestore,
+  createProductDirectlyInFirestore,
+  getBikeRidersFromFirestore,
+  createBikeRiderDirectlyInFirestore,
+  updateBikeRiderAvailability,
+  auth
+} from './firebase.js';
+import { DEFAULT_CATEGORIES } from '../constants/categories.js';
 
 const TOKEN_KEY = 'zangamarket_auth_token';
 const BACKEND_URL_KEY = 'zangamarket_backend_url';
@@ -135,32 +148,73 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
 
 // --- PRODUCTS API ---
 export async function fetchProducts(filters: ProductFilter = {}): Promise<{ items: Product[]; pagination: any }> {
-  const params = new URLSearchParams();
-  if (filters.q) params.set('q', filters.q);
-  if (filters.category && filters.category !== 'all') params.set('category', filters.category);
-  if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition);
-  if (filters.state && filters.state !== 'all') params.set('state', filters.state);
-  if (filters.city && filters.city !== 'all') params.set('city', filters.city);
-  if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice));
-  if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice));
-  if (filters.sellerId) params.set('sellerId', filters.sellerId);
-  if (filters.sort) params.set('sort', filters.sort);
-  if (filters.page) params.set('page', String(filters.page));
-  if (filters.limit) params.set('limit', String(filters.limit));
+  try {
+    const params = new URLSearchParams();
+    if (filters.q) params.set('q', filters.q);
+    if (filters.category && filters.category !== 'all') params.set('category', filters.category);
+    if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition);
+    if (filters.state && filters.state !== 'all') params.set('state', filters.state);
+    if (filters.city && filters.city !== 'all') params.set('city', filters.city);
+    if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice));
+    if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice));
+    if (filters.sellerId) params.set('sellerId', filters.sellerId);
+    if (filters.sort) params.set('sort', filters.sort);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
 
-  return safeFetchJson(`/api/products?${params.toString()}`);
+    return await safeFetchJson(`/api/products?${params.toString()}`);
+  } catch (networkOrServerErr) {
+    console.warn('[fetchProducts fallback to direct Cloud Firestore query]:', networkOrServerErr);
+    // Directly query Google Cloud Firestore permanent database
+    const items = await getProductsFromFirestore({
+      categoryId: filters.category,
+      sellerId: filters.sellerId,
+      searchQuery: filters.q,
+      limitCount: filters.limit || 50
+    });
+    return {
+      items,
+      pagination: {
+        page: filters.page || 1,
+        limit: filters.limit || 50,
+        total: items.length,
+        totalPages: 1
+      }
+    };
+  }
 }
 
 export async function fetchFlashDeals(): Promise<Product[]> {
-  return safeFetchJson('/api/products/flash-deals');
+  try {
+    return await safeFetchJson('/api/products/flash-deals');
+  } catch (err) {
+    console.warn('[fetchFlashDeals fallback to Firestore]:', err);
+    const items = await getProductsFromFirestore({ limitCount: 10 });
+    return items.map(p => ({
+      ...p,
+      originalPrice: p.originalPrice && p.originalPrice > p.price ? p.originalPrice : Math.round(p.price * 1.25)
+    }));
+  }
 }
 
 export async function fetchTrendingProducts(): Promise<Product[]> {
-  return safeFetchJson('/api/products/trending');
+  try {
+    return await safeFetchJson('/api/products/trending');
+  } catch (err) {
+    console.warn('[fetchTrendingProducts fallback to Firestore]:', err);
+    return await getProductsFromFirestore({ limitCount: 12 });
+  }
 }
 
 export async function fetchProductById(id: string): Promise<Product> {
-  return safeFetchJson(`/api/products/${id}`);
+  try {
+    return await safeFetchJson(`/api/products/${id}`);
+  } catch (err) {
+    console.warn('[fetchProductById fallback to Firestore]:', err);
+    const prod = await getProductByIdFromFirestore(id);
+    if (prod) return prod;
+    throw new Error('Product not found in Firestore database.');
+  }
 }
 
 export async function recordProductView(id: string): Promise<void> {
@@ -178,44 +232,95 @@ export async function triggerWhatsAppChat(id: string): Promise<{ link: string; m
   });
 }
 
-// Publish Product - Supports BOTH FormData and JSON payload
+// Publish Product - Supports BOTH FormData and JSON payload with Firestore direct persistence
 export async function createProductListing(
   payload: FormData | Partial<Product>
 ): Promise<{ success: boolean; product: Product; message: string }> {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-  let body: any;
-  if (payload instanceof FormData) {
-    body = payload;
-  } else {
-    headers['Content-Type'] = 'application/json';
-    body = JSON.stringify(payload);
-  }
+    let body: any;
+    if (payload instanceof FormData) {
+      body = payload;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(payload);
+    }
 
-  return safeFetchJson('/api/products', {
-    method: 'POST',
-    headers,
-    body
-  });
+    return await safeFetchJson('/api/products', {
+      method: 'POST',
+      headers,
+      body
+    });
+  } catch (networkOrServerErr) {
+    console.warn('[createProductListing fallback directly to Cloud Firestore]:', networkOrServerErr);
+    // Directly save to Google Cloud Firestore permanent database (e.g. on Netlify static build)
+    let productData: Partial<Product> = {};
+    if (payload instanceof FormData) {
+      const rawImages = payload.get('images');
+      let parsedImages: string[] = [];
+      if (typeof rawImages === 'string') {
+        try {
+          parsedImages = JSON.parse(rawImages);
+        } catch {
+          parsedImages = [rawImages];
+        }
+      }
+      productData = {
+        title: String(payload.get('title') || ''),
+        price: Number(payload.get('price')) || 0,
+        originalPrice: payload.get('originalPrice') ? Number(payload.get('originalPrice')) : undefined,
+        description: String(payload.get('description') || ''),
+        state: String(payload.get('state') || 'Lagos'),
+        city: String(payload.get('city') || 'Ikeja'),
+        whatsappNumber: String(payload.get('whatsapp') || payload.get('whatsappNumber') || '08031234567'),
+        categoryId: String(payload.get('categoryId') || payload.get('category') || 'phones-tablets'),
+        condition: (payload.get('condition') === 'used' ? 'used' : 'new') as 'new' | 'used',
+        quantity: Number(payload.get('quantity')) || 1,
+        images: parsedImages
+      };
+    } else {
+      productData = payload;
+    }
+
+    const createdProduct = await createProductDirectlyInFirestore(productData);
+    return {
+      success: true,
+      product: createdProduct,
+      message: 'Product posted successfully to Firestore permanent database!'
+    };
+  }
 }
 
 export async function updateProductListing(id: string, productData: Partial<Product>): Promise<{ product: Product; message: string }> {
-  return safeFetchJson(`/api/products/${id}`, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify(productData)
-  });
+  try {
+    return await safeFetchJson(`/api/products/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(productData)
+    });
+  } catch (err) {
+    console.warn('[updateProductListing fallback to Firestore]:', err);
+    await saveProductToFirestore({ ...(productData as Product), id });
+    return { product: productData as Product, message: 'Product updated successfully in Firestore.' };
+  }
 }
 
 export async function deleteProductListing(id: string): Promise<{ message: string }> {
-  return safeFetchJson(`/api/products/${id}`, {
-    method: 'DELETE',
-    headers: getHeaders()
-  });
+  try {
+    return await safeFetchJson(`/api/products/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+  } catch (err) {
+    console.warn('[deleteProductListing fallback to Firestore]:', err);
+    await deleteProductFromFirestore(id);
+    return { message: 'Product deleted permanently from Firestore.' };
+  }
 }
 
 export async function toggleProductFavourite(id: string): Promise<{ favourited: boolean; message: string }> {
@@ -257,7 +362,12 @@ export async function uploadProductImages(files: File[]): Promise<string[]> {
 
 // --- CATEGORIES API ---
 export async function fetchCategories(): Promise<Category[]> {
-  return safeFetchJson('/api/categories');
+  try {
+    return await safeFetchJson('/api/categories');
+  } catch (err) {
+    console.warn('[fetchCategories fallback to DEFAULT_CATEGORIES]:', err);
+    return DEFAULT_CATEGORIES;
+  }
 }
 
 // --- AUTH API ---
@@ -317,9 +427,31 @@ export async function fetchSellerStorefront(identifier: string): Promise<{ selle
 }
 
 export async function fetchMySellerListings(): Promise<{ listings: Product[]; stats: any }> {
-  return safeFetchJson('/api/sellers/my-listings', {
-    headers: getHeaders()
-  });
+  try {
+    return await safeFetchJson('/api/sellers/my-listings', {
+      headers: getHeaders()
+    });
+  } catch (err) {
+    console.warn('[fetchMySellerListings fallback to Firestore]:', err);
+    const userJson = localStorage.getItem('zangamarket_auth_user') || localStorage.getItem('naijamart_user');
+    let userId = '';
+    if (userJson) {
+      try {
+        userId = JSON.parse(userJson).id;
+      } catch {}
+    }
+    const items = await getProductsFromFirestore({ sellerId: userId || undefined });
+    return {
+      listings: items,
+      stats: {
+        totalProducts: items.length,
+        activeCount: items.filter(p => p.status === 'active').length,
+        expiringSoonCount: 0,
+        totalViews: items.reduce((sum, p) => sum + (p.views || 0), 0),
+        totalWhatsAppClicks: items.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0)
+      }
+    };
+  }
 }
 
 export async function updateSellerProfile(profileData: Partial<SellerProfile>): Promise<any> {
@@ -406,3 +538,54 @@ export async function adminTriggerExpirationPurge(): Promise<any> {
     headers: getHeaders()
   });
 }
+
+// --- WUKARI BIKE RIDERS (OKADA DIRECTORY) API ---
+export async function fetchBikeRiders(area?: string): Promise<BikeRider[]> {
+  try {
+    const params = new URLSearchParams();
+    if (area && area !== 'all') params.set('area', area);
+    const res = await safeFetchJson(`/api/bike-riders?${params.toString()}`);
+    if (res && Array.isArray(res.riders)) {
+      return res.riders;
+    }
+    return await getBikeRidersFromFirestore(area);
+  } catch (err) {
+    console.warn('[fetchBikeRiders fallback directly to Firestore]:', err);
+    return await getBikeRidersFromFirestore(area);
+  }
+}
+
+export async function registerBikeRider(
+  data: Omit<BikeRider, 'id' | 'createdAt'>
+): Promise<{ success: boolean; rider: BikeRider; message: string }> {
+  try {
+    const res = await safeFetchJson('/api/bike-riders', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (res && res.rider) {
+      return res;
+    }
+    const rider = await createBikeRiderDirectlyInFirestore(data);
+    return { success: true, rider, message: 'Bike rider registered successfully in Wukari directory!' };
+  } catch (err) {
+    console.warn('[registerBikeRider fallback directly to Firestore]:', err);
+    const rider = await createBikeRiderDirectlyInFirestore(data);
+    return { success: true, rider, message: 'Bike rider registered successfully in Wukari directory!' };
+  }
+}
+
+export async function setBikeRiderAvailability(id: string, isAvailable: boolean): Promise<void> {
+  try {
+    await safeFetchJson(`/api/bike-riders/${id}/availability`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ isAvailable })
+    });
+  } catch (err) {
+    console.warn('[setBikeRiderAvailability fallback to Firestore]:', err);
+    await updateBikeRiderAvailability(id, isAvailable);
+  }
+}
+
