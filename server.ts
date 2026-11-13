@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
@@ -91,11 +92,18 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 async function startServer() {
+  const httpServer = http.createServer(app);
+
   if (!isProd) {
-    // Development mode with Vite dev middleware
+    // Development mode with Vite dev middleware (attached to Express httpServer; file watching disabled)
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+        ws: { server: httpServer },
+        watch: null
+      },
       appType: 'spa'
     });
     app.use(vite.middlewares);
@@ -112,7 +120,7 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[NaijaMart] Server running at http://0.0.0.0:${PORT} in ${isProd ? 'production' : 'development'} mode`);
   });
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, SellerProfile } from '../types.js';
 import {
   fetchCurrentUser,
@@ -8,15 +8,22 @@ import {
   getAuthToken,
   toggleProductFavourite
 } from '../services/api.js';
+import {
+  getCachedSessionInfo,
+  getUserSessionFromFirestore,
+  signOutFromFirebase,
+  subscribeToFirebaseAuthChanges,
+  toggleFavouriteInFirestore
+} from '../services/firebase.js';
 
 interface AuthContextType {
   user: User | null;
   sellerProfile: SellerProfile | null;
   favourites: string[];
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  register: (data: any) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: () => Promise<User>;
+  register: (data: any) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   toggleFavourite: (productId: string) => Promise<boolean>;
@@ -31,9 +38,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [favourites, setFavourites] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     const token = getAuthToken();
-    if (!token) {
+    const cached = getCachedSessionInfo();
+    if (!token && !cached.uid) {
       setUser(null);
       setSellerProfile(null);
       setFavourites([]);
@@ -47,41 +55,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSellerProfile(data.sellerProfile || null);
       setFavourites(data.favourites || []);
     } catch {
-      setAuthToken(null);
-      setUser(null);
-      setSellerProfile(null);
-      setFavourites([]);
+      if (cached.user) {
+        setUser(cached.user);
+        setSellerProfile(cached.sellerProfile || null);
+      } else {
+        setAuthToken(null);
+        setUser(null);
+        setSellerProfile(null);
+        setFavourites([]);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadUser();
-  }, []);
 
-  const login = async (email: string, password: string) => {
+    const unsubscribe = subscribeToFirebaseAuthChanges(async (fbUser) => {
+      if (fbUser) {
+        const session = await getUserSessionFromFirestore(fbUser.uid);
+        if (session) {
+          setAuthToken(`firebase-session:${session.user.id}`);
+          setUser(session.user);
+          setSellerProfile(session.sellerProfile || null);
+          setFavourites(session.favourites || []);
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadUser]);
+
+  const login = async (email: string, password: string): Promise<User> => {
     const data = await loginUser(email, password);
     setUser(data.user);
     setSellerProfile(data.sellerProfile || null);
     await loadUser();
+    return data.user;
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<User> => {
     const { signInWithGoogle } = await import('../services/firebase.js');
-    const { user: appUser } = await signInWithGoogle();
+    const { user: appUser, sellerProfile: sp } = await signInWithGoogle();
+    setAuthToken(`firebase-session:${appUser.id}`);
     setUser(appUser);
+    setSellerProfile(sp || null);
+    return appUser;
   };
 
-  const register = async (data: any) => {
+  const register = async (data: any): Promise<User> => {
     const res = await registerUser(data);
     setUser(res.user);
     setSellerProfile(res.sellerProfile || null);
     await loadUser();
+    return res.user;
   };
 
   const logout = () => {
     setAuthToken(null);
+    signOutFromFirebase();
     setUser(null);
     setSellerProfile(null);
     setFavourites([]);
@@ -105,7 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const res = await toggleProductFavourite(productId);
+      const res = user.id
+        ? await toggleFavouriteInFirestore(user.id, productId)
+        : await toggleProductFavourite(productId);
       if (res.favourited) {
         setFavourites(prev => [...prev.filter(id => id !== productId), productId]);
       } else {

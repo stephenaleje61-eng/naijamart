@@ -1062,8 +1062,17 @@ function MainMarketplace() {
           initialMode={authModalMode}
           defaultRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
-          onSuccess={() => {
-            showToast('Welcome to FU MARKET!');
+          onSuccess={(result) => {
+            if (result?.isRegistration) {
+              showToast('Your FU MARKET account has been created successfully.');
+              if (result.user?.role === 'seller') {
+                setShowSellerDashboard(true);
+              } else {
+                setCurrentView('marketplace');
+              }
+            } else {
+              showToast('Welcome to FU MARKET!');
+            }
             loadCatalogProducts(1);
           }}
         />

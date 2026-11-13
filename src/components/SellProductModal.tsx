@@ -310,7 +310,10 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         quantity: Math.max(1, Number(quantity) || 1),
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         images: successfulUrls,
-        imageUrl: successfulUrls[0]
+        imageUrl: successfulUrls[0],
+        sellerId: user.id,
+        sellerName: user.name,
+        shopName: sellerProfile?.shopName || `${user.name}'s Store`
       };
 
       const res = await createProductListing(productPayload);

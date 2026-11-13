@@ -521,9 +521,9 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
 
     const newProduct: Product = {
       id: `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
-      sellerId: user?.id || `seller-${Date.now()}`,
-      sellerName: user?.name || 'FUWUKARI Student',
-      shopName: sellerProfile?.shopName || `${user?.name || 'Student'}'s Store`,
+      sellerId: user?.id || (typeof req.body.sellerId === 'string' && req.body.sellerId.trim()) || `seller-${Date.now()}`,
+      sellerName: user?.name || (typeof req.body.sellerName === 'string' && req.body.sellerName.trim()) || 'FUWUKARI Student',
+      shopName: sellerProfile?.shopName || (typeof req.body.shopName === 'string' && req.body.shopName.trim()) || `${user?.name || req.body.sellerName || 'Student'}'s Store`,
       whatsappNumber: sellerPhone,
       title: String(title).trim(),
       description: String(description).trim(),

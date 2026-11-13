@@ -13,14 +13,16 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
+import { User } from '../types.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { sendForgotPassword, submitResetPassword, getApiBaseUrl, setApiBaseUrl } from '../services/api.js';
+import { mapAuthErrorToUserMessage } from '../services/firebase.js';
 
 interface AuthModalProps {
   initialMode?: 'login' | 'register';
   defaultRole?: 'buyer' | 'seller';
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result?: { user?: User; isRegistration?: boolean }) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -85,13 +87,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(email, password);
-      onSuccess();
+      const signedInUser = await login(cleanEmail, password);
+      onSuccess({ user: signedInUser, isRegistration: false });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(mapAuthErrorToUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -99,13 +113,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleGoogleSignIn = async () => {
     setError('');
+    setSuccessMsg('');
     setLoading(true);
     try {
-      await loginWithGoogle();
-      onSuccess();
+      const signedInUser = await loginWithGoogle();
+      onSuccess({ user: signedInUser, isRegistration: false });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Google sign in failed. Please try again.');
+      setError(mapAuthErrorToUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -114,23 +129,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanWhatsapp = (whatsappNumber || phone).trim();
+    const cleanCity = city.trim();
+    const cleanShopName = shopName.trim();
+
+    if (!cleanName) {
+      setError('Please enter your full name.');
+      return;
+    }
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (role === 'seller' && !cleanShopName) {
+      setError('Please enter your shop or business name.');
+      return;
+    }
+    if (!cleanWhatsapp || cleanWhatsapp.replace(/[^0-9]/g, '').length < 10) {
+      setError('Please enter a valid WhatsApp phone number (e.g. 08012345678).');
+      return;
+    }
+    if (!cleanCity) {
+      setError('Please enter your hostel or campus location.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long. Use letters and numbers for stronger security.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await register({
-        name,
-        email,
+      const createdUser = await register({
+        name: cleanName,
+        email: cleanEmail,
         password,
         role,
-        phone: phone || whatsappNumber,
-        whatsappNumber: whatsappNumber || phone,
+        phone: (phone || cleanWhatsapp).trim(),
+        whatsappNumber: cleanWhatsapp,
         state,
-        city,
-        shopName: role === 'seller' ? shopName || `${name}'s Store` : undefined
+        city: cleanCity,
+        shopName: role === 'seller' ? cleanShopName : undefined
       });
-      onSuccess();
+      setSuccessMsg('Your FU MARKET account has been created successfully.');
+      onSuccess({ user: createdUser, isRegistration: true });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Registration failed.');
+      setError(mapAuthErrorToUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -140,13 +189,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setLoading(true);
     try {
-      const res = await sendForgotPassword(email);
+      const res = await sendForgotPassword(cleanEmail);
       setSuccessMsg(res.message || 'Password recovery verified. Enter your new password.');
       setResetStep('reset');
     } catch (err: any) {
-      setError(err.message || 'Failed to request password recovery.');
+      setError(mapAuthErrorToUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -156,9 +210,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+    if (!newPassword || newPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
     setLoading(true);
     try {
-      const res = await submitResetPassword(email, newPassword);
+      const res = await submitResetPassword(email.trim().toLowerCase(), newPassword);
       setSuccessMsg(res.message || 'Password updated successfully!');
       setTimeout(() => {
         setMode('login');
@@ -167,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setSuccessMsg('You can now sign in with your new password.');
       }, 1500);
     } catch (err: any) {
-      setError(err.message || 'Failed to update password.');
+      setError(mapAuthErrorToUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -261,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* LOGIN FORM */}
           {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-3.5">
+            <form onSubmit={handleLogin} noValidate className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-[#333333] mb-1">Email Address</label>
                 <div className="relative">
@@ -337,13 +395,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* REGISTER FORM */}
           {mode === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-3">
+            <form onSubmit={handleRegister} noValidate className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-[#333333] mb-1">I want to:</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setRole('buyer')}
+                    onClick={() => {
+                      setRole('buyer');
+                      setError('');
+                    }}
                     className={`py-2 text-xs font-black rounded-xl border transition ${
                       role === 'buyer'
                         ? 'bg-[#0B6B3A] border-[#0B6B3A] text-[#F2B90D]'
@@ -354,7 +415,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole('seller')}
+                    onClick={() => {
+                      setRole('seller');
+                      setError('');
+                    }}
                     className={`py-2 text-xs font-black rounded-xl border transition ${
                       role === 'seller'
                         ? 'bg-[#0B6B3A] border-[#0B6B3A] text-[#F2B90D]'

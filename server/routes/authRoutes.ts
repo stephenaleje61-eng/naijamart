@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { db, User, SellerProfile } from '../db.js';
 import { generateToken, requireAuth, AuthenticatedRequest } from '../auth.js';
+import { firestoreSync } from '../firestore.js';
 
 const router = Router();
 
@@ -27,11 +28,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
+
     if (password.length < 6) {
       return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
     const existing = db.users.find(u => u.email === normalizedEmail);
     if (existing) {
       return res.status(400).json({ success: false, error: 'An account with this email address already exists.' });
@@ -79,6 +84,10 @@ router.post('/register', async (req, res) => {
     }
 
     db.save();
+    firestoreSync.saveUser(newUser).catch(() => {});
+    if (sellerProfile) {
+      firestoreSync.saveSellerProfile(sellerProfile).catch(() => {});
+    }
 
     const token = generateToken({
       userId: newUser.id,
@@ -215,6 +224,10 @@ router.put('/profile', requireAuth, (req: AuthenticatedRequest, res: Response) =
     }
 
     db.save();
+    firestoreSync.saveUser(user).catch(() => {});
+    if (sellerProfile) {
+      firestoreSync.saveSellerProfile(sellerProfile).catch(() => {});
+    }
 
     res.json({
       success: true,

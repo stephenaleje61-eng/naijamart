@@ -19,13 +19,21 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile as updateFirebaseProfile,
+  signOut,
+  onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
+import bcrypt from 'bcryptjs';
 import activeFirebaseConfig from './firebaseConfig.js';
 import { isValidImageUrl } from '../utils/productImages.js';
 import {
   Product,
   User,
+  SellerProfile,
   BikeRider,
   HubMessage,
   HubActiveUser,
@@ -513,24 +521,436 @@ export async function createProductDirectlyInFirestore(
   return product;
 }
 
-// 5. Firebase Authentication Helpers
-export async function signInWithGoogle(): Promise<{ user: User; firebaseUser: FirebaseUser }> {
+// 5. Firebase Authentication & Firestore User/Seller Account Management
+const SESSION_UID_KEY = 'fu_market_session_uid';
+const SESSION_USER_KEY = 'fu_market_auth_user';
+const SESSION_SELLER_KEY = 'fu_market_seller_profile';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function sanitizeUserDoc(id: string, data: any): User {
+  const role: User['role'] =
+    data?.role === 'admin'
+      ? 'admin'
+      : data?.role === 'seller'
+      ? 'seller'
+      : 'buyer';
+
+  return {
+    id,
+    name: String(data?.name || data?.displayName || 'FUWUKARI Student').trim(),
+    email: String(data?.email || '').toLowerCase().trim(),
+    role,
+    phone: data?.phone ? String(data.phone).trim() : '',
+    whatsappNumber: data?.whatsappNumber ? String(data.whatsappNumber).trim() : (data?.phone ? String(data.phone).trim() : ''),
+    state: data?.state ? String(data.state).trim() : 'Taraba',
+    city: data?.city ? String(data.city).trim() : 'Wukari',
+    ...(data?.avatarUrl || data?.photoURL ? { avatarUrl: String(data.avatarUrl || data.photoURL) } : {}),
+    ...(data?.isSuspended ? { isSuspended: true } : {}),
+    ...(data?.suspensionReason ? { suspensionReason: String(data.suspensionReason) } : {}),
+    createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
+  };
+}
+
+export function saveUserSessionCache(user: User | null, sellerProfile?: SellerProfile | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (user) {
+      const cleanUser = sanitizeUserDoc(user.id, user);
+      localStorage.setItem(SESSION_UID_KEY, cleanUser.id);
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(cleanUser));
+      localStorage.setItem('zangamarket_auth_user', JSON.stringify(cleanUser));
+      if (sellerProfile) {
+        localStorage.setItem(SESSION_SELLER_KEY, JSON.stringify(sellerProfile));
+      } else {
+        localStorage.removeItem(SESSION_SELLER_KEY);
+      }
+    } else {
+      localStorage.removeItem(SESSION_UID_KEY);
+      localStorage.removeItem(SESSION_USER_KEY);
+      localStorage.removeItem(SESSION_SELLER_KEY);
+      localStorage.removeItem('zangamarket_auth_user');
+    }
+  } catch {
+    // Non-blocking storage safeguard
+  }
+}
+
+export function getCachedSessionInfo(): { uid: string | null; user: User | null; sellerProfile: SellerProfile | null } {
+  if (typeof window === 'undefined') return { uid: null, user: null, sellerProfile: null };
+  try {
+    const uid = localStorage.getItem(SESSION_UID_KEY);
+    const rawUser = localStorage.getItem(SESSION_USER_KEY) || localStorage.getItem('zangamarket_auth_user');
+    const rawSeller = localStorage.getItem(SESSION_SELLER_KEY);
+    const user = rawUser ? (JSON.parse(rawUser) as User) : null;
+    const sellerProfile = rawSeller ? (JSON.parse(rawSeller) as SellerProfile) : null;
+    return {
+      uid: uid || user?.id || null,
+      user,
+      sellerProfile
+    };
+  } catch {
+    return { uid: null, user: null, sellerProfile: null };
+  }
+}
+
+export function mapAuthErrorToUserMessage(err: any): string {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '');
+
+  if (code === 'auth/email-already-in-use') {
+    return 'This email address is already registered. Please sign in.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password must be at least 6 characters long. Use a mix of letters and numbers for better security.';
+  }
+  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/user-not-found') {
+    return 'Invalid email or password.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Google sign-in was cancelled.';
+  }
+  if (
+    code === 'auth/network-request-failed' ||
+    code === 'unavailable' ||
+    msg.toLowerCase().includes('network') ||
+    msg.toLowerCase().includes('failed to fetch')
+  ) {
+    return 'Unable to connect. Please check your internet connection and try again.';
+  }
+  if (msg.includes('Request failed with status') || msg.includes('Backend API route')) {
+    return 'Unable to reach registration service. Please check your internet connection and try again.';
+  }
+  return msg || 'Unable to complete authentication. Please try again.';
+}
+
+async function getSellerProfileForUser(uid: string): Promise<SellerProfile | null> {
+  try {
+    const directSnap = await getDoc(doc(db, 'sellerProfiles', `profile-${uid}`));
+    if (directSnap.exists()) {
+      return { id: directSnap.id, ...(directSnap.data() as any) } as SellerProfile;
+    }
+
+    const q = query(collection(db, 'sellerProfiles'), where('userId', '==', uid), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      return { id: d.id, ...(d.data() as any) } as SellerProfile;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[getSellerProfileForUser warning]:', err);
+    return null;
+  }
+}
+
+export async function getUserSessionFromFirestore(uid: string): Promise<{
+  user: User;
+  sellerProfile: SellerProfile | null;
+  favourites: string[];
+} | null> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (!userDoc.exists()) return null;
+
+    const rawData = userDoc.data() || {};
+    const user = sanitizeUserDoc(userDoc.id, rawData);
+    const sellerProfile = await getSellerProfileForUser(user.id);
+    const favourites = Array.isArray(rawData.favourites)
+      ? rawData.favourites.filter((f: any) => typeof f === 'string')
+      : [];
+
+    saveUserSessionCache(user, sellerProfile);
+    return { user, sellerProfile, favourites };
+  } catch (err) {
+    console.warn('[getUserSessionFromFirestore warning]:', err);
+    return null;
+  }
+}
+
+export async function registerAccountInFirebase(payload: {
+  name: string;
+  email: string;
+  password: string;
+  role?: 'buyer' | 'seller';
+  phone?: string;
+  whatsapp?: string;
+  whatsappNumber?: string;
+  state?: string;
+  city?: string;
+  shopName?: string;
+  shopDescription?: string;
+}): Promise<{ user: User; token: string; sellerProfile?: SellerProfile }> {
+  const cleanName = String(payload.name || '').trim();
+  const normalizedEmail = String(payload.email || '').trim().toLowerCase();
+  const password = String(payload.password || '');
+  const accountRole: 'buyer' | 'seller' = payload.role === 'seller' ? 'seller' : 'buyer';
+  const cleanWhatsapp = String(payload.whatsappNumber || payload.whatsapp || payload.phone || '').trim();
+  const cleanPhone = String(payload.phone || cleanWhatsapp).trim();
+  const cleanState = String(payload.state || 'Taraba').trim();
+  const cleanCity = String(payload.city || 'Wukari').trim();
+  const cleanShopName = String(payload.shopName || '').trim();
+
+  if (!cleanName) {
+    throw new Error('Please enter your full name.');
+  }
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (!password || password.length < 6) {
+    throw new Error('Password must be at least 6 characters long. Use letters and numbers for stronger security.');
+  }
+  if (!cleanWhatsapp || cleanWhatsapp.replace(/[^0-9]/g, '').length < 10) {
+    throw new Error('Please enter a valid WhatsApp phone number (e.g. 08012345678).');
+  }
+  if (!cleanCity) {
+    throw new Error('Please enter your hostel or campus location.');
+  }
+  if (accountRole === 'seller' && !cleanShopName) {
+    throw new Error('Please enter your shop or business name.');
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('Unable to connect. Please check your internet connection and try again.');
+  }
+
+  try {
+    // 1. Check duplicate email in Cloud Firestore users collection
+    const existingSnap = await getDocs(
+      query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+    );
+    if (!existingSnap.empty) {
+      throw new Error('This email address is already registered. Please sign in.');
+    }
+
+    let uid = '';
+    let passwordHash: string | undefined;
+
+    // 2. Attempt real Firebase Authentication Email/Password signup
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+      uid = cred.user.uid;
+      await updateFirebaseProfile(cred.user, { displayName: cleanName }).catch(() => {});
+    } catch (authErr: any) {
+      const code = String(authErr?.code || '');
+      if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+        // Project has not enabled Email/Password sign-in in Firebase Console:
+        // Store salted bcrypt credential securely in Cloud Firestore so registration & login still work seamlessly.
+        uid = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        const salt = await bcrypt.genSalt(10);
+        passwordHash = await bcrypt.hash(password, salt);
+      } else {
+        throw new Error(mapAuthErrorToUserMessage(authErr));
+      }
+    }
+
+    const now = new Date().toISOString();
+    const userDocData: Record<string, any> = {
+      id: uid,
+      name: cleanName,
+      email: normalizedEmail,
+      role: accountRole,
+      phone: cleanPhone,
+      whatsappNumber: cleanWhatsapp,
+      state: cleanState,
+      city: cleanCity,
+      isOnline: true,
+      lastSeen: Date.now(),
+      favourites: [],
+      createdAt: now,
+      updatedAt: now
+    };
+    if (passwordHash) {
+      userDocData.passwordHash = passwordHash;
+    }
+
+    await setDoc(doc(db, 'users', uid), stripUndefined(userDocData));
+
+    let sellerProfile: SellerProfile | undefined;
+    if (accountRole === 'seller') {
+      const slugBase = cleanShopName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || 'campus-store';
+
+      sellerProfile = {
+        id: `profile-${uid}`,
+        userId: uid,
+        shopName: cleanShopName,
+        shopSlug: `${slugBase}-${uid.slice(-4)}`,
+        description:
+          payload.shopDescription?.trim() ||
+          `Welcome to ${cleanShopName} on FU MARKET. Chat with us for fast campus delivery!`,
+        whatsappNumber: cleanWhatsapp,
+        state: cleanState,
+        city: cleanCity,
+        isVerified: false,
+        createdAt: now
+      };
+
+      await setDoc(doc(db, 'sellerProfiles', sellerProfile.id), stripUndefined(sellerProfile));
+    }
+
+    const cleanUser = sanitizeUserDoc(uid, userDocData);
+    saveUserSessionCache(cleanUser, sellerProfile || null);
+
+    return {
+      user: cleanUser,
+      token: `firebase-session:${uid}`,
+      ...(sellerProfile ? { sellerProfile } : {})
+    };
+  } catch (err: any) {
+    throw new Error(mapAuthErrorToUserMessage(err));
+  }
+}
+
+export async function loginAccountInFirebase(
+  email: string,
+  password: string
+): Promise<{ user: User; token: string; sellerProfile?: SellerProfile } | null> {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (!password) {
+    throw new Error('Please enter your password.');
+  }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('Unable to connect. Please check your internet connection and try again.');
+  }
+
+  try {
+    // 1. Try Firebase Auth email/password sign-in first
+    try {
+      const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+      const fbUser = cred.user;
+      let userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+
+      if (!userDoc.exists()) {
+        // Check if profile exists by email
+        const byEmail = await getDocs(
+          query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+        );
+        if (!byEmail.empty) {
+          userDoc = byEmail.docs[0];
+        }
+      }
+
+      let cleanUser: User;
+      if (userDoc.exists()) {
+        const raw = userDoc.data();
+        if (raw?.isSuspended) {
+          throw new Error(
+            `Account suspended by marketplace moderation: ${raw.suspensionReason || 'Violation of trust & safety policy.'}`
+          );
+        }
+        cleanUser = sanitizeUserDoc(userDoc.id, raw);
+      } else {
+        cleanUser = {
+          id: fbUser.uid,
+          name: fbUser.displayName || 'FUWUKARI Student',
+          email: normalizedEmail,
+          role: 'buyer',
+          state: 'Taraba',
+          city: 'Wukari',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'users', fbUser.uid), stripUndefined(cleanUser), { merge: true });
+      }
+
+      const sellerProfile = await getSellerProfileForUser(cleanUser.id);
+      saveUserSessionCache(cleanUser, sellerProfile);
+      return {
+        user: cleanUser,
+        token: `firebase-session:${cleanUser.id}`,
+        ...(sellerProfile ? { sellerProfile } : {})
+      };
+    } catch (authErr: any) {
+      const code = String(authErr?.code || '');
+      if (code === 'auth/network-request-failed' || code === 'auth/too-many-requests') {
+        throw new Error(mapAuthErrorToUserMessage(authErr));
+      }
+      // Fall through to Firestore credential lookup when Email/Password provider isn't enabled or user migrated
+    }
+
+    // 2. Check Cloud Firestore users collection by email
+    const q = query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      return null;
+    }
+
+    const userDoc = snap.docs[0];
+    const data = userDoc.data() || {};
+
+    if (data.isSuspended) {
+      throw new Error(
+        `Account suspended by marketplace moderation: ${data.suspensionReason || 'Violation of trust & safety policy.'}`
+      );
+    }
+
+    if (data.passwordHash) {
+      const valid = await bcrypt.compare(password, String(data.passwordHash));
+      if (!valid) {
+        throw new Error('Invalid email or password.');
+      }
+    } else {
+      throw new Error("This account uses Google Sign-In. Please click 'Continue with Google' or reset your password.");
+    }
+
+    const cleanUser = sanitizeUserDoc(userDoc.id, data);
+    const sellerProfile = await getSellerProfileForUser(cleanUser.id);
+    await updateDoc(userDoc.ref, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
+    saveUserSessionCache(cleanUser, sellerProfile);
+
+    return {
+      user: cleanUser,
+      token: `firebase-session:${cleanUser.id}`,
+      ...(sellerProfile ? { sellerProfile } : {})
+    };
+  } catch (err: any) {
+    throw new Error(mapAuthErrorToUserMessage(err));
+  }
+}
+
+export async function signInWithGoogle(): Promise<{
+  user: User;
+  firebaseUser: FirebaseUser;
+  sellerProfile?: SellerProfile | null;
+}> {
   try {
     const cred = await signInWithPopup(auth, googleProvider);
     const fbUser = cred.user;
+    const normalizedEmail = (fbUser.email || '').toLowerCase().trim();
 
-    const userDocRef = doc(db, 'users', fbUser.uid);
-    const userDoc = await getDoc(userDocRef);
+    let userDocRef = doc(db, 'users', fbUser.uid);
+    let userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists() && normalizedEmail) {
+      const byEmailSnap = await getDocs(
+        query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+      );
+      if (!byEmailSnap.empty) {
+        userDoc = byEmailSnap.docs[0];
+        userDocRef = userDoc.ref;
+      }
+    }
 
     let appUser: User;
     if (userDoc.exists()) {
-      appUser = userDoc.data() as User;
+      appUser = sanitizeUserDoc(userDoc.id, userDoc.data());
+      await updateDoc(userDocRef, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
     } else {
       appUser = stripUndefined({
         id: fbUser.uid,
         name: fbUser.displayName || 'FUWUKARI Student',
-        email: fbUser.email || '',
-        role: 'seller' as const,
+        email: normalizedEmail,
+        role: 'buyer' as const,
         phone: fbUser.phoneNumber || '',
         whatsappNumber: fbUser.phoneNumber || '',
         state: 'Taraba',
@@ -538,14 +958,305 @@ export async function signInWithGoogle(): Promise<{ user: User; firebaseUser: Fi
         ...(fbUser.photoURL ? { avatarUrl: fbUser.photoURL } : {}),
         createdAt: new Date().toISOString()
       });
-      await setDoc(userDocRef, appUser);
+      await setDoc(userDocRef, stripUndefined({ ...appUser, isOnline: true, lastSeen: Date.now(), favourites: [] }));
     }
 
-    return { user: appUser, firebaseUser: fbUser };
-  } catch (err) {
+    const sellerProfile = await getSellerProfileForUser(appUser.id);
+    saveUserSessionCache(appUser, sellerProfile);
+    return { user: appUser, firebaseUser: fbUser, sellerProfile };
+  } catch (err: any) {
     console.error('Google Sign-In Error:', err);
-    throw err;
+    throw new Error(mapAuthErrorToUserMessage(err));
   }
+}
+
+export async function signOutFromFirebase(): Promise<void> {
+  saveUserSessionCache(null);
+  try {
+    await signOut(auth);
+  } catch {
+    // Non-blocking
+  }
+}
+
+export function subscribeToFirebaseAuthChanges(callback: (fbUser: FirebaseUser | null) => void): () => void {
+  return onAuthStateChanged(auth, callback);
+}
+
+export async function sendPasswordResetInFirebase(email: string): Promise<{ success: boolean; message: string }> {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, normalizedEmail);
+    return {
+      success: true,
+      message: 'Password reset instructions have been sent to your email address.'
+    };
+  } catch (err: any) {
+    const code = String(err?.code || '');
+    if (
+      code === 'auth/operation-not-allowed' ||
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-credential'
+    ) {
+      const snap = await getDocs(
+        query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+      );
+      if (!snap.empty) {
+        return {
+          success: true,
+          message: 'Account verified. Enter your new password below.'
+        };
+      }
+    }
+    throw new Error(mapAuthErrorToUserMessage(err));
+  }
+}
+
+export async function resetAccountPasswordInFirestore(
+  email: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('Password must be at least 6 characters long.');
+  }
+
+  const snap = await getDocs(
+    query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+  );
+  if (snap.empty) {
+    throw new Error('No user account found with this email address.');
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(newPassword, salt);
+  await updateDoc(snap.docs[0].ref, {
+    passwordHash,
+    updatedAt: new Date().toISOString()
+  });
+
+  return {
+    success: true,
+    message: 'Password has been updated successfully! You can now sign in.'
+  };
+}
+
+export async function updateUserProfileInFirestore(
+  uid: string,
+  profileData: Partial<User>
+): Promise<{ user: User; sellerProfile?: SellerProfile | null }> {
+  const userRef = doc(db, 'users', uid);
+  const cleanUpdates: Record<string, any> = {
+    updatedAt: new Date().toISOString()
+  };
+  if (profileData.name) cleanUpdates.name = profileData.name.trim();
+  if (profileData.phone !== undefined) cleanUpdates.phone = profileData.phone.trim();
+  if (profileData.whatsappNumber !== undefined) cleanUpdates.whatsappNumber = profileData.whatsappNumber.trim();
+  if (profileData.state !== undefined) cleanUpdates.state = profileData.state.trim();
+  if (profileData.city !== undefined) cleanUpdates.city = profileData.city.trim();
+  if (profileData.avatarUrl !== undefined) cleanUpdates.avatarUrl = profileData.avatarUrl;
+
+  await setDoc(userRef, stripUndefined(cleanUpdates), { merge: true });
+  const updatedSnap = await getDoc(userRef);
+  const user = sanitizeUserDoc(uid, updatedSnap.data() || {});
+
+  const sellerProfile = await getSellerProfileForUser(uid);
+  if (sellerProfile) {
+    const sellerUpdates: Record<string, any> = {};
+    if (profileData.whatsappNumber !== undefined) sellerUpdates.whatsappNumber = profileData.whatsappNumber.trim();
+    if (profileData.state !== undefined) sellerUpdates.state = profileData.state.trim();
+    if (profileData.city !== undefined) sellerUpdates.city = profileData.city.trim();
+    if (Object.keys(sellerUpdates).length > 0) {
+      await setDoc(doc(db, 'sellerProfiles', sellerProfile.id), stripUndefined(sellerUpdates), { merge: true });
+      Object.assign(sellerProfile, sellerUpdates);
+    }
+  }
+
+  saveUserSessionCache(user, sellerProfile);
+  return { user, sellerProfile };
+}
+
+export async function getSellerStorefrontFromFirestore(identifier: string): Promise<{
+  seller: SellerProfile & { totalListings: number };
+  products: Product[];
+}> {
+  const cleanId = String(identifier || '').trim();
+  let profile: SellerProfile | null = null;
+
+  // 1. Direct lookup in sellerProfiles
+  const directSnap = await getDoc(doc(db, 'sellerProfiles', cleanId));
+  if (directSnap.exists()) {
+    profile = { id: directSnap.id, ...(directSnap.data() as any) } as SellerProfile;
+  }
+
+  if (!profile) {
+    const byUserSnap = await getDocs(
+      query(collection(db, 'sellerProfiles'), where('userId', '==', cleanId), limit(1))
+    );
+    if (!byUserSnap.empty) {
+      const d = byUserSnap.docs[0];
+      profile = { id: d.id, ...(d.data() as any) } as SellerProfile;
+    }
+  }
+
+  if (!profile) {
+    const bySlugSnap = await getDocs(
+      query(collection(db, 'sellerProfiles'), where('shopSlug', '==', cleanId), limit(1))
+    );
+    if (!bySlugSnap.empty) {
+      const d = bySlugSnap.docs[0];
+      profile = { id: d.id, ...(d.data() as any) } as SellerProfile;
+    }
+  }
+
+  // 2. Auto-build from users doc if needed
+  if (!profile) {
+    const userSnap = await getDoc(doc(db, 'users', cleanId));
+    if (userSnap.exists()) {
+      const u = sanitizeUserDoc(userSnap.id, userSnap.data());
+      const shopName = `${u.name}'s Store`;
+      const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      profile = {
+        id: `profile-${u.id}`,
+        userId: u.id,
+        shopName,
+        shopSlug: `${slug}-${u.id.slice(-4)}`,
+        description: `Student storefront on FU MARKET (${u.city || 'Wukari'}).`,
+        whatsappNumber: u.whatsappNumber || u.phone || '',
+        state: u.state || 'Taraba',
+        city: u.city || 'Wukari',
+        isVerified: false,
+        createdAt: u.createdAt
+      };
+    }
+  }
+
+  // 3. Load matching seller products
+  const products = await getProductsFromFirestore({ sellerId: profile?.userId || cleanId, limitCount: 100 });
+
+  if (!profile && products.length > 0) {
+    const first = products[0];
+    const shopName = first.shopName || first.sellerName || 'FU MARKET Seller';
+    const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    profile = {
+      id: `profile-${cleanId}`,
+      userId: cleanId,
+      shopName,
+      shopSlug: `${slug}-${cleanId.slice(-4)}`,
+      description: 'Genuine FUWUKARI student seller on FU MARKET.',
+      whatsappNumber: first.whatsappNumber || '',
+      state: first.state || 'Taraba',
+      city: first.city || 'Wukari',
+      isVerified: false,
+      createdAt: first.createdAt
+    };
+  }
+
+  if (!profile) {
+    throw new Error('Seller storefront not found.');
+  }
+
+  return {
+    seller: {
+      ...profile,
+      totalListings: products.length
+    },
+    products
+  };
+}
+
+export async function updateSellerProfileInFirestore(
+  user: User,
+  profileData: Partial<SellerProfile>
+): Promise<SellerProfile> {
+  const existing = await getSellerProfileForUser(user.id);
+  const now = new Date().toISOString();
+  const nextShopName = (profileData.shopName || existing?.shopName || `${user.name}'s Store`).trim();
+  const slugBase = nextShopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'campus-store';
+
+  const updatedProfile: SellerProfile = stripUndefined({
+    id: existing?.id || `profile-${user.id}`,
+    userId: user.id,
+    shopName: nextShopName,
+    shopSlug: `${slugBase}-${user.id.slice(-4)}`,
+    description: profileData.description !== undefined
+      ? profileData.description.trim()
+      : existing?.description || 'Official student storefront on FU MARKET.',
+    whatsappNumber: profileData.whatsappNumber !== undefined
+      ? profileData.whatsappNumber.trim()
+      : existing?.whatsappNumber || user.whatsappNumber || '',
+    state: profileData.state !== undefined ? profileData.state.trim() : existing?.state || user.state || 'Taraba',
+    city: profileData.city !== undefined ? profileData.city.trim() : existing?.city || user.city || 'Wukari',
+    ...(profileData.address !== undefined ? { address: profileData.address.trim() } : existing?.address ? { address: existing.address } : {}),
+    ...(profileData.shopLogo !== undefined ? { shopLogo: profileData.shopLogo } : existing?.shopLogo ? { shopLogo: existing.shopLogo } : {}),
+    ...(profileData.coverImage !== undefined ? { coverImage: profileData.coverImage } : existing?.coverImage ? { coverImage: existing.coverImage } : {}),
+    isVerified: Boolean(existing?.isVerified),
+    createdAt: existing?.createdAt || now
+  });
+
+  await setDoc(doc(db, 'sellerProfiles', updatedProfile.id), stripUndefined(updatedProfile), { merge: true });
+  await setDoc(doc(db, 'users', user.id), stripUndefined({
+    whatsappNumber: updatedProfile.whatsappNumber,
+    state: updatedProfile.state,
+    city: updatedProfile.city,
+    updatedAt: now
+  }), { merge: true });
+
+  saveUserSessionCache(
+    {
+      ...user,
+      whatsappNumber: updatedProfile.whatsappNumber,
+      state: updatedProfile.state,
+      city: updatedProfile.city
+    },
+    updatedProfile
+  );
+
+  return updatedProfile;
+}
+
+export async function toggleFavouriteInFirestore(
+  uid: string,
+  productId: string
+): Promise<{ favourited: boolean; message: string }> {
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+  const current = snap.exists() && Array.isArray(snap.data().favourites)
+    ? (snap.data().favourites as string[])
+    : [];
+  const exists = current.includes(productId);
+  const next = exists ? current.filter((id) => id !== productId) : [...current, productId];
+  await setDoc(userRef, { favourites: next, updatedAt: new Date().toISOString() }, { merge: true });
+  return {
+    favourited: !exists,
+    message: !exists ? 'Saved to favourites' : 'Removed from favourites'
+  };
+}
+
+export async function submitProductReportToFirestore(
+  productId: string,
+  reportData: { reason: string; details: string; reporterEmail?: string; productTitle?: string; sellerId?: string }
+): Promise<{ success: boolean; message: string }> {
+  const id = `report-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  await setDoc(doc(db, 'reports', id), stripUndefined({
+    id,
+    productId,
+    productTitle: reportData.productTitle || '',
+    sellerId: reportData.sellerId || '',
+    reason: reportData.reason,
+    details: reportData.details,
+    reporterEmail: reportData.reporterEmail || 'anonymous@student.fuwukari.edu.ng',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  }));
+  return { success: true, message: 'Report submitted successfully to FU MARKET safety team.' };
 }
 
 // 6. Bike Riders (Wukari Okada Directory)

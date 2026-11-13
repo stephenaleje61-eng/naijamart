@@ -223,10 +223,26 @@ class Database {
     try {
       const { firestoreSync } = await import('./firestore.js');
       // Load permanent products directly from Firestore
-      const firestoreProducts = await firestoreSync.loadProducts();
+      const [firestoreProducts, firestoreUsers, firestoreProfiles] = await Promise.all([
+        firestoreSync.loadProducts(),
+        firestoreSync.loadUsers(),
+        firestoreSync.loadSellerProfiles()
+      ]);
       this.data.products = firestoreProducts || [];
+
+      for (const fu of firestoreUsers) {
+        if (!this.data.users.some(u => u.id === fu.id || (fu.email && u.email === fu.email))) {
+          this.data.users.push(fu);
+        }
+      }
+      for (const fp of firestoreProfiles) {
+        if (!this.data.sellerProfiles.some(p => p.id === fp.id || p.userId === fp.userId)) {
+          this.data.sellerProfiles.push(fp);
+        }
+      }
+
       this.save();
-      console.log(`[Database] Production sync active: ${this.data.products.length} genuine permanent products loaded.`);
+      console.log(`[Database] Production sync active: ${this.data.products.length} genuine permanent products and ${this.data.users.length} users loaded.`);
     } catch (err) {
       console.error('[Database] initFirestoreSync error:', err);
     }

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db.js';
 import { requireSeller, AuthenticatedRequest } from '../auth.js';
+import { firestoreSync } from '../firestore.js';
 
 const router = Router();
 
@@ -177,6 +178,8 @@ router.put('/profile', requireSeller, (req: AuthenticatedRequest, res: Response)
   }
 
   db.save();
+  firestoreSync.saveSellerProfile(profile).catch(() => {});
+  firestoreSync.saveUser(user).catch(() => {});
 
   res.json({
     message: 'Storefront updated successfully.',

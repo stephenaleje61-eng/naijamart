@@ -18,6 +18,19 @@ import {
   getBikeRidersFromFirestore,
   createBikeRiderDirectlyInFirestore,
   updateBikeRiderAvailability,
+  registerAccountInFirebase,
+  loginAccountInFirebase,
+  getUserSessionFromFirestore,
+  updateUserProfileInFirestore,
+  sendPasswordResetInFirebase,
+  resetAccountPasswordInFirestore,
+  getSellerStorefrontFromFirestore,
+  updateSellerProfileInFirestore,
+  toggleFavouriteInFirestore,
+  submitProductReportToFirestore,
+  getCachedSessionInfo,
+  saveUserSessionCache,
+  mapAuthErrorToUserMessage,
   auth
 } from './firebase.js';
 import { DEFAULT_CATEGORIES } from '../constants/categories.js';
@@ -289,7 +302,11 @@ export async function createProductListing(
       productData = payload;
     }
 
-    const createdProduct = await createProductDirectlyInFirestore(productData);
+    const cached = getCachedSessionInfo();
+    if (!productData.shopName && cached.sellerProfile?.shopName) {
+      productData.shopName = cached.sellerProfile.shopName;
+    }
+    const createdProduct = await createProductDirectlyInFirestore(productData, cached.user);
     return {
       success: true,
       product: createdProduct,
@@ -326,6 +343,11 @@ export async function deleteProductListing(id: string): Promise<{ message: strin
 }
 
 export async function toggleProductFavourite(id: string): Promise<{ favourited: boolean; message: string }> {
+  const cached = getCachedSessionInfo();
+  const uid = auth.currentUser?.uid || cached.uid;
+  if (uid) {
+    return toggleFavouriteInFirestore(uid, id);
+  }
   return safeFetchJson(`/api/products/${id}/favourite`, {
     method: 'POST',
     headers: getHeaders()
@@ -333,11 +355,7 @@ export async function toggleProductFavourite(id: string): Promise<{ favourited: 
 }
 
 export async function reportProduct(id: string, reportData: { reason: string; details: string; reporterEmail?: string }): Promise<any> {
-  return safeFetchJson(`/api/products/${id}/report`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(reportData)
-  });
+  return submitProductReportToFirestore(id, reportData);
 }
 
 // --- IMAGE UPLOAD API ---
@@ -374,48 +392,100 @@ export async function fetchCategories(): Promise<Category[]> {
 
 // --- AUTH API ---
 export async function loginUser(email: string, password: string): Promise<{ user: User; token: string; sellerProfile?: SellerProfile }> {
-  const data = await safeFetchJson('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  setAuthToken(data.token);
-  return data;
+  const fbRes = await loginAccountInFirebase(email, password);
+  if (fbRes) {
+    setAuthToken(fbRes.token);
+    return fbRes;
+  }
+
+  // Fallback for legacy Express-only accounts (e.g. local admin@fumarket.ng when Express backend is active)
+  try {
+    const data = await safeFetchJson('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    setAuthToken(data.token);
+    if (data.user) {
+      saveUserSessionCache(data.user, data.sellerProfile || null);
+    }
+    return data;
+  } catch (err: any) {
+    const msg = String(err?.message || '');
+    if (msg.includes('404') || msg.includes('Backend API route')) {
+      throw new Error('Invalid email or password.');
+    }
+    throw new Error(mapAuthErrorToUserMessage(err));
+  }
 }
 
 export async function registerUser(userData: any): Promise<{ user: User; token: string; sellerProfile?: SellerProfile }> {
-  const data = await safeFetchJson('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userData)
-  });
-  setAuthToken(data.token);
-  return data;
+  // Primary unified registration in Firebase Auth + Cloud Firestore (no Express /api/* dependency or 404 error)
+  const res = await registerAccountInFirebase(userData);
+  setAuthToken(res.token);
+  return res;
 }
 
 export async function sendForgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-  return safeFetchJson('/api/auth/forgot-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email })
-  });
+  try {
+    return await sendPasswordResetInFirebase(email);
+  } catch (err: any) {
+    if (getApiBaseUrl()) {
+      return safeFetchJson('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+    }
+    throw err;
+  }
 }
 
 export async function submitResetPassword(email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  return safeFetchJson('/api/auth/reset-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, newPassword })
-  });
+  try {
+    return await resetAccountPasswordInFirestore(email, newPassword);
+  } catch (err: any) {
+    if (getApiBaseUrl()) {
+      return safeFetchJson('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
+      });
+    }
+    throw err;
+  }
 }
 
-export async function fetchCurrentUser(): Promise<{ user: User; sellerProfile?: SellerProfile; favourites: string[] }> {
-  return safeFetchJson('/api/auth/me', {
-    headers: getHeaders()
-  });
+export async function fetchCurrentUser(): Promise<{ user: User; sellerProfile?: SellerProfile | null; favourites: string[] }> {
+  const token = getAuthToken();
+  const cached = getCachedSessionInfo();
+  const uid = auth.currentUser?.uid || cached.uid || (token?.startsWith('firebase-session:') ? token.replace('firebase-session:', '') : null);
+
+  if (uid) {
+    const session = await getUserSessionFromFirestore(uid);
+    if (session) {
+      return session;
+    }
+    if (cached.user) {
+      return { user: cached.user, sellerProfile: cached.sellerProfile, favourites: [] };
+    }
+  }
+
+  if (token && !token.startsWith('firebase-session:')) {
+    return safeFetchJson('/api/auth/me', {
+      headers: getHeaders()
+    });
+  }
+
+  throw new Error('No active user session.');
 }
 
-export async function updateProfile(profileData: any): Promise<{ user: User; sellerProfile?: SellerProfile }> {
+export async function updateProfile(profileData: any): Promise<{ user: User; sellerProfile?: SellerProfile | null }> {
+  const cached = getCachedSessionInfo();
+  const uid = auth.currentUser?.uid || cached.uid;
+  if (uid) {
+    return updateUserProfileInFirestore(uid, profileData);
+  }
   return safeFetchJson('/api/auth/profile', {
     method: 'PUT',
     headers: getHeaders(),
@@ -425,24 +495,35 @@ export async function updateProfile(profileData: any): Promise<{ user: User; sel
 
 // --- SELLER STOREFRONT & DASHBOARD API ---
 export async function fetchSellerStorefront(identifier: string): Promise<{ seller: SellerProfile & { totalListings: number }; products: Product[] }> {
-  return safeFetchJson(`/api/sellers/storefront/${identifier}`);
+  return getSellerStorefrontFromFirestore(identifier);
 }
 
 export async function fetchMySellerListings(): Promise<{ listings: Product[]; stats: any }> {
+  const cached = getCachedSessionInfo();
+  const token = getAuthToken();
+  const userId = auth.currentUser?.uid || cached.uid || cached.user?.id || '';
+
+  if (userId && (!token || token.startsWith('firebase-session:'))) {
+    const items = await getProductsFromFirestore({ sellerId: userId, limitCount: 100 });
+    return {
+      listings: items,
+      stats: {
+        totalProducts: items.length,
+        activeCount: items.filter(p => p.status === 'active').length,
+        expiringSoonCount: 0,
+        totalViews: items.reduce((sum, p) => sum + (p.views || 0), 0),
+        totalWhatsAppClicks: items.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0)
+      }
+    };
+  }
+
   try {
     return await safeFetchJson('/api/sellers/my-listings', {
       headers: getHeaders()
     });
   } catch (err) {
     console.warn('[fetchMySellerListings fallback to Firestore]:', err);
-    const userJson = localStorage.getItem('zangamarket_auth_user') || localStorage.getItem('naijamart_user');
-    let userId = '';
-    if (userJson) {
-      try {
-        userId = JSON.parse(userJson).id;
-      } catch {}
-    }
-    const items = await getProductsFromFirestore({ sellerId: userId || undefined });
+    const items = await getProductsFromFirestore({ sellerId: userId || undefined, limitCount: 100 });
     return {
       listings: items,
       stats: {
@@ -457,6 +538,12 @@ export async function fetchMySellerListings(): Promise<{ listings: Product[]; st
 }
 
 export async function updateSellerProfile(profileData: Partial<SellerProfile>): Promise<any> {
+  const cached = getCachedSessionInfo();
+  const uid = auth.currentUser?.uid || cached.uid;
+  if (uid && cached.user) {
+    const profile = await updateSellerProfileInFirestore(cached.user, profileData);
+    return { message: 'Storefront updated successfully.', profile };
+  }
   return safeFetchJson('/api/sellers/profile', {
     method: 'PUT',
     headers: getHeaders(),

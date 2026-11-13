@@ -198,6 +198,38 @@ export class FirestoreSync {
     }
   }
 
+  // Load Users from Firestore
+  async loadUsers(): Promise<User[]> {
+    try {
+      const snap = await getDocs(collection(firestoreDb, 'users'));
+      const list: User[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data?.email) {
+          list.push({
+            id: d.id,
+            name: String(data.name || data.displayName || 'FUWUKARI Student'),
+            email: String(data.email).toLowerCase().trim(),
+            passwordHash: String(data.passwordHash || ''),
+            role: data.role === 'admin' ? 'admin' : data.role === 'seller' ? 'seller' : 'buyer',
+            phone: data.phone || '',
+            whatsappNumber: data.whatsappNumber || data.phone || '',
+            state: data.state || 'Taraba',
+            city: data.city || 'Wukari',
+            avatarUrl: data.avatarUrl || data.photoURL,
+            isSuspended: Boolean(data.isSuspended),
+            suspensionReason: data.suspensionReason,
+            createdAt: toIsoString(data.createdAt)
+          });
+        }
+      });
+      return list;
+    } catch (err) {
+      console.error('[FirestoreSync] Failed to load users from Firestore:', err);
+      return [];
+    }
+  }
+
   // Save Seller Profile
   async saveSellerProfile(profile: SellerProfile): Promise<void> {
     try {
@@ -206,6 +238,39 @@ export class FirestoreSync {
       console.log(`[FirestoreSync] Saved seller profile ${profile.id} to Firestore.`);
     } catch (err) {
       console.error(`[FirestoreSync] Error saving seller profile to Firestore:`, err);
+    }
+  }
+
+  // Load Seller Profiles from Firestore
+  async loadSellerProfiles(): Promise<SellerProfile[]> {
+    try {
+      const snap = await getDocs(collection(firestoreDb, 'sellerProfiles'));
+      const list: SellerProfile[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data?.userId && data?.shopName) {
+          list.push({
+            id: d.id,
+            userId: String(data.userId),
+            shopName: String(data.shopName),
+            shopSlug: String(data.shopSlug || ''),
+            shopLogo: data.shopLogo,
+            coverImage: data.coverImage,
+            description: String(data.description || ''),
+            whatsappNumber: String(data.whatsappNumber || ''),
+            state: String(data.state || 'Taraba'),
+            city: String(data.city || 'Wukari'),
+            address: data.address,
+            isVerified: Boolean(data.isVerified),
+            isSuspended: Boolean(data.isSuspended),
+            createdAt: toIsoString(data.createdAt)
+          });
+        }
+      });
+      return list;
+    } catch (err) {
+      console.error('[FirestoreSync] Failed to load sellerProfiles from Firestore:', err);
+      return [];
     }
   }
 }
