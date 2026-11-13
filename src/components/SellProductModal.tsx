@@ -35,13 +35,14 @@ import {
   UploadStage
 } from '../services/imageStorage.js';
 import { isValidImageFormat } from '../utils/imagePersistence.js';
+import { getOrCreateGuestId } from '../utils/studentAuth.js';
 import { ProductImage } from './ProductImage.js';
 
 interface SellProductModalProps {
   categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
-  onRequireAuth: () => void;
+  onRequireAuth?: () => void;
   onViewProduct?: (product: Product) => void;
 }
 
@@ -108,6 +109,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     sellerProfile?.whatsappNumber || user?.whatsappNumber || user?.phone || ''
   );
   const [quantity, setQuantity] = useState('1');
+  const [guestSellerName, setGuestSellerName] = useState('');
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
@@ -223,7 +225,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     try {
       const result = await uploadImageToFirebaseStorage(file, {
         folder: 'products',
-        ownerId: auth.currentUser?.uid || user?.id || 'seller',
+        ownerId: auth.currentUser?.uid || user?.id || getOrCreateGuestId(),
         timeoutMs: 25000,
         maxRetries: 2,
         signal: controller.signal,
@@ -447,13 +449,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     e.preventDefault();
     if (submittingRef.current) return;
 
-    if (!user) {
-      setErrorMessage('Please login first to post an item on FU MARKET.');
-      onRequireAuth();
-      return;
-    }
-
-    if (user.isSuspended) {
+    if (user?.isSuspended) {
       setErrorMessage(
         `Your seller account has been suspended: ${user.suspensionReason || 'Violation of trust & safety policy'}.`
       );
@@ -503,7 +499,15 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     setSubmitting(true);
 
     try {
-      const effectiveSellerId = user.id || auth.currentUser?.uid || 'campus-seller';
+      const effectiveSellerId = user?.id || auth.currentUser?.uid || getOrCreateGuestId();
+      const effectiveSellerName = user?.name || guestSellerName.trim() || 'FU MARKET Guest';
+      const effectiveShopName =
+        sellerProfile?.shopName ||
+        (guestSellerName.trim()
+          ? `${guestSellerName.trim()}'s Store`
+          : user?.name
+          ? `${user.name}'s Store`
+          : 'Campus Guest Store');
       const productPayload = {
         title: title.trim(),
         price: numericPrice,
@@ -520,8 +524,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         images: successfulUrls,
         imageUrl: successfulUrls[0],
         sellerId: effectiveSellerId,
-        sellerName: user.name,
-        shopName: sellerProfile?.shopName || `${user.name}'s Store`
+        sellerName: effectiveSellerName,
+        shopName: effectiveShopName
       };
 
       const res = await createProductListing(productPayload);
@@ -826,6 +830,22 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 onChange={handleFileChange}
               />
             </div>
+
+            {!user && (
+              <div>
+                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
+                  Your Name / Shop Name <span className="text-[#555555] font-normal">(Optional • Guest Post)</span>
+                </label>
+                <input
+                  type="text"
+                  name="guestSellerName"
+                  placeholder="e.g., Musa Gadgets or leave blank to post as Guest"
+                  value={guestSellerName}
+                  onChange={(e) => setGuestSellerName(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">

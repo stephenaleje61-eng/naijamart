@@ -74,12 +74,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = subscribeToFirebaseAuthChanges(async (fbUser) => {
       if (fbUser) {
-        const session = await getUserSessionFromFirestore(fbUser.uid);
-        if (session) {
-          setAuthToken(`firebase-session:${session.user.id}`);
-          setUser(session.user);
-          setSellerProfile(session.sellerProfile || null);
-          setFavourites(session.favourites || []);
+        try {
+          const session = await getUserSessionFromFirestore(fbUser.uid);
+          if (session) {
+            setAuthToken(`firebase-session:${session.user.id}`);
+            setUser(session.user);
+            setSellerProfile(session.sellerProfile || null);
+            setFavourites(session.favourites || []);
+          }
+        } catch (err) {
+          console.warn('[AuthContext non-blocking auth sync]:', err);
+        } finally {
           setLoading(false);
         }
       }

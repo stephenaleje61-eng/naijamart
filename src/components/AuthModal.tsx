@@ -23,13 +23,15 @@ interface AuthModalProps {
   defaultRole?: 'buyer' | 'seller';
   onClose: () => void;
   onSuccess: (result?: { user?: User; isRegistration?: boolean }) => void;
+  onContinueAsGuest?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   defaultRole = 'buyer',
   onClose,
-  onSuccess
+  onSuccess,
+  onContinueAsGuest
 }) => {
   const { login, register, loginWithGoogle } = useAuth();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
@@ -408,6 +410,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </span>
                 <span>Continue with Google</span>
               </button>
+
+              {onContinueAsGuest && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onContinueAsGuest();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-4 bg-[#FFF8DB] hover:bg-[#F2B90D] text-[#111111] font-black text-xs rounded-xl border border-[#F2B90D] transition"
+                >
+                  Continue as Guest
+                </button>
+              )}
             </form>
           )}
 

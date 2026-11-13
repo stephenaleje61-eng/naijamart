@@ -648,6 +648,15 @@ export function mapAuthErrorToUserMessage(err: any): string {
   if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
     return 'Google sign-in was cancelled.';
   }
+  if (code === 'auth/unauthorized-domain' || msg.toLowerCase().includes('unauthorized-domain')) {
+    return 'Google Sign-In is unavailable on this domain. Tap "Continue as Guest" to proceed without login.';
+  }
+  if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    return 'This sign-in method is currently unavailable. Please tap "Continue as Guest" or try another method.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Sign-in popup was blocked by your browser. Please allow popups or tap "Continue as Guest".';
+  }
   if (
     code === 'auth/network-request-failed' ||
     code === 'unavailable' ||
@@ -773,9 +782,14 @@ export async function registerAccountInFirebase(payload: {
       await updateFirebaseProfile(cred.user, { displayName: cleanName }).catch(() => {});
     } catch (authErr: any) {
       const code = String(authErr?.code || '');
-      if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
-        // Project has not enabled Email/Password sign-in in Firebase Console:
-        // Store salted bcrypt credential securely in Cloud Firestore so registration & login still work seamlessly.
+      const msg = String(authErr?.message || '').toLowerCase();
+      if (
+        code === 'auth/operation-not-allowed' ||
+        code === 'auth/admin-restricted-operation' ||
+        code === 'auth/unauthorized-domain' ||
+        msg.includes('unauthorized-domain')
+      ) {
+        // Fallback to Cloud Firestore salted bcrypt credentials so signup still works seamlessly on any preview/custom domain.
         uid = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
         const salt = await bcrypt.genSalt(10);
         passwordHash = await bcrypt.hash(password, salt);
@@ -1015,7 +1029,18 @@ export async function signOutFromFirebase(): Promise<void> {
 }
 
 export function subscribeToFirebaseAuthChanges(callback: (fbUser: FirebaseUser | null) => void): () => void {
-  return onAuthStateChanged(auth, callback);
+  try {
+    return onAuthStateChanged(
+      auth,
+      callback,
+      (err) => {
+        console.warn('[Firebase Auth listener non-blocking warning]:', err?.message || err);
+      }
+    );
+  } catch (err: any) {
+    console.warn('[Firebase Auth setup non-blocking warning]:', err?.message || err);
+    return () => {};
+  }
 }
 
 export async function sendPasswordResetInFirebase(email: string): Promise<{ success: boolean; message: string }> {

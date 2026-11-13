@@ -50,13 +50,18 @@ import { CartOrderReviewModal } from './components/CartOrderReviewModal.js';
 import { BottomNav, AppView } from './components/BottomNav.js';
 import { OfflineIndicator } from './components/OfflineIndicator.js';
 import { WelcomeNotice } from './components/WelcomeNotice.js';
+import { GuestChoiceModal } from './components/GuestChoiceModal.js';
 import { usePWAInstall } from './hooks/usePWAInstall.js';
 import {
   subscribeToFriendRequests,
   subscribeToStudentRequests,
   subscribeToHuxListings
 } from './services/firebase.js';
-import { getLocalStudentSession } from './utils/studentAuth.js';
+import {
+  getLocalStudentSession,
+  isGuestModeActive,
+  activateGuestMode
+} from './utils/studentAuth.js';
 import { getProductDisplayImage } from './utils/productImages.js';
 
 const CART_STORAGE_KEY = 'fu_market_cart';
@@ -184,9 +189,24 @@ function MainMarketplace() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const hasActiveIdentityForActions = () =>
+    Boolean(user || isGuestModeActive() || getLocalStudentSession());
+
+  const handleRequestSellModal = () => {
+    if (hasActiveIdentityForActions()) {
+      setShowSellModal(true);
+    } else {
+      setPendingGuestAction({ type: 'post' });
+    }
+  };
+
   const handleStartDirectChat = (target: DirectChatTarget) => {
-    setDirectChatTarget(target);
-    navigateToView('friends');
+    if (hasActiveIdentityForActions()) {
+      setDirectChatTarget(target);
+      navigateToView('friends');
+    } else {
+      setPendingGuestAction({ type: 'chat', target });
+    }
   };
 
   // Cart handlers
@@ -263,6 +283,9 @@ function MainMarketplace() {
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [showSafetyModal, setShowSafetyModal] = useState<boolean>(false);
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
+  const [pendingGuestAction, setPendingGuestAction] = useState<
+    { type: 'post' } | { type: 'chat'; target: DirectChatTarget } | null
+  >(null);
 
   const productCatalogRef = useRef<HTMLDivElement>(null);
   const downloadAppRef = useRef<HTMLElement>(null);
@@ -451,7 +474,7 @@ function MainMarketplace() {
         onSelectState={setSelectedState}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onOpenSellModal={() => setShowSellModal(true)}
+        onOpenSellModal={handleRequestSellModal}
         onOpenAuthModal={handleOpenAuth}
         onOpenSellerDashboard={() => setShowSellerDashboard(true)}
         onOpenAdminDashboard={() => setShowAdminDashboard(true)}
@@ -514,7 +537,7 @@ function MainMarketplace() {
               searchQuery={searchQuery}
               onSearchSubmit={setSearchQuery}
               onStartShopping={handleStartShopping}
-              onOpenSellModal={() => setShowSellModal(true)}
+              onOpenSellModal={handleRequestSellModal}
               onNavigateView={navigateToView}
             />
           )}
@@ -768,7 +791,7 @@ function MainMarketplace() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setShowSellModal(true)}
+                      onClick={handleRequestSellModal}
                       className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
                     >
                       Post Item
@@ -793,7 +816,7 @@ function MainMarketplace() {
                   <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
                     <button
                       type="button"
-                      onClick={() => setShowSellModal(true)}
+                      onClick={handleRequestSellModal}
                       className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
                     >
                       Post Item
@@ -1099,7 +1122,7 @@ function MainMarketplace() {
           {/* Big Gold Floating "Post Item for FREE" Button */}
           <button
             type="button"
-            onClick={() => setShowSellModal(true)}
+            onClick={handleRequestSellModal}
             className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-30 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs sm:text-sm px-5 py-3.5 rounded-full shadow-2xl border-2 border-[#14532D] flex items-center gap-2 active:scale-95 transition"
           >
             <PlusCircle className="w-5 h-5 text-[#14532D]" />
@@ -1112,7 +1135,7 @@ function MainMarketplace() {
               setSelectedCategory(catId);
               handleStartShopping();
             }}
-            onOpenSellModal={() => setShowSellModal(true)}
+            onOpenSellModal={handleRequestSellModal}
             onOpenSafetyModal={() => setShowSafetyModal(true)}
             onNavigateView={navigateToView}
             onTriggerPWAHelp={handleTriggerPWAHelp}
@@ -1152,6 +1175,10 @@ function MainMarketplace() {
           initialMode={authModalMode}
           defaultRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
+          onContinueAsGuest={() => {
+            activateGuestMode();
+            showToast('Continuing as Guest on FU MARKET');
+          }}
           onSuccess={(result) => {
             if (result?.isRegistration) {
               showToast('Your FU MARKET account has been created successfully.');
@@ -1163,6 +1190,36 @@ function MainMarketplace() {
           }}
         />
       )}
+
+      <GuestChoiceModal
+        isOpen={Boolean(pendingGuestAction)}
+        actionType={pendingGuestAction?.type || 'post'}
+        onClose={() => setPendingGuestAction(null)}
+        onContinueAsGuest={() => {
+          const action = pendingGuestAction;
+          activateGuestMode();
+          setPendingGuestAction(null);
+          showToast('Continuing as Guest');
+          if (action?.type === 'post') {
+            setShowSellModal(true);
+          } else if (action?.type === 'chat') {
+            setDirectChatTarget(action.target);
+            navigateToView('friends');
+          }
+        }}
+        onGoogleSuccess={() => {
+          const action = pendingGuestAction;
+          setPendingGuestAction(null);
+          showToast('Signed in with Google!');
+          loadCatalogProducts(1);
+          if (action?.type === 'post') {
+            setShowSellModal(true);
+          } else if (action?.type === 'chat') {
+            setDirectChatTarget(action.target);
+            navigateToView('friends');
+          }
+        }}
+      />
 
       {showSellerDashboard && (
         <SellerDashboard

@@ -40,7 +40,7 @@ import {
 } from '../services/firebase.js';
 import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
 import { isValidImageFormat } from '../utils/imagePersistence.js';
-import { getLocalStudentSession } from '../utils/studentAuth.js';
+import { getLocalStudentSession, isGuestModeActive, activateGuestMode } from '../utils/studentAuth.js';
 import { StudentLoginModal } from './StudentLoginModal.js';
 import { useAuth } from '../context/AuthContext.js';
 
@@ -66,7 +66,12 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   onClearChatTarget
 }) => {
   const { user: authUser } = useAuth();
-  const [student, setStudent] = useState<RegisteredUser | null>(() => getLocalStudentSession());
+  const [student, setStudent] = useState<RegisteredUser | null>(() => {
+    const existing = getLocalStudentSession();
+    if (existing) return existing;
+    if (isGuestModeActive()) return activateGuestMode().studentSession;
+    return null;
+  });
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'chats' | 'friends' | 'requests' | 'discover'>('chats');
@@ -126,7 +131,8 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   useEffect(() => {
     if (!initialChatTarget) return;
     if (!student) {
-      setShowLoginModal(true);
+      const { studentSession } = activateGuestMode();
+      setStudent(studentSession);
       return;
     }
 
