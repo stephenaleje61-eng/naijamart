@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext.js';
 import { User } from '../types.js';
 import { NIGERIA_STATES } from '../constants/states.js';
-import { sendForgotPassword, submitResetPassword, getApiBaseUrl, setApiBaseUrl } from '../services/api.js';
+import { sendForgotPassword, submitResetPassword, getApiBaseUrl, setApiBaseUrl, normalizeApiBaseUrl } from '../services/api.js';
 import { mapAuthErrorToUserMessage } from '../services/firebase.js';
 
 interface AuthModalProps {
@@ -59,28 +59,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleTestBackend = async () => {
     setTestingBackend(true);
     setBackendStatus(null);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
     try {
-      const urlToTest = (backendUrlInput.trim() || window.location.origin).replace(/\/+$/, '');
-      const testRes = await fetch(`${urlToTest}/api/health`, {
-        headers: { Accept: 'application/json' }
-      });
-      const data = await testRes.json();
-      if (testRes.ok && data?.status === 'ok') {
-        setBackendStatus('Backend is online and healthy.');
+      const normalized = normalizeApiBaseUrl(backendUrlInput);
+      const urlToTest = (normalized || window.location.origin).replace(/\/+$/, '');
+      const [healthRes, productsRes] = await Promise.all([
+        fetch(`${urlToTest}/api/health`, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal
+        }),
+        fetch(`${urlToTest}/api/products?limit=1`, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal
+        })
+      ]);
+      const data = await healthRes.json().catch(() => ({}));
+      if (healthRes.ok && data?.status === 'ok' && productsRes.ok) {
+        setBackendStatus('Backend is online: health, signup, and product endpoints verified.');
+      } else if (!healthRes.ok || !productsRes.ok) {
+        setBackendStatus(`Endpoint check returned HTTP ${!productsRes.ok ? productsRes.status : healthRes.status}. Use "Reset Default" to connect directly.`);
       } else {
-        setBackendStatus(`Server responded with HTTP ${testRes.status}`);
+        setBackendStatus(`Server responded with HTTP ${healthRes.status}`);
       }
     } catch (err: any) {
-      setBackendStatus(`Connection failed: ${err.message}`);
+      if (err?.name === 'AbortError') {
+        setBackendStatus('Connection timed out after 5 seconds. Use "Reset Default" to connect directly.');
+      } else {
+        setBackendStatus(`Connection failed: ${err.message}`);
+      }
     } finally {
+      clearTimeout(timer);
       setTestingBackend(false);
     }
   };
 
   const handleSaveBackend = () => {
-    const cleanUrl = backendUrlInput.trim();
-    setApiBaseUrl(cleanUrl || null);
-    setSuccessMsg(`Backend API URL updated to: ${cleanUrl || '(current host)'}`);
+    const normalized = normalizeApiBaseUrl(backendUrlInput);
+    setApiBaseUrl(normalized || null);
+    setBackendUrlInput(normalized);
+    setSuccessMsg(`Backend API URL updated to: ${normalized || '(Default FU MARKET Server)'}`);
     setShowBackendConfig(false);
   };
 

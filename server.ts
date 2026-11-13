@@ -45,9 +45,12 @@ db.initFirestoreSync().catch(err => {
 // API Routes mounted on both /api/* and root aliases so frontend calls never get 404 HTML
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/signup', (req, _res, next) => { req.url = '/signup'; next(); }, authRoutes);
 
 app.use('/api/products', productsRoutes);
+app.use('/api/fetch-products', productsRoutes);
 app.use('/products', productsRoutes); // Alias in case frontend calls /products
+app.use('/fetch-products', productsRoutes);
 
 app.use('/api/sellers', sellerRoutes);
 app.use('/sellers', sellerRoutes);

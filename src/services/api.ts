@@ -51,17 +51,52 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
+export function normalizeApiBaseUrl(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let trimmed = raw.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null' || trimmed.includes('your-backend.onrender.com')) {
+    return '';
+  }
+  trimmed = trimmed.replace(/\/+$/, '').replace(/\/api$/i, '');
+  if (!trimmed) return '';
+
+  // Ensure external hostnames without scheme do not become relative paths (which cause 404)
+  if (!/^https?:\/\//i.test(trimmed)) {
+    if (/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/.test(trimmed)) {
+      trimmed = `https://${trimmed}`;
+    } else {
+      return '';
+    }
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const normalized = parsed.origin + parsed.pathname.replace(/\/+$/, '').replace(/\/api$/i, '');
+    if (typeof window !== 'undefined' && normalized === window.location.origin) {
+      return '';
+    }
+    return normalized;
+  } catch {
+    return '';
+  }
+}
+
 export const getApiBaseUrl = (): string => {
   // 1. User configured custom URL in localStorage (explicit override)
-  const custom = localStorage.getItem(BACKEND_URL_KEY) || localStorage.getItem('naijamart_backend_url');
-  if (custom && custom.trim().length > 0) {
-    return custom.trim().replace(/\/+$/, '');
+  const custom =
+    typeof window !== 'undefined'
+      ? localStorage.getItem(BACKEND_URL_KEY) || localStorage.getItem('naijamart_backend_url')
+      : null;
+  const normalizedCustom = normalizeApiBaseUrl(custom);
+  if (normalizedCustom) {
+    return normalizedCustom;
   }
 
   // 2. Build-time environment variable VITE_BACKEND_URL
   const envUrl = (import.meta as any).env?.VITE_BACKEND_URL;
-  if (envUrl && envUrl.trim().length > 0) {
-    return envUrl.trim().replace(/\/+$/, '');
+  const normalizedEnv = normalizeApiBaseUrl(envUrl);
+  if (normalizedEnv) {
+    return normalizedEnv;
   }
 
   // 3. Default: relative path (in full-stack Express + Vite environment)
@@ -69,8 +104,9 @@ export const getApiBaseUrl = (): string => {
 };
 
 export const setApiBaseUrl = (url: string | null) => {
-  if (url && url.trim().length > 0) {
-    localStorage.setItem(BACKEND_URL_KEY, url.trim().replace(/\/+$/, ''));
+  const normalized = normalizeApiBaseUrl(url);
+  if (normalized) {
+    localStorage.setItem(BACKEND_URL_KEY, normalized);
   } else {
     localStorage.removeItem(BACKEND_URL_KEY);
     localStorage.removeItem('naijamart_backend_url');
@@ -91,28 +127,41 @@ const getHeaders = (isJson = true): Record<string, string> => {
   return headers;
 };
 
-// Robust fetch utility that parses JSON safely, handles status codes, and prevents raw HTML or [object Object] errors
-export const safeFetchJson = async (endpoint: string, options: RequestInit = {}) => {
-  const base = getApiBaseUrl();
+// Robust fetch utility with timeout that parses JSON safely and prevents raw HTML or 404 crashes
+export const safeFetchJson = async (
+  endpoint: string,
+  options: RequestInit & { timeoutMs?: number; baseOverride?: string } = {}
+) => {
+  const { timeoutMs = 4500, baseOverride, ...fetchOptions } = options;
+  const base = baseOverride !== undefined ? baseOverride : getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const fullUrl = base ? `${base}${cleanEndpoint}` : cleanEndpoint;
 
   const mergedHeaders: Record<string, string> = {
     'Accept': 'application/json',
-    ...(options.headers as Record<string, string> || {})
+    ...(fetchOptions.headers as Record<string, string> || {})
   };
+
+  const controller = new AbortController();
+  const timeoutTimer = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
     res = await fetch(fullUrl, {
-      ...options,
-      headers: mergedHeaders
+      ...fetchOptions,
+      headers: mergedHeaders,
+      signal: fetchOptions.signal || controller.signal
     });
   } catch (networkErr: any) {
+    if (networkErr?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds while contacting FU MARKET server.`);
+    }
     console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
     throw new Error(
-      `Unable to connect to FU MARKET backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
+      `Unable to connect to FU MARKET backend server at ${fullUrl}. Please check your internet connection.`
     );
+  } finally {
+    clearTimeout(timeoutTimer);
   }
 
   const contentType = res.headers.get('content-type') || '';
@@ -121,29 +170,28 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
 
   try {
     data = JSON.parse(text);
-  } catch (err) {
+  } catch {
     console.error(`[API Fetch Error] Server returned non-JSON response from ${fullUrl} (HTTP ${res.status}, Content-Type: ${contentType}):\n`, text.slice(0, 500));
-    
-    // Provide precise, actionable diagnostics
+
     if (res.status === 200 && text.trim().length === 0) {
       throw new Error(
-        `Server returned an empty response (200 OK with 0 bytes). The endpoint (${cleanEndpoint}) is currently returning empty data instead of JSON.`
+        `Server returned an empty response for ${cleanEndpoint}.`
       );
     }
 
     if (contentType.includes('text/html') || text.includes('<!DOCTYPE') || text.includes('<html')) {
       if (res.status === 404) {
         throw new Error(
-          `Backend API route (${cleanEndpoint}) was not found (HTTP 404). Please ensure the backend is running and requests are directed to the live server.`
+          `Backend endpoint (${cleanEndpoint}) could not be reached. Switching to live database.`
         );
       }
       throw new Error(
-        `Server returned HTML page (${res.status}) instead of JSON. Ensure your backend route begins with /api and the API server is active.`
+        `Server returned an unexpected HTML page (${res.status}) for ${cleanEndpoint}.`
       );
     }
 
     throw new Error(
-      `Server returned an unexpected response (${res.status}) instead of JSON. The backend service may be starting up or misconfigured.`
+      `Server returned an unexpected response (${res.status}) instead of JSON.`
     );
   }
 
@@ -152,7 +200,9 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
       ? data.error
       : typeof data?.message === 'string'
       ? data.message
-      : `Request failed with status ${res.status}`;
+      : res.status === 404
+      ? `Endpoint (${cleanEndpoint}) was not found on the selected server.`
+      : `Request failed (${res.status}). Please try again.`;
     throw new Error(errMsg);
   }
 
@@ -161,24 +211,36 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
 
 // --- PRODUCTS API ---
 export async function fetchProducts(filters: ProductFilter = {}): Promise<{ items: Product[]; pagination: any }> {
-  try {
-    const params = new URLSearchParams();
-    if (filters.q) params.set('q', filters.q);
-    if (filters.category && filters.category !== 'all') params.set('category', filters.category);
-    if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition);
-    if (filters.state && filters.state !== 'all') params.set('state', filters.state);
-    if (filters.city && filters.city !== 'all') params.set('city', filters.city);
-    if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice));
-    if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice));
-    if (filters.sellerId) params.set('sellerId', filters.sellerId);
-    if (filters.sort) params.set('sort', filters.sort);
-    if (filters.page) params.set('page', String(filters.page));
-    if (filters.limit) params.set('limit', String(filters.limit));
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.category && filters.category !== 'all') params.set('category', filters.category);
+  if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition);
+  if (filters.state && filters.state !== 'all') params.set('state', filters.state);
+  if (filters.city && filters.city !== 'all') params.set('city', filters.city);
+  if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice));
+  if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice));
+  if (filters.sellerId) params.set('sellerId', filters.sellerId);
+  if (filters.sort) params.set('sort', filters.sort);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
 
-    return await safeFetchJson(`/api/products?${params.toString()}`);
+  const queryStr = params.toString();
+
+  try {
+    return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2500 });
   } catch (networkOrServerErr) {
-    console.warn('[fetchProducts fallback to direct Cloud Firestore query]:', networkOrServerErr);
-    // Directly query Google Cloud Firestore permanent database
+    console.warn('[fetchProducts primary endpoint failed, trying direct Cloud Firestore]:', networkOrServerErr);
+
+    // If a custom external backend URL was configured and failed, also try same-origin /api/products before Firestore
+    if (getApiBaseUrl()) {
+      try {
+        return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2000, baseOverride: '' });
+      } catch {
+        // Proceed to direct Cloud Firestore
+      }
+    }
+
+    // Directly query Google Cloud Firestore permanent database (guarded with 4s timeout in firebase.ts)
     const items = await getProductsFromFirestore({
       categoryId: filters.category,
       sellerId: filters.sellerId,
@@ -420,9 +482,18 @@ export async function loginUser(email: string, password: string): Promise<{ user
 }
 
 export async function registerUser(userData: any): Promise<{ user: User; token: string; sellerProfile?: SellerProfile }> {
-  // Primary unified registration in Firebase Auth + Cloud Firestore (no Express /api/* dependency or 404 error)
+  // Primary unified registration in Firebase Auth + Cloud Firestore (no Express /api/* 404 failure)
   const res = await registerAccountInFirebase(userData);
   setAuthToken(res.token);
+
+  // Best-effort non-blocking sync with running Express server memory (never causes 404 error to user)
+  safeFetchJson('/api/auth/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: res.user, sellerProfile: res.sellerProfile }),
+    timeoutMs: 2500
+  }).catch(() => {});
+
   return res;
 }
 

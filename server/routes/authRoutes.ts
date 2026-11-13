@@ -7,8 +7,8 @@ import { firestoreSync } from '../firestore.js';
 
 const router = Router();
 
-// Register new user (buyer or seller)
-router.post('/register', async (req, res) => {
+// Register new user (buyer or seller) - supports both /register and /signup
+const handleRegister = async (req: any, res: Response) => {
   try {
     const {
       name,
@@ -116,6 +116,41 @@ router.post('/register', async (req, res) => {
   } catch (err: any) {
     console.error('[Register Error]:', err);
     res.status(500).json({ success: false, error: err.message || 'Registration failed.' });
+  }
+};
+
+router.post('/register', handleRegister);
+router.post('/signup', handleRegister);
+
+// Sync a Firebase-registered user into server memory without overwriting Firestore
+router.post('/sync', (req, res) => {
+  try {
+    const { user, sellerProfile } = req.body || {};
+    if (!user?.id || !user?.email) {
+      return res.status(400).json({ success: false, error: 'Valid user payload required.' });
+    }
+    const normalizedEmail = String(user.email).toLowerCase().trim();
+    if (!db.users.some(u => u.id === user.id || u.email === normalizedEmail)) {
+      db.users.push({
+        id: String(user.id),
+        name: String(user.name || 'FUWUKARI Student'),
+        email: normalizedEmail,
+        passwordHash: '',
+        role: user.role === 'seller' ? 'seller' : user.role === 'admin' ? 'admin' : 'buyer',
+        phone: user.phone || '',
+        whatsappNumber: user.whatsappNumber || user.phone || '',
+        state: user.state || 'Taraba',
+        city: user.city || 'Wukari',
+        createdAt: user.createdAt || new Date().toISOString()
+      });
+    }
+    if (sellerProfile?.id && !db.sellerProfiles.some(p => p.id === sellerProfile.id || p.userId === user.id)) {
+      db.sellerProfiles.push(sellerProfile);
+    }
+    db.save();
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Sync failed.' });
   }
 });
 

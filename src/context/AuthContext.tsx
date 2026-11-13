@@ -107,9 +107,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: any): Promise<User> => {
     const res = await registerUser(data);
+    setAuthToken(res.token);
     setUser(res.user);
     setSellerProfile(res.sellerProfile || null);
-    await loadUser();
+    setFavourites([]);
+    setLoading(false);
     return res.user;
   };
 

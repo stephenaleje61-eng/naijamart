@@ -237,7 +237,9 @@ function MainMarketplace() {
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+  const catalogRequestIdRef = useRef<number>(0);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -296,7 +298,21 @@ function MainMarketplace() {
   };
 
   const loadCatalogProducts = async (page = 1) => {
+    const requestId = ++catalogRequestIdRef.current;
     setLoading(true);
+    setFetchError(null);
+
+    let timedOut = false;
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      if (catalogRequestIdRef.current === requestId) {
+        setProducts([]);
+        setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+        setFetchError('Listings request timed out after 5 seconds.');
+        setLoading(false);
+      }
+    }, 5000);
+
     try {
       const minVal = minPrice !== '' && !isNaN(Number(minPrice)) ? Number(minPrice) : undefined;
       const maxVal = maxPrice !== '' && !isNaN(Number(maxPrice)) ? Number(maxPrice) : undefined;
@@ -313,13 +329,35 @@ function MainMarketplace() {
         limit: 24
       };
 
-      const res = await fetchProducts(filters);
-      setProducts(res.items);
-      setPagination(res.pagination);
-    } catch (err) {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Listings request timed out after 5 seconds.')), 5000);
+      });
+
+      const res = await Promise.race([fetchProducts(filters), timeoutPromise]);
+      if (timedOut || catalogRequestIdRef.current !== requestId) return;
+
+      const items = Array.isArray(res?.items) ? res.items : [];
+      setProducts(items);
+      setPagination(
+        res?.pagination || {
+          total: items.length,
+          page,
+          pageSize: 24,
+          totalPages: 1
+        }
+      );
+      setFetchError(null);
+    } catch (err: any) {
+      if (timedOut || catalogRequestIdRef.current !== requestId) return;
       console.error('Failed to fetch products', err);
+      setProducts([]);
+      setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+      setFetchError(err?.message || 'Unable to load listings right now.');
     } finally {
-      setLoading(false);
+      clearTimeout(timeoutTimer);
+      if (!timedOut && catalogRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -702,20 +740,23 @@ function MainMarketplace() {
                     Loading genuine FU MARKET listings...
                   </p>
                 </div>
-              ) : displayedProducts.length === 0 ? (
+              ) : fetchError ? (
                 <div className="bg-white rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-xl mx-auto shadow-xs">
                   <ShoppingBag className="w-12 h-12 text-[#0B6B3A] mx-auto mb-3" />
                   <h3 className="text-base sm:text-lg font-black text-[#111111]">
-                    {products.length === 0 && !hasActiveFilters
-                      ? 'No products posted yet. Be the first FUWUKARI student to post an item!'
-                      : 'No matching products found'}
+                    No listings found for this category
                   </h3>
                   <p className="text-xs text-[#555555] mt-1 mb-4">
-                    {hasActiveFilters
-                      ? 'Try clearing your search, category, or price filter.'
-                      : 'Post hostel items, textbooks, food, or gadgets in seconds for free.'}
+                    {fetchError}
                   </p>
-                  <div className="flex items-center justify-center gap-3 mt-5">
+                  <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                    <button
+                      type="button"
+                      onClick={() => loadCatalogProducts(1)}
+                      className="px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
+                    >
+                      Retry
+                    </button>
                     {hasActiveFilters && (
                       <button
                         type="button"
@@ -730,8 +771,49 @@ function MainMarketplace() {
                       onClick={() => setShowSellModal(true)}
                       className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
                     >
-                      Post Item for FREE
+                      Post Item
                     </button>
+                  </div>
+                </div>
+              ) : displayedProducts.length === 0 ? (
+                <div className="bg-white rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-xl mx-auto shadow-xs">
+                  <ShoppingBag className="w-12 h-12 text-[#0B6B3A] mx-auto mb-3" />
+                  <h3 className="text-base sm:text-lg font-black text-[#111111]">
+                    {viewingFavouritesOnly
+                      ? 'No saved favourites yet'
+                      : 'No listings yet - Be the first to post'}
+                  </h3>
+                  <p className="text-xs text-[#555555] mt-1 mb-4">
+                    {selectedCategory !== 'all'
+                      ? 'No listings found for this category right now. Post an item for FUWUKARI students or tap Retry.'
+                      : hasActiveFilters
+                      ? 'Try clearing your search, category, or price filter.'
+                      : 'Post hostel items, textbooks, food, or gadgets in seconds for free.'}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                    <button
+                      type="button"
+                      onClick={() => setShowSellModal(true)}
+                      className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
+                    >
+                      Post Item
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadCatalogProducts(1)}
+                      className="px-4 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
+                    >
+                      Retry
+                    </button>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="px-4 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] hover:border-[#0B6B3A] text-[#111111] text-xs font-bold rounded-xl"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1073,11 +1155,7 @@ function MainMarketplace() {
           onSuccess={(result) => {
             if (result?.isRegistration) {
               showToast('Your FU MARKET account has been created successfully.');
-              if (result.user?.role === 'seller') {
-                setShowSellerDashboard(true);
-              } else {
-                setCurrentView('marketplace');
-              }
+              navigateToView('marketplace');
             } else {
               showToast('Welcome to FU MARKET!');
             }

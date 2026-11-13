@@ -108,6 +108,20 @@ export function toIsoString(val: any): string {
   return new Date().toISOString();
 }
 
+export async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export function mapLegacyCategory(raw: any): string {
   const value = String(raw || '').toLowerCase().trim();
   if (!value) return 'hostel-items';
@@ -340,7 +354,11 @@ export async function getProductsFromFirestore(filters?: {
 }): Promise<Product[]> {
   const path = 'products';
   try {
-    const snapshot = await getDocs(collection(db, path));
+    const snapshot = await withTimeout(
+      getDocs(collection(db, path)),
+      4000,
+      'Listings request timed out after 5 seconds. Please try again.'
+    );
     let items: Product[] = [];
 
     snapshot.forEach(docSnap => {
@@ -401,7 +419,10 @@ export async function getProductsFromFirestore(filters?: {
     }
 
     return items;
-  } catch (err) {
+  } catch (err: any) {
+    if (err instanceof Error && err.message.toLowerCase().includes('timed out')) {
+      throw err;
+    }
     handleFirestoreError(err, OperationType.LIST, path);
   }
 }
@@ -733,8 +754,10 @@ export async function registerAccountInFirebase(payload: {
 
   try {
     // 1. Check duplicate email in Cloud Firestore users collection
-    const existingSnap = await getDocs(
-      query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+    const existingSnap = await withTimeout(
+      getDocs(query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))),
+      8000,
+      'Connection timed out while checking account status. Please try again.'
     );
     if (!existingSnap.empty) {
       throw new Error('This email address is already registered. Please sign in.');
