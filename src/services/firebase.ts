@@ -19,16 +19,13 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
 import activeFirebaseConfig from './firebaseConfig.js';
+import { isValidImageUrl } from '../utils/productImages.js';
 import {
   Product,
   User,
-  SellerProfile,
-  Category,
   BikeRider,
   HubMessage,
   HubActiveUser,
@@ -39,7 +36,9 @@ import {
   ChatMetadata,
   HuxListing,
   HuxReport,
-  HuxCategory
+  HuxCategory,
+  StudentRequest,
+  OrderRecord
 } from '../types.js';
 
 // 1. Initialize Firebase App and Services
@@ -49,6 +48,142 @@ export const db = (activeFirebaseConfig as any).firestoreDatabaseId
   : getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Utility: Strip all `undefined` fields recursively so Firestore setDoc/updateDoc never rejects documents
+export function stripUndefined<T>(input: T): T {
+  if (input === null || input === undefined) return input;
+  if (Array.isArray(input)) {
+    return input
+      .filter((item) => item !== undefined)
+      .map((item) => stripUndefined(item)) as unknown as T;
+  }
+  if (typeof input === 'object') {
+    const proto = Object.getPrototypeOf(input);
+    if (proto === Object.prototype || proto === null) {
+      const out: Record<string, any> = {};
+      for (const [key, val] of Object.entries(input as Record<string, any>)) {
+        if (val !== undefined) {
+          out[key] = stripUndefined(val);
+        }
+      }
+      return out as T;
+    }
+  }
+  return input;
+}
+
+// Utility: Safely convert Firestore Timestamp, Date, number, or string into ISO string
+export function toIsoString(val: any): string {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'string') {
+    const parsed = Date.parse(val);
+    return isNaN(parsed) ? new Date().toISOString() : val;
+  }
+  if (typeof val === 'number') {
+    return new Date(val).toISOString();
+  }
+  if (typeof val?.toDate === 'function') {
+    return val.toDate().toISOString();
+  }
+  if (typeof val?.seconds === 'number') {
+    return new Date(val.seconds * 1000).toISOString();
+  }
+  return new Date().toISOString();
+}
+
+export function mapLegacyCategory(raw: any): string {
+  const value = String(raw || '').toLowerCase().trim();
+  if (!value) return 'phones-tablets';
+  if (value.includes('phone') || value.includes('tablet') || value.includes('gadget')) return 'phones-tablets';
+  if (value.includes('computer') || value.includes('laptop') || value.includes('pc') || value.includes('electronic')) return 'computers';
+  if (value.includes('fashion') || value.includes('cloth') || value.includes('wear') || value.includes('shirt')) return 'fashion';
+  if (value.includes('shoe') || value.includes('bag') || value.includes('watch')) return 'shoes-bags';
+  if (value.includes('beauty') || value.includes('skin') || value.includes('hair') || value.includes('perfume')) return 'beauty-care';
+  if (value.includes('kitchen') || value.includes('cook')) return 'home-kitchen';
+  if (value.includes('furniture') || value.includes('appliance') || value.includes('home')) return 'furniture-appliances';
+  if (value.includes('food') || value.includes('grocer') || value.includes('provision') || value.includes('snack')) return 'food-groceries';
+  if (value.includes('car') || value.includes('vehicle') || value.includes('auto') || value.includes('bike')) return 'vehicles-auto';
+  if (value.includes('build') || value.includes('material')) return 'building-materials';
+  if (value.includes('solar') || value.includes('generator') || value.includes('power')) return 'generator-solar';
+  if (value.includes('service') || value.includes('tutor') || value.includes('artisan')) return 'services-jobs';
+  if (
+    [
+      'phones-tablets',
+      'computers',
+      'fashion',
+      'shoes-bags',
+      'beauty-care',
+      'home-kitchen',
+      'furniture-appliances',
+      'food-groceries',
+      'vehicles-auto',
+      'building-materials',
+      'generator-solar',
+      'services-jobs',
+      'books-education',
+      'other-goods'
+    ].includes(value)
+  ) {
+    return value;
+  }
+  return 'other-goods';
+}
+
+export function normalizeFirestoreProduct(docId: string, data: any): Product {
+  const rawImages: string[] = [];
+  if (Array.isArray(data?.images)) {
+    for (const img of data.images) {
+      if (isValidImageUrl(img)) rawImages.push(String(img).trim());
+    }
+  }
+  if (isValidImageUrl(data?.imageUrl) && !rawImages.includes(String(data.imageUrl).trim())) {
+    rawImages.unshift(String(data.imageUrl).trim());
+  }
+
+  const rawStatus = String(data?.status || 'active').toLowerCase();
+  const normalizedStatus: Product['status'] =
+    rawStatus === 'approved' || rawStatus === 'active'
+      ? 'active'
+      : rawStatus === 'sold'
+      ? 'sold'
+      : rawStatus === 'expired'
+      ? 'expired'
+      : 'unavailable';
+
+  const rawLocation = String(data?.location || '').trim();
+  const city = String(data?.city || rawLocation || 'Wukari').trim();
+  const state = String(data?.state || 'Taraba').trim();
+  const price = Number(data?.price) || 0;
+  const originalPrice =
+    data?.originalPrice && Number(data.originalPrice) > price ? Number(data.originalPrice) : undefined;
+
+  return {
+    id: docId,
+    sellerId: String(data?.sellerId || data?.userId || 'campus-seller'),
+    sellerName: String(data?.sellerName || data?.userName || 'FUWUKARI Student'),
+    shopName: String(data?.shopName || data?.sellerName || 'Campus Seller'),
+    whatsappNumber: String(data?.whatsappNumber || data?.whatsapp || data?.phone || ''),
+    title: String(data?.title || 'Untitled Item').trim(),
+    description: String(data?.description || '').trim(),
+    price,
+    ...(originalPrice !== undefined ? { originalPrice } : {}),
+    categoryId: mapLegacyCategory(data?.categoryId || data?.category),
+    condition: data?.condition === 'used' ? 'used' : 'new',
+    images: rawImages,
+    imageUrl: rawImages[0] || '',
+    state,
+    city,
+    quantity: Math.max(1, Number(data?.quantity) || 1),
+    status: normalizedStatus,
+    moderationStatus: data?.moderationStatus || (rawStatus === 'rejected' ? 'rejected' : 'approved'),
+    moderationFlags: Array.isArray(data?.moderationFlags) ? data.moderationFlags : undefined,
+    views: Number(data?.views) || 0,
+    whatsappClicks: Number(data?.whatsappClicks) || 0,
+    isFeatured: Boolean(data?.isFeatured),
+    createdAt: toIsoString(data?.createdAt),
+    updatedAt: toIsoString(data?.updatedAt || data?.createdAt)
+  };
+}
 
 // 2. Error handling conforming strictly to FirestoreErrorInfo specification
 export enum OperationType {
@@ -98,7 +233,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// 3. Test Connection on App Boot (Critical Requirement)
+// 3. Test Connection on App Boot
 export async function testConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -114,7 +249,6 @@ export async function testConnection(): Promise<boolean> {
   }
 }
 
-// Run connection validation at module load
 testConnection();
 
 // 4. Firestore Product Operations
@@ -126,20 +260,18 @@ export async function getProductsFromFirestore(filters?: {
 }): Promise<Product[]> {
   const path = 'products';
   try {
-    const productsRef = collection(db, path);
-    const q = query(productsRef, where('status', '==', 'active'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, path));
     let items: Product[] = [];
-    
+
     snapshot.forEach(docSnap => {
-      const data = docSnap.data() as Product;
-      items.push({
-        ...data,
-        id: docSnap.id
-      });
+      if (docSnap.id.startsWith('prod_live_seed')) return;
+      const product = normalizeFirestoreProduct(docSnap.id, docSnap.data());
+      const isApproved = !product.moderationStatus || product.moderationStatus === 'approved';
+      if (product.status === 'active' && isApproved) {
+        items.push(product);
+      }
     });
 
-    // Apply client filters if present
     if (filters?.categoryId && filters.categoryId !== 'all') {
       items = items.filter(p => p.categoryId === filters.categoryId);
     }
@@ -157,7 +289,6 @@ export async function getProductsFromFirestore(filters?: {
       );
     }
 
-    // Sort newest first
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (filters?.limitCount) {
@@ -170,16 +301,48 @@ export async function getProductsFromFirestore(filters?: {
   }
 }
 
+export async function getAllProductsFromFirestoreForAdmin(): Promise<Product[]> {
+  const path = 'products';
+  try {
+    const snapshot = await getDocs(collection(db, path));
+    const items: Product[] = [];
+    snapshot.forEach(docSnap => {
+      if (docSnap.id.startsWith('prod_live_seed')) return;
+      items.push(normalizeFirestoreProduct(docSnap.id, docSnap.data()));
+    });
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (err) {
+    console.warn('[getAllProductsFromFirestoreForAdmin warning]:', err);
+    return [];
+  }
+}
+
+export async function adminUpdateFirestoreProduct(
+  productId: string,
+  updates: Partial<Product>
+): Promise<void> {
+  const path = `products/${productId}`;
+  try {
+    await updateDoc(doc(db, 'products', productId), stripUndefined({
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
 export async function saveProductToFirestore(product: Product): Promise<void> {
   const path = `products/${product.id}`;
   try {
     const productRef = doc(db, 'products', product.id);
-    const primaryImg = product.images?.[0] || '';
-    await setDoc(productRef, {
+    const primaryImg = product.images?.[0] || product.imageUrl || '';
+    const payload = stripUndefined({
       ...product,
       imageUrl: primaryImg,
       updatedAt: new Date().toISOString()
     });
+    await setDoc(productRef, payload, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -199,10 +362,7 @@ export async function getProductByIdFromFirestore(id: string): Promise<Product |
   try {
     const docSnap = await getDoc(doc(db, 'products', id));
     if (docSnap.exists()) {
-      return {
-        ...(docSnap.data() as Product),
-        id: docSnap.id
-      };
+      return normalizeFirestoreProduct(docSnap.id, docSnap.data());
     }
     return null;
   } catch (err) {
@@ -217,39 +377,44 @@ export async function createProductDirectlyInFirestore(
   const id = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const price = Number(data.price) || 0;
-  const originalPrice = data.originalPrice && Number(data.originalPrice) > price
-    ? Number(data.originalPrice)
-    : Math.round(price * 1.25);
+  const originalPrice =
+    data.originalPrice && Number(data.originalPrice) > price ? Number(data.originalPrice) : undefined;
+
+  const cleanedImages = Array.isArray(data.images)
+    ? data.images
+        .filter((img): img is string => isValidImageUrl(img))
+        .sort((a, b) => {
+          const score = (url: string) => {
+            if (url.startsWith('https://firebasestorage.googleapis.com')) return 100;
+            if (url.startsWith('https://')) return 90;
+            if (url.startsWith('data:image/')) return 80;
+            if (url.startsWith('http://')) return 70;
+            return 10;
+          };
+          return score(b) - score(a);
+        })
+    : [];
+
+  if (cleanedImages.length === 0) {
+    throw new Error('At least one valid product image is required before publishing.');
+  }
 
   const product: Product = {
     id,
-    sellerId: sellerUser?.id || data.sellerId || auth.currentUser?.uid || 'seller-01',
-    sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'Verified Merchant',
-    shopName: data.shopName || `${sellerUser?.name || 'ZangaMarket'}'s Shop`,
-    whatsappNumber: data.whatsappNumber || sellerUser?.whatsappNumber || '08031234567',
+    sellerId: sellerUser?.id || data.sellerId || auth.currentUser?.uid || 'campus-seller',
+    sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'FUWUKARI Student',
+    shopName: data.shopName || `${sellerUser?.name || 'FU MARKET'}'s Store`,
+    whatsappNumber: data.whatsappNumber || sellerUser?.whatsappNumber || sellerUser?.phone || '',
     title: String(data.title || '').trim(),
     description: String(data.description || '').trim(),
     price,
-    originalPrice,
+    ...(originalPrice !== undefined ? { originalPrice } : {}),
     categoryId: data.categoryId || 'phones-tablets',
     condition: data.condition === 'used' ? 'used' : 'new',
-    images: Array.isArray(data.images)
-      ? data.images
-          .filter((img): img is string => typeof img === 'string' && img.trim().length > 10 && !img.includes('persistent_image_proof') && !img.startsWith('blob:'))
-          .sort((a, b) => {
-            const score = (url: string) => {
-              if (url.startsWith('https://firebasestorage.googleapis.com')) return 100;
-              if (url.startsWith('https://')) return 90;
-              if (url.startsWith('data:image/')) return 80;
-              if (url.startsWith('http://')) return 70;
-              return 10;
-            };
-            return score(b) - score(a);
-          })
-      : [],
-    imageUrl: data.imageUrl || (Array.isArray(data.images) && data.images[0]) || '',
-    state: data.state || 'Lagos',
-    city: data.city || 'Ikeja',
+    images: cleanedImages,
+    imageUrl: cleanedImages[0],
+    state: data.state || 'Taraba',
+    city: data.city || 'Wukari',
     quantity: Math.max(1, Number(data.quantity) || 1),
     status: 'active',
     moderationStatus: 'approved',
@@ -268,27 +433,26 @@ export async function signInWithGoogle(): Promise<{ user: User; firebaseUser: Fi
   try {
     const cred = await signInWithPopup(auth, googleProvider);
     const fbUser = cred.user;
-    
-    // Save or update user profile in Firestore
+
     const userDocRef = doc(db, 'users', fbUser.uid);
     const userDoc = await getDoc(userDocRef);
-    
+
     let appUser: User;
     if (userDoc.exists()) {
       appUser = userDoc.data() as User;
     } else {
-      appUser = {
+      appUser = stripUndefined({
         id: fbUser.uid,
-        name: fbUser.displayName || 'Marketplace Seller',
+        name: fbUser.displayName || 'FUWUKARI Student',
         email: fbUser.email || '',
-        role: 'seller',
-        phone: fbUser.phoneNumber || '08000000000',
-        whatsappNumber: fbUser.phoneNumber || '08000000000',
-        state: 'Lagos',
-        city: 'Ikeja',
-        avatarUrl: fbUser.photoURL || undefined,
+        role: 'seller' as const,
+        phone: fbUser.phoneNumber || '',
+        whatsappNumber: fbUser.phoneNumber || '',
+        state: 'Taraba',
+        city: 'Wukari',
+        ...(fbUser.photoURL ? { avatarUrl: fbUser.photoURL } : {}),
         createdAt: new Date().toISOString()
-      };
+      });
       await setDoc(userDocRef, appUser);
     }
 
@@ -321,12 +485,11 @@ export async function getBikeRidersFromFirestore(areaFilter?: string): Promise<B
         whatsappNumber: data.whatsappNumber || data.phoneNumber || '',
         area: data.area || 'Anywhere in Wukari',
         isAvailable: data.isAvailable !== false,
-        createdAt: data.createdAt || new Date().toISOString(),
+        createdAt: toIsoString(data.createdAt),
         userId: data.userId || ''
       });
     });
 
-    // Sort by Available first, then newest
     return riders.sort((a, b) => {
       if (a.isAvailable === b.isAvailable) {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -343,10 +506,10 @@ export async function saveBikeRiderToFirestore(rider: BikeRider): Promise<void> 
   const path = `bikeRiders/${rider.id}`;
   try {
     const riderRef = doc(db, 'bikeRiders', rider.id);
-    await setDoc(riderRef, {
+    await setDoc(riderRef, stripUndefined({
       ...rider,
       updatedAt: new Date().toISOString()
-    });
+    }));
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -385,10 +548,6 @@ export async function updateBikeRiderAvailability(id: string, isAvailable: boole
 // 1. SINGLE HUB - FUWukari (Open Group Chat Real-Time Persistence)
 // ============================================================================
 
-/**
- * Subscribes to real-time open campus messages in Firestore collection "hubMessages".
- * Starts empty if no messages exist.
- */
 export function subscribeToHubMessages(
   callback: (messages: HubMessage[]) => void,
   limitCount: number = 80
@@ -407,14 +566,17 @@ export function subscribeToHubMessages(
         const msgs: HubMessage[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          const img = typeof data.imageUrl === 'string' && data.imageUrl.trim().length > 0
+            ? data.imageUrl.trim()
+            : undefined;
           msgs.push({
             id: docSnap.id,
             senderId: data.senderId || '',
             senderName: data.senderName || 'Anonymous Student',
             matricNumber: data.matricNumber || '',
             text: data.text || '',
-            imageUrl: data.imageUrl || '',
-            createdAt: data.createdAt || new Date().toISOString(),
+            ...(img ? { imageUrl: img } : {}),
+            createdAt: toIsoString(data.createdAt),
             timestamp: data.timestamp || Date.now()
           });
         });
@@ -431,59 +593,60 @@ export function subscribeToHubMessages(
   }
 }
 
-/**
- * Sends a real-time message to the FUWukari Campus Hub.
- */
 export async function sendHubMessage(message: {
   senderId: string;
   senderName: string;
   matricNumber?: string;
   text?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
 }): Promise<void> {
   const path = 'hubMessages';
   const id = `hub-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
 
+  const messageData: Record<string, any> = {
+    id,
+    senderId: message.senderId,
+    senderName: message.senderName || 'Anonymous Student',
+    text: (message.text || '').trim(),
+    createdAt: now,
+    timestamp: Date.now()
+  };
+
+  if (message.matricNumber && message.matricNumber.trim()) {
+    messageData.matricNumber = message.matricNumber.trim();
+  }
+
+  if (typeof message.imageUrl === 'string' && message.imageUrl.trim().length > 0) {
+    messageData.imageUrl = message.imageUrl.trim();
+  }
+
   try {
     const docRef = doc(db, path, id);
-    await setDoc(docRef, {
-      ...message,
-      id,
-      createdAt: now,
-      timestamp: Date.now()
-    });
+    await setDoc(docRef, stripUndefined(messageData));
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
 }
 
-/**
- * Updates campus presence heartbeat in "hubActiveUsers".
- */
 export async function updateHubPresence(
   userId: string,
   name: string,
   matricNumber?: string
 ): Promise<void> {
-  const path = `hubActiveUsers/${userId}`;
   try {
-    const ref = doc(db, 'hubActiveUsers', userId);
-    await setDoc(ref, {
+    const refDoc = doc(db, 'hubActiveUsers', userId);
+    await setDoc(refDoc, stripUndefined({
       userId,
       name,
       matricNumber: matricNumber || '',
       lastActiveAt: Date.now()
-    }, { merge: true });
+    }), { merge: true });
   } catch (err) {
-    // Non-blocking background heartbeat
     console.warn('[updateHubPresence warning]:', err);
   }
 }
 
-/**
- * Subscribes to active online users in the campus hub (within last 3 minutes).
- */
 export function subscribeToHubActiveUsers(
   callback: (count: number, users: HubActiveUser[]) => void
 ): () => void {
@@ -493,7 +656,7 @@ export function subscribeToHubActiveUsers(
     return onSnapshot(
       q,
       (snapshot) => {
-        const threshold = Date.now() - 3 * 60 * 1000; // active within last 3 minutes
+        const threshold = Date.now() - 3 * 60 * 1000;
         const active: HubActiveUser[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
@@ -510,7 +673,7 @@ export function subscribeToHubActiveUsers(
       },
       (err) => {
         console.warn('[subscribeToHubActiveUsers warning]:', err);
-        callback(1, []);
+        callback(0, []);
       }
     );
   } catch (err) {
@@ -520,57 +683,60 @@ export function subscribeToHubActiveUsers(
 }
 
 // ============================================================================
-// 2. FRIEND SYSTEM & PRIVATE 1-ON-1 CHAT
+// 2. FRIEND SYSTEM, PRESENCE & DIRECT/PRIVATE 1-ON-1 CHAT
 // ============================================================================
 
-/**
- * Saves or updates registered campus user profile in Firestore "users"
- */
 export async function saveCampusUserProfile(user: RegisteredUser): Promise<void> {
   const path = `users/${user.id}`;
   try {
-    const ref = doc(db, 'users', user.id);
-    await setDoc(ref, {
+    const refDoc = doc(db, 'users', user.id);
+    await setDoc(refDoc, stripUndefined({
       ...user,
       isOnline: true,
       lastSeen: Date.now(),
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    }), { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
-/**
- * Subscribes to all registered campus users in Firestore "users".
- */
 export function subscribeToRegisteredUsers(
   currentUserId: string,
   callback: (users: RegisteredUser[]) => void
 ): () => void {
   const path = 'users';
   try {
-    const q = query(collection(db, path), limit(150));
+    const q = query(collection(db, path), limit(200));
     return onSnapshot(
       q,
       (snapshot) => {
+        const now = Date.now();
+        const onlineThresholdMs = 5 * 60 * 1000;
         const list: RegisteredUser[] = [];
         snapshot.forEach((docSnap) => {
           if (docSnap.id !== currentUserId) {
             const data = docSnap.data();
+            const lastSeenMs =
+              typeof data.lastSeen === 'number'
+                ? data.lastSeen
+                : data.lastSeen
+                ? Date.parse(String(data.lastSeen)) || 0
+                : 0;
+            const actuallyOnline = lastSeenMs > 0 && now - lastSeenMs <= onlineThresholdMs;
             list.push({
               id: docSnap.id,
-              name: data.name || 'FUWukari Student',
+              name: data.name || 'FUWUKARI Student',
               matricNumber: data.matricNumber || '',
               email: data.email || '',
               phone: data.phone || data.whatsappNumber || '',
               whatsappNumber: data.whatsappNumber || data.phone || '',
               avatarUrl: data.avatarUrl || '',
-              isOnline: data.isOnline !== false,
-              lastSeen: data.lastSeen || Date.now(),
+              isOnline: actuallyOnline,
+              lastSeen: data.lastSeen,
               department: data.department || '',
               bio: data.bio || '',
-              createdAt: data.createdAt || ''
+              createdAt: data.createdAt ? toIsoString(data.createdAt) : ''
             });
           }
         });
@@ -587,9 +753,6 @@ export function subscribeToRegisteredUsers(
   }
 }
 
-/**
- * Sends a Friend Request to another student.
- */
 export async function sendFriendRequest(
   fromUser: { id: string; name: string; matricNumber?: string; avatarUrl?: string },
   toUser: { id: string; name: string }
@@ -598,8 +761,8 @@ export async function sendFriendRequest(
   const requestId = `req_${[fromUser.id, toUser.id].sort().join('_')}`;
 
   try {
-    const ref = doc(db, path, requestId);
-    await setDoc(ref, {
+    const refDoc = doc(db, path, requestId);
+    await setDoc(refDoc, stripUndefined({
       id: requestId,
       fromId: fromUser.id,
       fromName: fromUser.name,
@@ -609,25 +772,19 @@ export async function sendFriendRequest(
       toName: toUser.name,
       status: 'pending',
       createdAt: new Date().toISOString()
-    });
+    }));
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
 }
 
-/**
- * Subscribes to incoming & sent friend requests for the current user.
- */
 export function subscribeToFriendRequests(
   userId: string,
   callback: (requests: FriendRequest[]) => void
 ): () => void {
   const path = 'friendRequests';
   try {
-    const q = query(
-      collection(db, path),
-      limit(100)
-    );
+    const q = query(collection(db, path), limit(150));
 
     return onSnapshot(
       q,
@@ -645,7 +802,7 @@ export function subscribeToFriendRequests(
               toId: data.toId,
               toName: data.toName || 'Student',
               status: data.status || 'pending',
-              createdAt: data.createdAt || new Date().toISOString()
+              createdAt: toIsoString(data.createdAt)
             });
           }
         });
@@ -662,9 +819,6 @@ export function subscribeToFriendRequests(
   }
 }
 
-/**
- * Accepts or Rejects a Friend Request.
- */
 export async function respondToFriendRequest(
   request: FriendRequest,
   action: 'accepted' | 'rejected'
@@ -677,10 +831,9 @@ export async function respondToFriendRequest(
         acceptedAt: new Date().toISOString()
       });
 
-      // Create mutual friend entries in "friends" collection
       const pairKey = [request.fromId, request.toId].sort().join('_');
       const friendRef = doc(db, 'friends', pairKey);
-      await setDoc(friendRef, {
+      await setDoc(friendRef, stripUndefined({
         id: pairKey,
         userA: request.fromId,
         userAName: request.fromName,
@@ -689,7 +842,7 @@ export async function respondToFriendRequest(
         userBName: request.toName,
         chatId: pairKey,
         friendSince: new Date().toISOString()
-      });
+      }));
     } else {
       await updateDoc(reqRef, {
         status: 'rejected',
@@ -701,21 +854,21 @@ export async function respondToFriendRequest(
   }
 }
 
-/**
- * Subscribes to the accepted friends list for a user.
- */
 export function subscribeToFriends(
   userId: string,
   callback: (friends: Friend[]) => void
 ): () => void {
   const path = 'friends';
   try {
-    const q = query(collection(db, path), limit(100));
+    const q = query(collection(db, path), limit(150));
     return onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const list: Friend[] = [];
-        snapshot.forEach((docSnap) => {
+        const now = Date.now();
+        const onlineThresholdMs = 5 * 60 * 1000;
+
+        for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
           if (data.userA === userId || data.userB === userId) {
             const isUserA = data.userA === userId;
@@ -723,18 +876,38 @@ export function subscribeToFriends(
             const friendName = isUserA ? data.userBName : data.userAName;
             const friendMatric = isUserA ? data.userBMatric : data.userAMatric;
 
+            let isOnline = false;
+            let lastSeen: number | string | undefined;
+            try {
+              const userDoc = await getDoc(doc(db, 'users', friendUserId));
+              if (userDoc.exists()) {
+                const uData = userDoc.data();
+                lastSeen = uData.lastSeen;
+                const lastSeenMs =
+                  typeof uData.lastSeen === 'number'
+                    ? uData.lastSeen
+                    : uData.lastSeen
+                    ? Date.parse(String(uData.lastSeen)) || 0
+                    : 0;
+                isOnline = lastSeenMs > 0 && now - lastSeenMs <= onlineThresholdMs;
+              }
+            } catch {
+              isOnline = false;
+            }
+
             list.push({
               id: docSnap.id,
               userId: friendUserId,
-              name: friendName || 'FUWukari Friend',
+              name: friendName || 'FUWUKARI Friend',
               matricNumber: friendMatric || '',
               avatarUrl: data.avatarUrl || '',
-              friendSince: data.friendSince || '',
-              isOnline: true,
+              friendSince: toIsoString(data.friendSince),
+              isOnline,
+              lastSeen,
               chatId: data.chatId || docSnap.id
             });
           }
-        });
+        }
         callback(list);
       },
       (err) => {
@@ -748,17 +921,81 @@ export function subscribeToFriends(
   }
 }
 
-/**
- * Helper to compute deterministic private Chat ID from two user IDs.
- */
 export function getPrivateChatId(userId1: string, userId2: string): string {
   return [userId1, userId2].sort().join('_');
 }
 
 /**
- * Subscribes to real-time 1-on-1 private messages in Firestore:
- * collection `privateChats/{chatId}/messages`
+ * Ensures a direct 1-on-1 chat metadata document exists between Buyer & Seller,
+ * Student & Agent, or Student & Requester so they can message immediately.
  */
+export async function openOrCreateDirectChat(
+  currentUser: { id: string; name: string; matricNumber?: string },
+  targetUser: { id: string; name: string; matricNumber?: string }
+): Promise<string> {
+  const chatId = getPrivateChatId(currentUser.id, targetUser.id);
+  const chatRef = doc(db, 'privateChats', chatId);
+  try {
+    await setDoc(
+      chatRef,
+      stripUndefined({
+        chatId,
+        participants: [currentUser.id, targetUser.id].sort(),
+        participantNames: {
+          [currentUser.id]: currentUser.name,
+          [targetUser.id]: targetUser.name
+        },
+        participantMatrics: {
+          ...(currentUser.matricNumber ? { [currentUser.id]: currentUser.matricNumber } : {}),
+          ...(targetUser.matricNumber ? { [targetUser.id]: targetUser.matricNumber } : {})
+        },
+        updatedAt: new Date().toISOString()
+      }),
+      { merge: true }
+    );
+    return chatId;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `privateChats/${chatId}`);
+  }
+}
+
+export function subscribeToMyPrivateChats(
+  userId: string,
+  callback: (chats: ChatMetadata[]) => void
+): () => void {
+  try {
+    const q = query(
+      collection(db, 'privateChats'),
+      where('participants', 'array-contains', userId),
+      limit(100)
+    );
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const chats: ChatMetadata[] = [];
+        snapshot.forEach((docSnap) => {
+          chats.push({
+            ...(docSnap.data() as ChatMetadata),
+            chatId: docSnap.id
+          });
+        });
+        chats.sort((a, b) => {
+          const tA = Date.parse(a.lastMessageTime || a.updatedAt || '') || 0;
+          const tB = Date.parse(b.lastMessageTime || b.updatedAt || '') || 0;
+          return tB - tA;
+        });
+        callback(chats);
+      },
+      (err) => {
+        console.warn('[subscribeToMyPrivateChats warning]:', err);
+        callback([]);
+      }
+    );
+  } catch (err) {
+    return () => {};
+  }
+}
+
 export function subscribeToPrivateMessages(
   chatId: string,
   callback: (messages: PrivateMessage[]) => void
@@ -777,14 +1014,17 @@ export function subscribeToPrivateMessages(
         const list: PrivateMessage[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          const img = typeof data.imageUrl === 'string' && data.imageUrl.trim().length > 0
+            ? data.imageUrl.trim()
+            : undefined;
           list.push({
             id: docSnap.id,
             chatId,
             senderId: data.senderId,
             senderName: data.senderName,
             text: data.text || '',
-            imageUrl: data.imageUrl || '',
-            createdAt: data.createdAt || new Date().toISOString(),
+            ...(img ? { imageUrl: img } : {}),
+            createdAt: toIsoString(data.createdAt),
             timestamp: data.timestamp || Date.now(),
             seen: Boolean(data.seen),
             seenAt: data.seenAt
@@ -803,16 +1043,14 @@ export function subscribeToPrivateMessages(
   }
 }
 
-/**
- * Sends a 1-on-1 private message.
- */
 export async function sendPrivateMessage(
   chatId: string,
   msg: {
     senderId: string;
     senderName: string;
     text?: string;
-    imageUrl?: string;
+    imageUrl?: string | null;
+    participants?: string[];
   }
 ): Promise<void> {
   const msgId = `pmsg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -820,25 +1058,34 @@ export async function sendPrivateMessage(
   const msgRef = doc(db, `privateChats/${chatId}/messages`, msgId);
   const chatRef = doc(db, 'privateChats', chatId);
 
-  try {
-    await setDoc(msgRef, {
-      ...msg,
-      id: msgId,
-      chatId,
-      createdAt: now,
-      timestamp: Date.now(),
-      seen: false
-    });
+  const payload: Record<string, any> = {
+    id: msgId,
+    chatId,
+    senderId: msg.senderId,
+    senderName: msg.senderName,
+    text: (msg.text || '').trim(),
+    createdAt: now,
+    timestamp: Date.now(),
+    seen: false
+  };
 
-    // Update chat metadata with last message preview
+  if (typeof msg.imageUrl === 'string' && msg.imageUrl.trim().length > 0) {
+    payload.imageUrl = msg.imageUrl.trim();
+  }
+
+  try {
+    await setDoc(msgRef, stripUndefined(payload));
+
     await setDoc(
       chatRef,
-      {
+      stripUndefined({
         chatId,
-        lastMessageText: msg.text || (msg.imageUrl ? '📷 Photo' : ''),
+        ...(Array.isArray(msg.participants) && msg.participants.length > 0 ? { participants: msg.participants } : {}),
+        lastMessageText: payload.text || (payload.imageUrl ? 'Photo' : ''),
         lastMessageTime: now,
-        lastSenderId: msg.senderId
-      },
+        lastSenderId: msg.senderId,
+        updatedAt: now
+      }),
       { merge: true }
     );
   } catch (err) {
@@ -846,9 +1093,6 @@ export async function sendPrivateMessage(
   }
 }
 
-/**
- * Sets typing status in private chat.
- */
 export async function setChatTypingStatus(
   chatId: string,
   userId: string,
@@ -863,14 +1107,11 @@ export async function setChatTypingStatus(
       },
       { merge: true }
     );
-  } catch (err) {
+  } catch {
     // Non-blocking
   }
 }
 
-/**
- * Subscribes to chat metadata (last message, typing indicators).
- */
 export function subscribeToChatMetadata(
   chatId: string,
   callback: (meta: ChatMetadata | null) => void
@@ -891,14 +1132,11 @@ export function subscribeToChatMetadata(
         callback(null);
       }
     );
-  } catch (err) {
+  } catch {
     return () => {};
   }
 }
 
-/**
- * Marks messages in a chat as seen by the current reader.
- */
 export async function markPrivateMessagesSeen(
   chatId: string,
   readerId: string
@@ -922,12 +1160,9 @@ export async function markPrivateMessagesSeen(
 }
 
 // ============================================================================
-// 3. WUKARI HUX HUB (Rent & Roommate Housing Persistence)
+// 3. WUKARI AGENT (Rent & Roommate Housing Persistence)
 // ============================================================================
 
-/**
- * Creates a genuine housing / roommate listing in Firestore "hux"
- */
 export async function createHuxListing(
   data: Omit<HuxListing, 'id' | 'createdAt'>
 ): Promise<HuxListing> {
@@ -935,16 +1170,24 @@ export async function createHuxListing(
   const id = `hux-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   const now = new Date().toISOString();
 
-  const hux: HuxListing = {
+  const cleanedImages = Array.isArray(data.images)
+    ? data.images.filter((img) => isValidImageUrl(img))
+    : [];
+
+  const hux: HuxListing = stripUndefined({
     ...data,
     id,
+    images: cleanedImages,
+    imageUrl: cleanedImages[0] || '',
+    isAvailable: data.isAvailable !== false,
     createdAt: now,
+    updatedAt: now,
     savedCount: 0
-  };
+  });
 
   try {
-    const ref = doc(db, path, id);
-    await setDoc(ref, hux);
+    const refDoc = doc(db, path, id);
+    await setDoc(refDoc, stripUndefined(hux));
     return hux;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
@@ -952,9 +1195,25 @@ export async function createHuxListing(
   }
 }
 
-/**
- * Subscribes to real-time Hux listings with optional category filter.
- */
+export async function updateHuxListing(
+  id: string,
+  updates: Partial<HuxListing>
+): Promise<void> {
+  const path = `hux/${id}`;
+  try {
+    const refDoc = doc(db, 'hux', id);
+    await updateDoc(
+      refDoc,
+      stripUndefined({
+        ...updates,
+        updatedAt: new Date().toISOString()
+      })
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
 export function subscribeToHuxListings(
   category: HuxCategory | 'all',
   callback: (listings: HuxListing[]) => void
@@ -964,7 +1223,7 @@ export function subscribeToHuxListings(
     const q = query(
       collection(db, path),
       orderBy('createdAt', 'desc'),
-      limit(100)
+      limit(120)
     );
 
     return onSnapshot(
@@ -974,11 +1233,14 @@ export function subscribeToHuxListings(
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as HuxListing;
           if (category === 'all' || data.category === category) {
+            const imgs = Array.isArray(data.images) ? data.images.filter((i) => isValidImageUrl(i)) : [];
             list.push({
               ...data,
               id: docSnap.id,
-              images: Array.isArray(data.images) ? data.images : [],
-              imageUrl: data.imageUrl || (Array.isArray(data.images) && data.images[0]) || ''
+              images: imgs,
+              imageUrl: data.imageUrl && isValidImageUrl(data.imageUrl) ? data.imageUrl : imgs[0] || '',
+              isAvailable: data.isAvailable !== false,
+              createdAt: toIsoString(data.createdAt)
             });
           }
         });
@@ -995,35 +1257,211 @@ export function subscribeToHuxListings(
   }
 }
 
-/**
- * Deletes a Hux listing.
- */
 export async function deleteHuxListing(id: string): Promise<void> {
   const path = `hux/${id}`;
   try {
-    const ref = doc(db, 'hux', id);
-    await deleteDoc(ref);
+    const refDoc = doc(db, 'hux', id);
+    await deleteDoc(refDoc);
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
 
-/**
- * Submits a fraud / scam report on a housing listing into "huxReports"
- */
 export async function reportHuxListing(report: Omit<HuxReport, 'id' | 'createdAt'>): Promise<void> {
   const path = 'huxReports';
   const id = `report-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   try {
-    const ref = doc(db, path, id);
-    await setDoc(ref, {
+    const refDoc = doc(db, path, id);
+    await setDoc(refDoc, stripUndefined({
       ...report,
       id,
+      status: 'pending',
       createdAt: new Date().toISOString()
-    });
+    }));
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
 }
 
+export function subscribeToHuxReports(
+  callback: (reports: HuxReport[]) => void
+): () => void {
+  try {
+    const q = query(collection(db, 'huxReports'), orderBy('createdAt', 'desc'), limit(100));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const list: HuxReport[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          list.push({
+            id: docSnap.id,
+            huxId: data.huxId || '',
+            huxTitle: data.huxTitle || '',
+            reason: data.reason || '',
+            details: data.details || '',
+            reporterName: data.reporterName || '',
+            reporterContact: data.reporterContact || '',
+            status: data.status || 'pending',
+            createdAt: toIsoString(data.createdAt)
+          });
+        });
+        callback(list);
+      },
+      () => callback([])
+    );
+  } catch {
+    return () => {};
+  }
+}
 
+export async function resolveHuxReport(
+  id: string,
+  status: 'resolved' | 'dismissed'
+): Promise<void> {
+  const path = `huxReports/${id}`;
+  try {
+    await updateDoc(doc(db, 'huxReports', id), { status });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
+// ============================================================================
+// 4. WHAT STUDENTS NEED ("studentRequests" collection)
+// ============================================================================
+
+export async function createStudentRequest(
+  data: Omit<StudentRequest, 'id' | 'createdAt' | 'status'>
+): Promise<StudentRequest> {
+  const path = 'studentRequests';
+  const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+
+  const payload: Record<string, any> = {
+    id,
+    title: String(data.title || '').trim(),
+    description: String(data.description || '').trim(),
+    budget: Number(data.budget) || 0,
+    location: String(data.location || '').trim(),
+    phone: String(data.phone || '').trim(),
+    whatsapp: String(data.whatsapp || data.phone || '').trim(),
+    userId: data.userId,
+    userName: data.userName,
+    status: 'open',
+    createdAt: now,
+    updatedAt: now
+  };
+
+  if (data.matricNumber && data.matricNumber.trim()) {
+    payload.matricNumber = data.matricNumber.trim();
+  }
+  if (typeof data.imageUrl === 'string' && isValidImageUrl(data.imageUrl)) {
+    payload.imageUrl = data.imageUrl.trim();
+  }
+
+  try {
+    await setDoc(doc(db, path, id), stripUndefined(payload));
+    return payload as StudentRequest;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+    throw err;
+  }
+}
+
+export async function updateStudentRequest(
+  id: string,
+  updates: Partial<StudentRequest>
+): Promise<void> {
+  const path = `studentRequests/${id}`;
+  try {
+    const cleanUpdates: Record<string, any> = { ...updates, updatedAt: new Date().toISOString() };
+    if (cleanUpdates.imageUrl === undefined || cleanUpdates.imageUrl === null || cleanUpdates.imageUrl === '') {
+      delete cleanUpdates.imageUrl;
+    }
+    await updateDoc(doc(db, 'studentRequests', id), stripUndefined(cleanUpdates));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
+export async function deleteStudentRequest(id: string): Promise<void> {
+  const path = `studentRequests/${id}`;
+  try {
+    await deleteDoc(doc(db, 'studentRequests', id));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+export function subscribeToStudentRequests(
+  callback: (requests: StudentRequest[]) => void
+): () => void {
+  const path = 'studentRequests';
+  try {
+    const q = query(collection(db, path), orderBy('createdAt', 'desc'), limit(120));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const list: StudentRequest[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const img = typeof data.imageUrl === 'string' && isValidImageUrl(data.imageUrl)
+            ? data.imageUrl.trim()
+            : undefined;
+          list.push({
+            id: docSnap.id,
+            title: data.title || '',
+            description: data.description || '',
+            budget: Number(data.budget) || 0,
+            location: data.location || '',
+            phone: data.phone || '',
+            whatsapp: data.whatsapp || data.phone || '',
+            ...(img ? { imageUrl: img } : {}),
+            userId: data.userId || '',
+            userName: data.userName || 'FUWUKARI Student',
+            matricNumber: data.matricNumber || '',
+            status: data.status === 'fulfilled' ? 'fulfilled' : 'open',
+            createdAt: toIsoString(data.createdAt),
+            updatedAt: data.updatedAt ? toIsoString(data.updatedAt) : undefined
+          });
+        });
+        callback(list);
+      },
+      (err) => {
+        console.error('[subscribeToStudentRequests error]:', err);
+        callback([]);
+      }
+    );
+  } catch (err) {
+    console.error('[subscribeToStudentRequests setup error]:', err);
+    return () => {};
+  }
+}
+
+// ============================================================================
+// 5. ORDERS & CART REVIEW PERSISTENCE ("orders" collection)
+// ============================================================================
+
+export async function createOrderInFirestore(
+  orderData: Omit<OrderRecord, 'id' | 'createdAt' | 'status'>
+): Promise<OrderRecord> {
+  const path = 'orders';
+  const id = `ord-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const now = new Date().toISOString();
+
+  const order: OrderRecord = stripUndefined({
+    ...orderData,
+    id,
+    status: 'pending_confirmation',
+    createdAt: now
+  });
+
+  try {
+    await setDoc(doc(db, path, id), stripUndefined(order));
+    return order;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+    throw err;
+  }
+}

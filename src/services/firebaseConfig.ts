@@ -44,7 +44,7 @@ export const activeFirebaseConfig = {
   authDomain: CUSTOM_FIREBASE_CONFIG.authDomain || defaultConfig.authDomain || "zangamarket1.firebaseapp.com",
   storageBucket: CUSTOM_FIREBASE_CONFIG.storageBucket || defaultConfig.storageBucket || "zangamarket1.firebasestorage.app",
   messagingSenderId: CUSTOM_FIREBASE_CONFIG.messagingSenderId || defaultConfig.messagingSenderId || "",
-  firestoreDatabaseId: CUSTOM_FIREBASE_CONFIG.firestoreDatabaseId || defaultConfig.firestoreDatabaseId || ""
+  firestoreDatabaseId: CUSTOM_FIREBASE_CONFIG.firestoreDatabaseId || ""
 };
 
 export default activeFirebaseConfig;

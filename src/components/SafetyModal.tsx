@@ -3,10 +3,6 @@ import {
   X,
   ShieldCheck,
   AlertTriangle,
-  FileText,
-  Lock,
-  PhoneCall,
-  CheckCircle2,
   Ban
 } from 'lucide-react';
 
@@ -18,57 +14,57 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'safety' | 'prohibited' | 'terms' | 'privacy'>('safety');
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[88vh] flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-3xl bg-[#121212] border border-[#333333] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[88vh] flex flex-col">
         {/* Header */}
-        <div className="bg-[#1C1917] text-white p-5 flex items-center justify-between shrink-0">
+        <div className="bg-[#1C1C1C] border-b border-[#333333] text-white p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#008751] flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-9 h-9 rounded-xl bg-[#FFFFFF]/15 border border-[#FFFFFF]/40 flex items-center justify-center text-[#FFFFFF]">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base">Trust, Safety & Legal Center</h3>
-              <p className="text-[11px] text-gray-400">Nigeria Safe Online Marketplace Standards</p>
+              <h3 className="font-black text-base text-white">FU MARKET — FUWUKARI Safe Trading Guidelines</h3>
+              <p className="text-[11px] text-[#BDBDBD]">Campus Buyer, Accommodation &amp; Delivery Safety Charter</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-[#121212] border border-[#333333] hover:border-[#FFFFFF] flex items-center justify-center transition"
           >
-            <X className="w-4 h-4 text-white" />
+            <X className="w-4 h-4 text-[#BDBDBD] hover:text-white" />
           </button>
         </div>
 
         {/* Tab Header */}
-        <div className="bg-gray-50 border-b border-gray-200 px-6 flex items-center gap-2 overflow-x-auto shrink-0 py-2 text-xs font-bold">
+        <div className="bg-[#1C1C1C] border-b border-[#333333] px-5 flex items-center gap-2 overflow-x-auto shrink-0 py-2.5 text-xs font-bold">
           <button
             onClick={() => setActiveTab('safety')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'safety' ? 'bg-[#F68B1F] text-white' : 'text-gray-600 hover:text-gray-900'
+            className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
+              activeTab === 'safety' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
             }`}
           >
             Buyer Scam Protection
           </button>
           <button
             onClick={() => setActiveTab('prohibited')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'prohibited' ? 'bg-[#F68B1F] text-white' : 'text-gray-600 hover:text-gray-900'
+            className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
+              activeTab === 'prohibited' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
             }`}
           >
             Prohibited Items
           </button>
           <button
             onClick={() => setActiveTab('terms')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'terms' ? 'bg-[#F68B1F] text-white' : 'text-gray-600 hover:text-gray-900'
+            className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
+              activeTab === 'terms' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
             }`}
           >
-            Terms of Service
+            Terms of Use
           </button>
           <button
             onClick={() => setActiveTab('privacy')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'privacy' ? 'bg-[#F68B1F] text-white' : 'text-gray-600 hover:text-gray-900'
+            className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
+              activeTab === 'privacy' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
             }`}
           >
             Privacy Policy
@@ -76,57 +72,57 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
         </div>
 
         {/* Tab Body */}
-        <div className="p-6 overflow-y-auto flex-1 text-xs text-gray-700 space-y-4 leading-relaxed">
+        <div className="p-6 overflow-y-auto flex-1 text-xs text-[#BDBDBD] space-y-4 leading-relaxed">
           {activeTab === 'safety' && (
             <div className="space-y-4">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900">
-                <h4 className="font-bold text-sm mb-1 flex items-center gap-1.5 text-amber-950">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  Important Marketplace Notice
+              <div className="p-4 bg-[#1C1C1C] border border-[#FFFFFF]/40 rounded-2xl">
+                <h4 className="font-bold text-sm mb-1 flex items-center gap-1.5 text-[#FFFFFF]">
+                  <AlertTriangle className="w-4 h-4" />
+                  Important FUWUKARI Marketplace Notice
                 </h4>
-                <p>
-                  NaijaMart is a free direct-connection platform connecting Nigerian buyers and sellers over WhatsApp. <strong>NaijaMart does not handle escrow or guarantee transactions when parties deal directly.</strong> Always observe the safety rules below:
+                <p className="text-[#BDBDBD]">
+                  FU MARKET connects students, sellers, agents, and campus Okada riders directly in Wukari. <strong className="text-white">Always inspect products and lodges physically before paying any money.</strong>
                 </p>
               </div>
 
               <div className="space-y-3">
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-xs">
+                <div className="p-3.5 bg-[#1C1C1C] rounded-xl border border-[#333333] flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] font-bold flex items-center justify-center shrink-0 text-xs">
                     1
                   </div>
                   <div>
-                    <strong className="block text-gray-900 font-bold mb-0.5">Never Send Advance Delivery Fees</strong>
-                    Do not make upfront bank transfers, commit money, or "fuel money" for delivery before seeing the seller in person. Legitimate Nigerian sellers allow inspection before payment.
+                    <strong className="block text-white font-bold mb-0.5">Zero Advance Inspection or Delivery Fees</strong>
+                    Never transfer &ldquo;inspection fees&rdquo;, &ldquo;fuel money&rdquo;, or &ldquo;booking deposits&rdquo; before physically inspecting a product, room, or hostel.
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-xs">
+                <div className="p-3.5 bg-[#1C1C1C] rounded-xl border border-[#333333] flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] font-bold flex items-center justify-center shrink-0 text-xs">
                     2
                   </div>
                   <div>
-                    <strong className="block text-gray-900 font-bold mb-0.5">Meet in Public, Well-Lit Places</strong>
-                    Always arrange pick-ups at open, populated public venues — shopping malls, fuel stations, banks, or police stations. Never meet in secluded locations or isolated private residences.
+                    <strong className="block text-white font-bold mb-0.5">Meet in Busy Campus Locations</strong>
+                    Arrange pickups at FUWUKARI Main Gate, Lecture Hall corridors, New Site, or crowded public areas during daytime hours.
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-xs">
+                <div className="p-3.5 bg-[#1C1C1C] rounded-xl border border-[#333333] flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] font-bold flex items-center justify-center shrink-0 text-xs">
                     3
                   </div>
                   <div>
-                    <strong className="block text-gray-900 font-bold mb-0.5">Inspect Gadgets and Goods Thoroughly</strong>
-                    For phones and laptops: check IMEI numbers (*#06#), check iCloud/Google account lock status, test camera, battery health, and run diagnostic tests before transferring funds.
+                    <strong className="block text-white font-bold mb-0.5">Verify Electronics &amp; Accommodation Thoroughly</strong>
+                    Check phone IMEI numbers (*#06#), iCloud/Google lock status, battery health, and receipts. For accommodation, confirm landlord identity and inspect water, light, and security.
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-xs">
+                <div className="p-3.5 bg-[#1C1C1C] rounded-xl border border-[#333333] flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] font-bold flex items-center justify-center shrink-0 text-xs">
                     4
                   </div>
                   <div>
-                    <strong className="block text-gray-900 font-bold mb-0.5">Beware of Unrealistic Prices</strong>
-                    If an iPhone 15 Pro Max is listed for ₦150,000, it is almost certainly a scam or counterfeit device. If an offer sounds too good to be true, it always is.
+                    <strong className="block text-white font-bold mb-0.5">Report Suspicious Listings Immediately</strong>
+                    Use the Report button on any suspicious product or Wukari Agent listing so platform moderators can review and remove bad actors.
                   </div>
                 </div>
               </div>
@@ -135,48 +131,48 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
 
           {activeTab === 'prohibited' && (
             <div className="space-y-3">
-              <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                <Ban className="w-4 h-4 text-red-600" />
-                Prohibited Items on NaijaMart
+              <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
+                <Ban className="w-4 h-4 text-red-400" />
+                Prohibited Items on FU MARKET
               </h4>
-              <p>The following items are strictly prohibited under Nigerian law and marketplace policies:</p>
-              <ul className="list-disc pl-5 space-y-1.5 text-gray-700">
-                <li>Firearms, ammunition, military apparel, and security equipment.</li>
-                <li>Narcotics, illicit prescription medications, and prohibited chemical substances.</li>
-                <li>Counterfeit banknotes, forged documents, and pirated media.</li>
-                <li>Stolen property or devices with iCloud/activation locks.</li>
-                <li>Human organs, endangered wildlife, and restricted botanical species.</li>
-                <li>Multi-level marketing (MLM), Ponzi schemes, crypto investment schemes, and "get-rich-quick" offers.</li>
+              <p>The following items and posts are strictly banned across FUWUKARI campus:</p>
+              <ul className="list-disc pl-5 space-y-1.5 text-[#BDBDBD]">
+                <li>Weapons, firearms, ammunition, and restricted tactical gear.</li>
+                <li>Illicit drugs, narcotics, and unapproved controlled substances.</li>
+                <li>Stolen phones, laptops, or devices with activation/iCloud locks.</li>
+                <li>Fake or misleading product photos that do not represent the actual item for sale.</li>
+                <li>Fraudulent accommodation postings or fake agency fee demands.</li>
+                <li>Ponzi schemes, crypto investment scams, and exam malpractice materials.</li>
               </ul>
-              <p className="text-[11px] text-red-600 font-semibold mt-3">
-                Any merchant posting prohibited items will have their listing removed immediately, account banned, and IP details forwarded to regulatory authorities.
+              <p className="text-[11px] text-red-400 font-semibold mt-3">
+                Accounts posting prohibited listings are suspended and removed permanently.
               </p>
             </div>
           )}
 
           {activeTab === 'terms' && (
             <div className="space-y-3 text-xs">
-              <h4 className="font-bold text-sm text-gray-900">Terms of Service</h4>
+              <h4 className="font-bold text-sm text-white">FU MARKET Terms of Use</h4>
               <p>
-                1. <strong>Direct Communication:</strong> NaijaMart provides the catalog index and links directly to seller WhatsApp numbers. NaijaMart is not a party to the physical trade, delivery, or monetary settlement between parties.
+                1. <strong className="text-white">Genuine Listings Only:</strong> Every product, student request, accommodation listing, and Okada rider entry must come from a real user with accurate contact details and genuine photos.
               </p>
               <p>
-                2. <strong>7-Day Listing Expiration:</strong> All listings remain live for precisely 168 hours (7 days) from publication. Upon expiration, listings are automatically and permanently deleted from active search and storage.
+                2. <strong className="text-white">Persistent Real Records:</strong> Listings remain active in the database until sold, fulfilled, updated, or deleted by the owner or an administrator.
               </p>
               <p>
-                3. <strong>Mandatory Genuine Photos:</strong> Sellers must own and upload legitimate photographs of the actual items being sold. Stock or false manufacturer images used to mislead buyers constitute grounds for immediate termination.
+                3. <strong className="text-white">Direct Campus Deals:</strong> Buyers and sellers are responsible for verifying item condition, payment, and meetup safety on campus.
               </p>
             </div>
           )}
 
           {activeTab === 'privacy' && (
             <div className="space-y-3 text-xs">
-              <h4 className="font-bold text-sm text-gray-900">Privacy Policy</h4>
+              <h4 className="font-bold text-sm text-white">Privacy Policy</h4>
               <p>
-                NaijaMart values your privacy. We collect minimal personal data: name, email, phone number, and seller location to facilitate marketplace listings.
+                FU MARKET stores only the details needed for your campus marketplace profile and listings: display name, matriculation number (where applicable), email/phone, WhatsApp contact, and uploaded item photos.
               </p>
               <p>
-                Seller WhatsApp numbers and locations are published publicly on product listings as intended for marketplace inquiries. We never sell buyer or seller personal information to third-party ad networks.
+                Contact details attached to public listings are displayed so genuine FUWUKARI buyers, students, or agents can reach you. We never sell student information to advertisers.
               </p>
             </div>
           )}

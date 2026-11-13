@@ -98,7 +98,7 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
   } catch (networkErr: any) {
     console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
     throw new Error(
-      `Unable to connect to ZangaMarket backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
+      `Unable to connect to FU MARKET backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
     );
   }
 
@@ -189,11 +189,7 @@ export async function fetchFlashDeals(): Promise<Product[]> {
     return await safeFetchJson('/api/products/flash-deals');
   } catch (err) {
     console.warn('[fetchFlashDeals fallback to Firestore]:', err);
-    const items = await getProductsFromFirestore({ limitCount: 10 });
-    return items.map(p => ({
-      ...p,
-      originalPrice: p.originalPrice && p.originalPrice > p.price ? p.originalPrice : Math.round(p.price * 1.25)
-    }));
+    return await getProductsFromFirestore({ limitCount: 10 });
   }
 }
 
@@ -275,9 +271,9 @@ export async function createProductListing(
         price: Number(payload.get('price')) || 0,
         originalPrice: payload.get('originalPrice') ? Number(payload.get('originalPrice')) : undefined,
         description: String(payload.get('description') || ''),
-        state: String(payload.get('state') || 'Lagos'),
-        city: String(payload.get('city') || 'Ikeja'),
-        whatsappNumber: String(payload.get('whatsapp') || payload.get('whatsappNumber') || '08031234567'),
+        state: String(payload.get('state') || 'Taraba'),
+        city: String(payload.get('city') || 'Wukari'),
+        whatsappNumber: String(payload.get('whatsapp') || payload.get('whatsappNumber') || ''),
         categoryId: String(payload.get('categoryId') || payload.get('category') || 'phones-tablets'),
         condition: (payload.get('condition') === 'used' ? 'used' : 'new') as 'new' | 'used',
         quantity: Number(payload.get('quantity')) || 1,

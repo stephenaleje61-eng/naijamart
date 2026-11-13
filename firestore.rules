@@ -29,7 +29,7 @@ service cloud.firestore {
         data.status is string;
     }
 
-    // Products: public buyers can view listings; authenticated sellers manage their own listings
+    // Products: public buyers can read listings; owners/admins manage
     match /products/{productId} {
       allow read: if true;
 
@@ -66,6 +66,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Reports collection
+    match /reports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Wukari Bike Riders (Okada Directory)
     match /bikeRiders/{riderId} {
       allow read: if true;
@@ -73,39 +79,41 @@ service cloud.firestore {
       allow delete: if isAdmin() || true;
     }
 
-    // ========================================================================
-    // 1. SINGLE HUB - FUWukari (Open Campus Group Chat)
-    // Real-time campus open chat messages visible to all university members
-    // ========================================================================
+    // What Students Need (Student Requests)
+    match /studentRequests/{requestId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['id', 'title', 'budget', 'location', 'phone', 'userId', 'status']) &&
+        request.resource.data.title is string && request.resource.data.title.size() > 0 &&
+        request.resource.data.budget is number && request.resource.data.budget >= 0;
+      allow update, delete: if true;
+    }
+
+    // Orders & Cart Review Persistence
+    match /orders/{orderId} {
+      allow create: if request.resource.data.keys().hasAll(['id', 'buyerId', 'buyerName', 'buyerPhone', 'items', 'totalAmount', 'status']) &&
+        request.resource.data.items is list && request.resource.data.items.size() > 0;
+      allow read, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // SINGLE HUB - FUWukari (Open Campus Group Chat)
     match /hubMessages/{messageId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasAll(['senderId', 'senderName', 'createdAt']);
       allow update, delete: if isAdmin();
     }
 
-    // Active campus presence heartbeat
     match /hubActiveUsers/{userId} {
       allow read, write: if true;
     }
 
-    // ========================================================================
-    // 2. FRIEND SYSTEM & PRIVATE CHAT RULES
-    // Allows registered campus students to discover peers, send mutual requests,
-    // and engage in 1-on-1 private messaging.
-    //
-    // HOW PRIVATE CHAT IS SECURED:
-    // - chatId is constructed as: [userA, userB].sort().join('_')
-    // - For maximum privacy in production with Firebase Auth, access can be restricted
-    //   such that: request.auth != null && (request.auth.uid in chatId.split('_'))
-    // ========================================================================
+    // FRIEND SYSTEM & DIRECT 1-ON-1 PRIVATE CHAT
     match /friendRequests/{requestId} {
-      allow read: if true;
-      allow create, update, delete: if true;
+      allow read, create, update, delete: if true;
     }
 
     match /friends/{friendId} {
-      allow read: if true;
-      allow create, update, delete: if true;
+      allow read, create, update, delete: if true;
     }
 
     match /privateChats/{chatId} {
@@ -116,10 +124,7 @@ service cloud.firestore {
       }
     }
 
-    // ========================================================================
-    // 3. WUKARI HUX HUB (Lodges, Self-Contains, House for Rent & Roommate Finder)
-    // Accommodation listings posted by verified agents or FUWukari students
-    // ========================================================================
+    // WUKARI AGENT (Lodges, Self-Contains & Roommate Finder)
     match /hux/{huxId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasAll(['title', 'location', 'price', 'category', 'type', 'phone', 'userId']);
@@ -129,7 +134,7 @@ service cloud.firestore {
     // Scam and fraud reports on housing listings
     match /huxReports/{reportId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if true;
     }
 
     // Connection test document

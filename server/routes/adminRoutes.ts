@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db.js';
+import { firestoreSync } from '../firestore.js';
 import { requireAdmin, AuthenticatedRequest } from '../auth.js';
 
 const router = Router();
@@ -45,22 +46,30 @@ router.get('/products', requireAdmin, (_req: AuthenticatedRequest, res: Response
 });
 
 // Moderation: Remove prohibited/fraudulent product
-router.delete('/products/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/products/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
 
-  if (productIndex === -1) {
-    return res.status(404).json({ error: 'Product not found.' });
+  let removedTitle = req.params.id;
+  let removedShop = 'Unknown';
+  if (productIndex !== -1) {
+    const removed = db.products.splice(productIndex, 1)[0];
+    removedTitle = removed.title;
+    removedShop = removed.shopName;
   }
 
-  const removed = db.products.splice(productIndex, 1)[0];
+  try {
+    await firestoreSync.deleteProduct(req.params.id);
+  } catch (err) {
+    console.warn('[Admin Delete Firestore Sync warning]:', err);
+  }
 
   // Log action
   db.auditLogs.unshift({
     id: `audit-${Date.now()}`,
     action: 'ADMIN_REMOVED_PRODUCT',
     actor: `${user.name} (${user.email})`,
-    details: `Moderator deleted product "${removed.title}" (ID: ${removed.id}) from shop "${removed.shopName}".`,
+    details: `Moderator deleted product "${removedTitle}" (ID: ${req.params.id}) from shop "${removedShop}".`,
     timestamp: new Date().toISOString()
   });
 
@@ -70,20 +79,20 @@ router.delete('/products/:id', requireAdmin, (req: AuthenticatedRequest, res: Re
 });
 
 // Moderation: Toggle featured product
-router.post('/products/:id/toggle-featured', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/products/:id/toggle-featured', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const product = db.products.find(p => p.id === req.params.id);
   if (!product) {
     return res.status(404).json({ error: 'Product not found.' });
   }
 
   product.isFeatured = !product.isFeatured;
-  db.save();
+  await db.persistProduct(product);
 
   res.json({ isFeatured: product.isFeatured, message: `Product is now ${product.isFeatured ? 'Featured' : 'Standard'}.` });
 });
 
 // Moderate product: Approve or Reject
-router.post('/products/:id/moderate', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/products/:id/moderate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const { status, notes } = req.body;
   const product = db.products.find(p => p.id === req.params.id);
@@ -105,7 +114,7 @@ router.post('/products/:id/moderate', requireAdmin, (req: AuthenticatedRequest, 
     timestamp: new Date().toISOString()
   });
 
-  db.save();
+  await db.persistProduct(product);
 
   res.json({
     success: true,

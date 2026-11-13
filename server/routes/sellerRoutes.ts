@@ -1,17 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db.js';
-import { requireAuth, requireSeller, AuthenticatedRequest } from '../auth.js';
+import { requireSeller, AuthenticatedRequest } from '../auth.js';
 
 const router = Router();
 
-// GET public seller storefront by ID or Shop Slug
+// GET public seller storefront by ID or Shop Slug (genuine sellers only)
 router.get('/storefront/:identifier', (req: Request, res: Response) => {
   const { identifier } = req.params;
   let profile = db.sellerProfiles.find(
     s => s.userId === identifier || s.id === identifier || s.shopSlug === identifier
   );
 
-  // If not found by exact id/slug, check case-insensitive matches
   if (!profile && identifier) {
     const lower = identifier.toLowerCase();
     profile = db.sellerProfiles.find(
@@ -19,21 +18,22 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
     );
   }
 
-  // If still not found, check if a registered user exists with this ID or email
   if (!profile && identifier) {
-    const sellerUser = db.users.find(u => u.id === identifier || u.email?.toLowerCase() === identifier.toLowerCase());
+    const sellerUser = db.users.find(
+      u => u.id === identifier || u.email?.toLowerCase() === identifier.toLowerCase()
+    );
     if (sellerUser) {
-      const shopName = sellerUser.name ? `${sellerUser.name}'s Shop` : 'NaijaMart Merchant';
+      const shopName = sellerUser.name ? `${sellerUser.name}'s Store` : 'FU MARKET Seller';
       const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       profile = {
         id: `profile-${sellerUser.id}`,
         userId: sellerUser.id,
         shopName,
         shopSlug: `${slug}-${sellerUser.id.slice(-4)}`,
-        description: `Welcome to ${shopName} on NaijaMart. Verified marketplace vendor. Chat on WhatsApp for fast orders and swift delivery!`,
-        whatsappNumber: sellerUser.whatsappNumber || sellerUser.phone || '08031234567',
-        state: sellerUser.state || 'Lagos',
-        city: sellerUser.city || 'Ikeja',
+        description: `Student storefront on FU MARKET (${sellerUser.city || 'Wukari'}).`,
+        whatsappNumber: sellerUser.whatsappNumber || sellerUser.phone || '',
+        state: sellerUser.state || 'Taraba',
+        city: sellerUser.city || 'Wukari',
         isVerified: sellerUser.role === 'seller',
         createdAt: sellerUser.createdAt || new Date().toISOString()
       };
@@ -42,22 +42,21 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
     }
   }
 
-  // If still not found, check if any product exists with sellerId === identifier
   if (!profile && identifier) {
     const matchingProducts = db.products.filter(p => p.sellerId === identifier);
     if (matchingProducts.length > 0) {
       const firstP = matchingProducts[0];
-      const shopName = firstP.shopName || firstP.sellerName || 'NaijaMart Merchant';
+      const shopName = firstP.shopName || firstP.sellerName || 'FU MARKET Seller';
       const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       profile = {
         id: `profile-${identifier}`,
         userId: identifier,
         shopName,
         shopSlug: `${slug}-${identifier.slice(-4)}`,
-        description: `Welcome to ${shopName} on NaijaMart. Quality guaranteed. Direct WhatsApp deals!`,
-        whatsappNumber: firstP.whatsappNumber || '08031234567',
-        state: firstP.state || 'Lagos',
-        city: firstP.city || 'Ikeja',
+        description: `Genuine FUWUKARI student seller on FU MARKET.`,
+        whatsappNumber: firstP.whatsappNumber || '',
+        state: firstP.state || 'Taraba',
+        city: firstP.city || 'Wukari',
         isVerified: false,
         createdAt: firstP.createdAt || new Date().toISOString()
       };
@@ -66,29 +65,14 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
     }
   }
 
-  // If STILL not found, synthesize a graceful storefront from the first registered seller or a merchant profile
   if (!profile) {
-    profile = db.sellerProfiles[0] || {
-      id: `profile-${identifier || 'demo'}`,
-      userId: identifier || 'seller-ikeja-01',
-      shopName: 'NaijaMart Merchant Store',
-      shopSlug: `merchant-${identifier || 'demo'}`,
-      description: 'Welcome to our verified marketplace storefront on NaijaMart. Contact us directly on WhatsApp for deals!',
-      whatsappNumber: '08031234567',
-      state: 'Lagos',
-      city: 'Ikeja',
-      isVerified: true,
-      createdAt: new Date().toISOString()
-    };
+    return res.status(404).json({ success: false, error: 'Seller storefront not found.' });
   }
 
   const sellerUser = db.users.find(u => u.id === profile.userId);
-  const now = Date.now();
-
-  // Active products
-  const products = db.products.filter(p => {
-    return (p.sellerId === profile.userId || p.sellerId === identifier) && p.status === 'active';
-  });
+  const products = db.products.filter(
+    p => (p.sellerId === profile.userId || p.sellerId === identifier) && p.status === 'active'
+  );
 
   res.json({
     seller: {
@@ -99,9 +83,9 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
       shopLogo: profile.shopLogo || sellerUser?.avatarUrl,
       coverImage: profile.coverImage,
       description: profile.description,
-      whatsappNumber: profile.whatsappNumber || '08031234567',
-      state: profile.state || 'Lagos',
-      city: profile.city || 'Ikeja',
+      whatsappNumber: profile.whatsappNumber || '',
+      state: profile.state || 'Taraba',
+      city: profile.city || 'Wukari',
       address: profile.address,
       isVerified: profile.isVerified,
       createdAt: profile.createdAt,
@@ -111,37 +95,30 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
   });
 });
 
-// GET authenticated seller's own listings (including expiring soon warnings and stats)
+// GET authenticated seller's own listings
 router.get('/my-listings', requireSeller, (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
-  const now = Date.now();
-
   const allSellerProducts = db.products.filter(p => p.sellerId === user.id);
 
-  // Listings with permanent active status
-  const enrichedListings = allSellerProducts.map(p => {
-    return {
-      ...p,
-      remainingMs: 999999999999,
-      remainingHours: 999999,
-      remainingDays: 9999,
-      isExpired: false,
-      isExpiringSoon: false
-    };
-  });
+  const enrichedListings = allSellerProducts.map(p => ({
+    ...p,
+    remainingMs: 999999999999,
+    remainingHours: 999999,
+    remainingDays: 9999,
+    isExpired: false,
+    isExpiringSoon: false
+  }));
 
-  // Calculate seller stats
   const totalViews = allSellerProducts.reduce((sum, p) => sum + (p.views || 0), 0);
   const totalWhatsAppClicks = allSellerProducts.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0);
   const activeCount = allSellerProducts.filter(p => p.status === 'active').length;
-  const expiringSoonCount = 0;
 
   res.json({
     listings: enrichedListings,
     stats: {
       totalProducts: allSellerProducts.length,
       activeCount,
-      expiringSoonCount,
+      expiringSoonCount: 0,
       totalViews,
       totalWhatsAppClicks
     }
@@ -154,16 +131,15 @@ router.put('/profile', requireSeller, (req: AuthenticatedRequest, res: Response)
   let profile = db.sellerProfiles.find(s => s.userId === user.id);
 
   if (!profile) {
-    // Auto-create if missing
     profile = {
       id: `profile-${Date.now()}`,
       userId: user.id,
-      shopName: `${user.name}'s Shop`,
+      shopName: `${user.name}'s Store`,
       shopSlug: `${user.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`,
-      description: 'Welcome to my official shop on NaijaMart!',
+      description: 'Official student storefront on FU MARKET.',
       whatsappNumber: user.whatsappNumber || user.phone || '',
-      state: user.state || 'Lagos',
-      city: user.city || 'Ikeja',
+      state: user.state || 'Taraba',
+      city: user.city || 'Wukari',
       isVerified: false,
       createdAt: new Date().toISOString()
     };
@@ -193,7 +169,6 @@ router.put('/profile', requireSeller, (req: AuthenticatedRequest, res: Response)
   }
   if (address !== undefined) profile.address = address.trim();
 
-  // Also update shopName in any existing active products for consistency
   for (const prod of db.products) {
     if (prod.sellerId === user.id) {
       prod.shopName = profile.shopName;

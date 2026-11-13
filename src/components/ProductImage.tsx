@@ -156,16 +156,16 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
+        className={`w-full h-full bg-[#121212] flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
       >
-        <div className="w-14 h-14 rounded-2xl bg-white/80 shadow-sm border border-gray-200/80 flex items-center justify-center mb-2">
+        <div className="w-14 h-14 rounded-2xl bg-[#1C1C1C] border border-[#333333] flex items-center justify-center mb-2">
           {renderCategoryIcon()}
         </div>
-        <span className="text-[11px] font-bold text-gray-700 line-clamp-1 max-w-[90%] px-1">
+        <span className="text-[11px] font-bold text-white line-clamp-1 max-w-[90%] px-1">
           {alt || 'Product Listing'}
         </span>
-        <span className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-medium">
-          <ImageOff className="w-3 h-3 text-gray-400" />
+        <span className="text-[10px] text-[#BDBDBD] mt-0.5 flex items-center gap-1 font-medium">
+          <ImageOff className="w-3 h-3 text-[#BDBDBD]" />
           {hasError ? 'Photo unavailable' : 'No photo uploaded'}
         </span>
 
@@ -176,7 +176,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 type="button"
                 onClick={handleRetry}
                 disabled={isRetrying}
-                className="text-[10px] font-bold text-[#F68B1F] bg-orange-50 hover:bg-orange-100 disabled:opacity-60 px-2.5 py-1 rounded-md border border-orange-200 flex items-center gap-1 transition"
+                className="text-[10px] font-bold text-[#FFFFFF] bg-[#1C1C1C] hover:bg-[#333333] disabled:opacity-60 px-2.5 py-1 rounded-md border border-[#FFFFFF]/40 flex items-center gap-1 transition"
                 title="Retry loading photo"
               >
                 {isRetrying ? (
@@ -192,7 +192,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 )}
               </button>
             ) : (
-              <span className="text-[9px] text-gray-400 italic">
+              <span className="text-[9px] text-[#BDBDBD] italic">
                 Photo could not be loaded
               </span>
             )}
@@ -203,9 +203,9 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-gray-50" onClick={onClick}>
+    <div className="relative w-full h-full overflow-hidden bg-[#121212]" onClick={onClick}>
       {isLoading && (
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-[#1C1C1C] to-[#121212] animate-pulse" />
       )}
       <img
         src={displaySrc}

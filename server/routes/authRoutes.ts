@@ -48,9 +48,9 @@ router.post('/register', async (req, res) => {
       passwordHash,
       role: role === 'seller' ? 'seller' : 'buyer',
       phone: phone?.trim(),
-      whatsappNumber: whatsappNumber?.trim() || phone?.trim() || '08012345678',
-      state: state?.trim() || 'Lagos',
-      city: city?.trim() || 'Ikeja',
+      whatsappNumber: whatsappNumber?.trim() || phone?.trim() || '',
+      state: state?.trim() || 'Taraba',
+      city: city?.trim() || 'Wukari',
       createdAt: new Date().toISOString()
     };
 
@@ -58,7 +58,7 @@ router.post('/register', async (req, res) => {
 
     let sellerProfile: SellerProfile | undefined;
     if (newUser.role === 'seller') {
-      const formattedShopName = (shopName || `${name}'s Shop`).trim();
+      const formattedShopName = (shopName || `${name}'s Store`).trim();
       const shopSlug = formattedShopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const profileId = `profile-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
@@ -67,10 +67,10 @@ router.post('/register', async (req, res) => {
         userId: newUser.id,
         shopName: formattedShopName,
         shopSlug: `${shopSlug}-${Date.now().toString().slice(-4)}`,
-        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!`,
+        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on FU MARKET. Chat with us for fast campus delivery!`,
         whatsappNumber: newUser.whatsappNumber || newUser.phone || '',
-        state: newUser.state || 'Lagos',
-        city: newUser.city || 'Ikeja',
+        state: newUser.state || 'Taraba',
+        city: newUser.city || 'Wukari',
         isVerified: false,
         createdAt: new Date().toISOString()
       };
@@ -248,7 +248,7 @@ router.post('/forgot-password', (req, res) => {
   if (!user) {
     return res.json({
       success: true,
-      message: 'If this email is registered on ZangaMarket, instructions have been prepared.'
+      message: 'If this email is registered on FU MARKET, instructions have been prepared.'
     });
   }
 

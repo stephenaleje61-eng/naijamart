@@ -2,19 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   MapPin,
-  Clock,
   ShieldCheck,
   Heart,
   Share2,
   AlertTriangle,
-  Phone,
   Store,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
   MessageCircle,
-  Copy,
-  ExternalLink
+  ShoppingCart,
+  AlertCircle
 } from 'lucide-react';
 import { Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -22,17 +20,22 @@ import { formatNaira } from './ProductCard.js';
 import { triggerWhatsAppChat, recordProductView, reportProduct } from '../services/api.js';
 import { ProductImage } from './ProductImage.js';
 import { getValidProductImages } from '../utils/productImages.js';
+import { DirectChatTarget } from './FriendsPage.js';
 
 interface ProductDetailModalProps {
   product: Product | null;
   onClose: () => void;
   onOpenStorefront?: (sellerId: string) => void;
+  onAddToCart?: (product: Product) => void;
+  onStartDirectChat?: (target: DirectChatTarget) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
-  onOpenStorefront
+  onOpenStorefront,
+  onAddToCart,
+  onStartDirectChat
 }) => {
   const { isFavourite, toggleFavourite } = useAuth();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -41,14 +44,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [reportReason, setReportReason] = useState('Suspected fraudulent listing');
   const [reportDetails, setReportDetails] = useState('');
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [reportingLoading, setReportingLoading] = useState(false);
-  const [clickCount, setClickCount] = useState<number>(product?.whatsappClicks || 0);
 
   useEffect(() => {
     if (product) {
       setActiveImageIndex(0);
-      setClickCount(product.whatsappClicks || 0);
-      // Increment view in background
+      setReportError(null);
       recordProductView(product.id);
     }
   }, [product?.id]);
@@ -62,19 +64,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
 
-  const handleWhatsAppClick = async () => {
-    try {
-      const res = await triggerWhatsAppChat(product.id);
-      setClickCount(prev => prev + 1);
-      window.open(res.link, '_blank');
-    } catch {
-      let cleaned = product.whatsappNumber.replace(/[^0-9]/g, '');
-      if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
-      const text = encodeURIComponent(
-        `Hello ${product.shopName}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on NaijaMart. Is it still available?`
-      );
-      window.open(`https://wa.me/${cleaned}?text=${text}`, '_blank');
-    }
+  const buildWhatsAppHref = (): string | null => {
+    const raw = (product.whatsappNumber || '').trim();
+    if (!raw) return null;
+    let cleaned = raw.replace(/[^0-9]/g, '');
+    if (!cleaned) return null;
+    if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
+    else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
+    const text = encodeURIComponent(
+      `Hello ${product.shopName}, I found your product "${product.title}" (${formatNaira(product.price)}) on FU MARKET. Is it still available?`
+    );
+    return `https://wa.me/${cleaned}?text=${text}`;
+  };
+
+  const handleWhatsAppClick = () => {
+    triggerWhatsAppChat(product.id).catch(() => {});
   };
 
   const handleShare = () => {
@@ -89,6 +93,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setReportingLoading(true);
+    setReportError(null);
     try {
       await reportProduct(product.id, {
         reason: reportReason,
@@ -99,33 +104,33 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         setShowReportModal(false);
         setReportSuccess(false);
         setReportDetails('');
-      }, 2500);
+      }, 2200);
     } catch (err: any) {
-      alert(err.message || 'Failed to submit report');
+      setReportError(err.message || 'Failed to submit report. Please try again.');
     } finally {
       setReportingLoading(false);
     }
   };
 
   const images = getValidProductImages(product.images, product.imageUrl);
+  const whatsappHref = buildWhatsAppHref();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden my-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-4xl bg-[#121212] border border-[#333333] rounded-3xl shadow-2xl overflow-hidden my-4">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-700 hover:text-black shadow-md flex items-center justify-center transition"
+          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-[#BDBDBD] hover:text-white shadow-md flex items-center justify-center transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Left Column: Image Gallery */}
-          <div className="p-4 sm:p-6 bg-gray-50 flex flex-col justify-between border-b md:border-b-0 md:border-r border-gray-200">
+          <div className="p-4 sm:p-6 bg-[#1C1C1C] flex flex-col justify-between border-b md:border-b-0 md:border-r border-[#333333]">
             <div>
-              {/* Main Image with Navigation */}
-              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white shadow-inner flex items-center justify-center">
+              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-black border border-[#333333] flex items-center justify-center">
                 <ProductImage
                   src={images[activeImageIndex]}
                   alt={product.title}
@@ -138,32 +143,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <>
                     <button
                       onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
-                      className="absolute left-2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition"
+                      className="absolute left-2 w-8 h-8 rounded-full bg-black/70 border border-[#333333] hover:border-[#FFFFFF] text-white flex items-center justify-center transition"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
-                      className="absolute right-2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition"
+                      className="absolute right-2 w-8 h-8 rounded-full bg-black/70 border border-[#333333] hover:border-[#FFFFFF] text-white flex items-center justify-center transition"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </>
                 )}
 
-                {/* Condition Pill */}
-                <span className="absolute top-3 left-3 bg-black/70 text-white text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                <span className="absolute top-3 left-3 bg-[#FFFFFF] text-black text-[11px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
                   {product.condition === 'new' ? 'Brand New' : 'Direct Used'}
-                </span>
-
-                {/* Verified Active Listing Badge */}
-                <span className="absolute bottom-3 left-3 bg-emerald-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
-                  <ShieldCheck className="w-3 h-3 text-white" />
-                  <span>Verified Active Listing</span>
                 </span>
               </div>
 
-              {/* Thumbnails */}
               {images.length > 1 && (
                 <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1">
                   {images.map((img, idx) => (
@@ -171,7 +168,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       key={idx}
                       onClick={() => setActiveImageIndex(idx)}
                       className={`w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition ${
-                        activeImageIndex === idx ? 'border-[#F68B1F] scale-105' : 'border-gray-200 opacity-70 hover:opacity-100'
+                        activeImageIndex === idx
+                          ? 'border-[#FFFFFF] scale-105'
+                          : 'border-[#333333] opacity-70 hover:opacity-100'
                       }`}
                     >
                       <ProductImage src={img} alt="thumbnail" category={product.categoryId} className="w-full h-full object-cover" />
@@ -181,152 +180,182 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
             </div>
 
-            {/* Quick Share & Favourite row */}
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200 text-xs">
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#333333] text-xs">
               <button
                 onClick={() => toggleFavourite(product.id)}
                 className={`flex items-center gap-1.5 font-bold transition ${
-                  favourited ? 'text-red-600' : 'text-gray-600 hover:text-red-500'
+                  favourited ? 'text-red-400' : 'text-[#BDBDBD] hover:text-red-400'
                 }`}
               >
-                <Heart className={`w-4 h-4 ${favourited ? 'fill-red-600' : ''}`} />
+                <Heart className={`w-4 h-4 ${favourited ? 'fill-red-500 text-red-500' : ''}`} />
                 {favourited ? 'Saved in Favourites' : 'Save to Favourites'}
               </button>
 
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1.5 font-semibold text-gray-600 hover:text-[#F68B1F] transition"
+                className="flex items-center gap-1.5 font-semibold text-[#BDBDBD] hover:text-[#FFFFFF] transition"
               >
-                {copiedLink ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4" />}
+                {copiedLink ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
                 {copiedLink ? 'Link Copied!' : 'Share Listing'}
               </button>
             </div>
           </div>
 
-          {/* Right Column: Product Info & Direct WhatsApp CTA */}
+          {/* Right Column: Product Info & Actions */}
           <div className="p-6 flex flex-col justify-between">
             <div>
-              {/* Category & Status */}
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span className="bg-orange-50 text-[#E07A15] font-bold px-2.5 py-0.5 rounded-full capitalize">
+              <div className="flex items-center justify-between text-xs text-[#BDBDBD] mb-2">
+                <span className="bg-[#FFFFFF]/15 border border-[#FFFFFF]/40 text-[#FFFFFF] font-bold px-2.5 py-0.5 rounded-full capitalize">
                   {product.categoryId.replace('-', ' ')}
                 </span>
-                <span className="flex items-center gap-1 text-[11px]">
-                  <span>Listed: {new Date(product.createdAt).toLocaleDateString()}</span>
+                <span className="text-[11px]">
+                  Listed: {new Date(product.createdAt).toLocaleDateString()}
                 </span>
               </div>
 
-              {/* Title */}
-              <h2 className="text-xl sm:text-2xl font-black text-[#222222] leading-snug mb-3">
-                {product.title}
-              </h2>
+              <h2 className="text-xl sm:text-2xl font-black text-white leading-snug mb-3">{product.title}</h2>
 
-              {/* Price & Discount */}
-              <div className="flex items-baseline gap-3 mb-4 bg-orange-50/60 p-3.5 rounded-2xl border border-orange-100">
-                <span className="text-2xl sm:text-3xl font-black text-[#222222]">
+              <div className="flex items-baseline gap-3 mb-4 bg-[#1C1C1C] p-3.5 rounded-2xl border border-[#333333]">
+                <span className="text-2xl sm:text-3xl font-black text-[#FFFFFF]">
                   {formatNaira(product.price)}
                 </span>
                 {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-sm text-gray-500 line-through">
+                  <span className="text-sm text-[#BDBDBD] line-through">
                     {formatNaira(product.originalPrice)}
                   </span>
                 )}
                 {discountPercent && (
-                  <span className="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full">
+                  <span className="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-md">
                     {discountPercent}% OFF
                   </span>
                 )}
               </div>
 
-              {/* Location & Quantity */}
               <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                  <span className="text-gray-500 block text-[10px] uppercase font-bold">Location</span>
-                  <div className="flex items-center gap-1 font-semibold text-gray-800 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#F68B1F]" />
-                    <span>{product.city}, {product.state}</span>
+                <div className="p-2.5 rounded-xl bg-[#1C1C1C] border border-[#333333]">
+                  <span className="text-[#BDBDBD] block text-[10px] uppercase font-bold">Location</span>
+                  <div className="flex items-center gap-1 font-semibold text-white mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                    <span>
+                      {product.city}, {product.state}
+                    </span>
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                  <span className="text-gray-500 block text-[10px] uppercase font-bold">Quantity In Stock</span>
-                  <span className="font-semibold text-gray-800 block mt-0.5">
+                <div className="p-2.5 rounded-xl bg-[#1C1C1C] border border-[#333333]">
+                  <span className="text-[#BDBDBD] block text-[10px] uppercase font-bold">Quantity In Stock</span>
+                  <span className="font-semibold text-white block mt-0.5">
                     {product.quantity} {product.quantity === 1 ? 'unit' : 'units available'}
                   </span>
                 </div>
               </div>
 
-              {/* Description */}
               <div className="mb-4">
-                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                <h4 className="text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1">
                   Product Description
                 </h4>
-                <div className="text-xs sm:text-sm text-gray-700 whitespace-pre-line leading-relaxed max-h-36 overflow-y-auto pr-1">
+                <div className="text-xs sm:text-sm text-white/90 whitespace-pre-line leading-relaxed max-h-36 overflow-y-auto pr-1">
                   {product.description}
                 </div>
               </div>
 
               {/* Seller Profile Card */}
-              <div className="p-3.5 rounded-2xl border border-gray-200 bg-white shadow-sm mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-full bg-[#F68B1F]/20 text-[#E07A15] font-black text-sm flex items-center justify-center shrink-0">
-                      {product.shopName.charAt(0).toUpperCase()}
+              <div className="p-3.5 rounded-2xl border border-[#333333] bg-[#1C1C1C] mb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] font-black text-sm flex items-center justify-center shrink-0">
+                      {(product.shopName || product.sellerName || 'S').charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 font-bold text-sm text-[#222222]">
-                        <span>{product.shopName}</span>
-                        <span title="Verified NaijaMart Seller">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 font-bold text-sm text-white truncate">
+                        <span className="truncate">{product.shopName}</span>
+                        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                       </div>
-                      <span className="text-[11px] text-gray-500">
-                        Seller: {product.sellerName} • {product.state}
+                      <span className="text-[11px] text-[#BDBDBD] block truncate">
+                        Seller: {product.sellerName} • {product.city}, {product.state}
                       </span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (onOpenStorefront) {
+                  {onOpenStorefront && (
+                    <button
+                      onClick={() => {
                         onClose();
                         onOpenStorefront(product.sellerId);
-                      }
-                    }}
-                    className="text-xs font-bold text-[#F68B1F] hover:text-[#E07A15] flex items-center gap-1 hover:underline"
-                  >
-                    <Store className="w-3.5 h-3.5" />
-                    View Store
-                  </button>
+                      }}
+                      className="text-xs font-bold text-[#FFFFFF] hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      <Store className="w-3.5 h-3.5" />
+                      View Store
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Nigerian Buyer Safety Notice */}
-              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2 mb-4">
-                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              {/* FUWUKARI Buyer Safety Notice */}
+              <div className="p-2.5 rounded-xl bg-[#1C1C1C] border border-[#FFFFFF]/30 text-[11px] text-[#BDBDBD] flex items-start gap-2 mb-4">
+                <ShieldCheck className="w-4 h-4 text-[#FFFFFF] shrink-0 mt-0.5" />
                 <p>
-                  <strong className="font-bold">Deal Safe in Nigeria:</strong> Meet seller in a public place. Inspect goods physically before paying. Never send upfront transport or commitment fees!
+                  <strong className="font-bold text-white">FUWUKARI Safe Meetup:</strong> Meet sellers in open campus areas. Inspect goods thoroughly before transferring any money.
                 </p>
               </div>
             </div>
 
-            {/* MANDATORY PROMINENT GREEN WHATSAPP BUTTON (Prompt Requirement 6) */}
+            {/* Action Buttons */}
             <div className="space-y-2">
-              <button
-                onClick={handleWhatsAppClick}
-                className="w-full py-3.5 px-6 bg-[#25D366] hover:bg-[#20BA5C] text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-500/25 active:scale-98 transition flex items-center justify-center gap-2.5"
-              >
-                <MessageCircle className="w-5 h-5 fill-current" />
-                <span>CHAT WITH SELLER ON WHATSAPP</span>
-              </button>
+              {onAddToCart && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddToCart(product);
+                    onClose();
+                  }}
+                  className="w-full py-3 px-6 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs sm:text-sm rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>ADD TO CART &amp; REVIEW ORDER</span>
+                </button>
+              )}
 
-              <div className="flex items-center justify-between text-[11px] text-gray-500 px-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {onStartDirectChat && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onStartDirectChat({
+                        id: product.sellerId,
+                        name: product.shopName || product.sellerName
+                      });
+                    }}
+                    className="py-3 px-4 bg-[#1C1C1C] hover:bg-black border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4 text-[#FFFFFF]" />
+                    <span>Chat Seller In App</span>
+                  </button>
+                )}
+
+                {whatsappHref && (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleWhatsAppClick}
+                    className="py-3 px-4 bg-[#25D366] hover:bg-[#20BA5C] text-black font-black text-xs rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>WhatsApp Seller</span>
+                  </a>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-[#BDBDBD] px-1 pt-1">
                 <span className="font-mono">
-                  WhatsApp Contact: {product.whatsappNumber}
+                  {product.whatsappNumber ? `Contact: ${product.whatsappNumber}` : 'Direct in-app chat enabled'}
                 </span>
                 <button
                   onClick={() => setShowReportModal(true)}
-                  className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
+                  className="text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold"
                 >
                   <AlertTriangle className="w-3 h-3" />
                   Report Listing
@@ -338,29 +367,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* Report Listing Submodal */}
         {showReportModal && (
-          <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-30 p-6 flex flex-col justify-center items-center">
-            <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
-              <h3 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-                Report this Listing to NaijaMart
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-30 p-6 flex flex-col justify-center items-center">
+            <div className="max-w-md w-full bg-[#121212] p-6 rounded-2xl shadow-xl border border-[#333333]">
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+                Report Listing on FU MARKET
               </h3>
-              <p className="text-xs text-gray-500 mb-4">
-                Help keep the Nigerian marketplace safe from scammers and counterfeits.
+              <p className="text-xs text-[#BDBDBD] mb-4">
+                Help keep the FUWUKARI student marketplace safe from scams or misleading items.
               </p>
 
+              {reportError && (
+                <div className="mb-3 p-3 bg-red-950/60 border border-red-800 text-red-200 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{reportError}</span>
+                </div>
+              )}
+
               {reportSuccess ? (
-                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  Thank you! Your report has been submitted to NaijaMart Trust & Safety moderators.
+                <div className="p-4 bg-emerald-950/60 border border-emerald-700 text-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  Thank you! Your report has been submitted to FU MARKET moderators.
                 </div>
               ) : (
                 <form onSubmit={handleReportSubmit} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Reason</label>
+                    <label className="block text-xs font-bold text-[#BDBDBD] mb-1">Reason</label>
                     <select
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-gray-300 rounded-xl outline-none"
+                      className="w-full text-xs p-2.5 bg-[#1C1C1C] border border-[#333333] text-white rounded-xl outline-none focus:border-[#FFFFFF]"
                     >
                       <option value="Suspected fraudulent listing">Suspected fraudulent / scam listing</option>
                       <option value="Asking for upfront deposit or delivery fee">Asking for upfront deposit or delivery fee</option>
@@ -372,14 +408,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Details & Evidence</label>
+                    <label className="block text-xs font-bold text-[#BDBDBD] mb-1">Details &amp; Evidence</label>
                     <textarea
                       required
                       rows={3}
                       value={reportDetails}
                       onChange={(e) => setReportDetails(e.target.value)}
                       placeholder="Please provide details of what happened..."
-                      className="w-full text-xs p-2.5 border border-gray-300 rounded-xl outline-none"
+                      className="w-full text-xs p-2.5 bg-[#1C1C1C] border border-[#333333] text-white rounded-xl outline-none focus:border-[#FFFFFF]"
                     />
                   </div>
 
@@ -387,7 +423,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowReportModal(false)}
-                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl"
+                      className="px-4 py-2 text-xs font-semibold text-[#BDBDBD] hover:text-white rounded-xl"
                     >
                       Cancel
                     </button>

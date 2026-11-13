@@ -1,38 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Sparkles,
-  Flame,
-  TrendingUp,
   MapPin,
-  Clock,
   ShieldCheck,
-  Search,
-  Filter,
   Grid,
   ShoppingBag,
   ArrowRight,
-  ChevronRight,
-  RefreshCw,
-  Heart,
-  SlidersHorizontal,
   PlusCircle,
   X,
-  MessageCircle,
-  CheckCircle2
+  CheckCircle2,
+  HelpCircle,
+  Home,
+  MessageSquare,
+  Users,
+  Download,
+  Smartphone,
+  Info
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
-import { Product, Category, ProductFilter } from './types.js';
 import {
-  fetchProducts,
-  fetchFlashDeals,
-  fetchTrendingProducts,
-  fetchCategories
-} from './services/api.js';
-import { Header, NIGERIAN_STATES } from './components/Header.js';
+  Product,
+  Category,
+  ProductFilter,
+  StudentRequest,
+  HuxListing,
+  CartItem
+} from './types.js';
+import { fetchProducts, fetchCategories } from './services/api.js';
+import { Header } from './components/Header.js';
 import { NIGERIA_STATES } from './constants/states.js';
 import { CategoryBar, getCategoryIcon } from './components/CategoryBar.js';
 import { HeroBanner } from './components/HeroBanner.js';
-import { ProductCard } from './components/ProductCard.js';
+import { ProductCard, formatNaira } from './components/ProductCard.js';
 import { ProductDetailModal } from './components/ProductDetailModal.js';
 import { SellProductModal } from './components/SellProductModal.js';
 import { AuthModal } from './components/AuthModal.js';
@@ -43,15 +41,27 @@ import { SafetyModal } from './components/SafetyModal.js';
 import { Footer } from './components/Footer.js';
 import { BikeRidersPage } from './components/BikeRidersPage.js';
 import { SingleHubPage } from './components/SingleHubPage.js';
-import { FriendsPage } from './components/FriendsPage.js';
+import { FriendsPage, DirectChatTarget } from './components/FriendsPage.js';
 import { HuxPage } from './components/HuxPage.js';
+import { WhatStudentsNeedPage } from './components/WhatStudentsNeedPage.js';
+import { CartOrderReviewModal } from './components/CartOrderReviewModal.js';
 import { BottomNav, AppView } from './components/BottomNav.js';
-import { subscribeToFriendRequests } from './services/firebase.js';
+import { OfflineIndicator } from './components/OfflineIndicator.js';
+import { usePWAInstall } from './hooks/usePWAInstall.js';
+import {
+  subscribeToFriendRequests,
+  subscribeToStudentRequests,
+  subscribeToHuxListings
+} from './services/firebase.js';
 import { getLocalStudentSession } from './utils/studentAuth.js';
+import { getProductDisplayImage } from './utils/productImages.js';
+
+const CART_STORAGE_KEY = 'fu_market_cart';
 
 function resolveViewFromPath(): AppView {
   if (typeof window === 'undefined') return 'marketplace';
   const path = window.location.pathname.toLowerCase();
+  if (path.startsWith('/requests') || path.includes('requests.html')) return 'requests';
   if (path.startsWith('/hub') || path.includes('hub.html')) return 'hub';
   if (path.startsWith('/friends') || path.includes('friends.html')) return 'friends';
   if (path.startsWith('/hux') || path.includes('hux.html')) return 'hux';
@@ -59,12 +69,44 @@ function resolveViewFromPath(): AppView {
   return 'marketplace';
 }
 
+function loadCartFromStorage(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function MainMarketplace() {
   const { user, favourites } = useAuth();
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
 
-  // Multi-page route state: marketplace | hub | friends | hux | bike-riders
+  // Multi-page route state
   const [currentView, setCurrentView] = useState<AppView>(() => resolveViewFromPath());
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+  const [directChatTarget, setDirectChatTarget] = useState<DirectChatTarget | null>(null);
+
+  // Cart state persisted in localStorage
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => loadCartFromStorage());
+  const [showCartModal, setShowCartModal] = useState<boolean>(false);
+
+  // Live previews for homepage sections 6 & 7
+  const [latestRequests, setLatestRequests] = useState<StudentRequest[]>([]);
+  const [latestAccommodation, setLatestAccommodation] = useState<HuxListing[]>([]);
+
+  // PWA guidance banner toggle
+  const [showPWAInstructions, setShowPWAInstructions] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [cartItems]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -74,27 +116,47 @@ function MainMarketplace() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Listen for incoming friend requests to show badge on Friends bottom tab
+  // Listen for incoming friend requests & homepage real-time previews
   useEffect(() => {
     const student = getLocalStudentSession();
     const studentId = student?.id || user?.id;
+    let unsubReq = () => {};
     if (studentId) {
-      const unsub = subscribeToFriendRequests(studentId, (requests) => {
-        const pending = requests.filter(r => r.toId === studentId && r.status === 'pending');
+      unsubReq = subscribeToFriendRequests(studentId, (requests) => {
+        const pending = requests.filter((r) => r.toId === studentId && r.status === 'pending');
         setPendingRequestsCount(pending.length);
       });
-      return () => unsub();
     }
+
+    const unsubStudentReqs = subscribeToStudentRequests((list) => {
+      setLatestRequests(list.slice(0, 3));
+    });
+
+    const unsubHux = subscribeToHuxListings('all', (list) => {
+      setLatestAccommodation(list.filter((l) => l.isAvailable !== false).slice(0, 3));
+    });
+
+    return () => {
+      unsubReq();
+      unsubStudentReqs();
+      unsubHux();
+    };
   }, [user?.id]);
 
   const navigateToView = (view: AppView) => {
     setCurrentView(view);
     const targetPath =
-      view === 'hub' ? '/hub.html' :
-      view === 'friends' ? '/friends.html' :
-      view === 'hux' ? '/hux.html' :
-      view === 'bike-riders' ? '/bike-riders.html' :
-      '/';
+      view === 'requests'
+        ? '/requests.html'
+        : view === 'hub'
+        ? '/hub.html'
+        : view === 'friends'
+        ? '/friends.html'
+        : view === 'hux'
+        ? '/hux.html'
+        : view === 'bike-riders'
+        ? '/bike-riders.html'
+        : '/';
 
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
@@ -102,17 +164,58 @@ function MainMarketplace() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const navigateToBikeRiders = () => navigateToView('bike-riders');
-  const navigateToMarketplace = () => navigateToView('marketplace');
-  const navigateToHub = () => navigateToView('hub');
-  const navigateToFriends = () => navigateToView('friends');
-  const navigateToHux = () => navigateToView('hux');
+  const handleStartDirectChat = (target: DirectChatTarget) => {
+    setDirectChatTarget(target);
+    navigateToView('friends');
+  };
+
+  // Cart handlers
+  const addToCart = (product: Product) => {
+    const imgUrl = getProductDisplayImage(product.images, product.imageUrl) || '';
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.productId === product.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.productId === product.id
+            ? { ...i, quantity: Math.min(product.quantity || 20, i.quantity + 1) }
+            : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          title: product.title,
+          price: product.price,
+          quantity: 1,
+          imageUrl: imgUrl,
+          sellerId: product.sellerId,
+          sellerName: product.sellerName,
+          shopName: product.shopName,
+          whatsappNumber: product.whatsappNumber || '',
+          maxQuantity: product.quantity || 20
+        }
+      ];
+    });
+    showToast(`Added "${product.title}" to cart`);
+    setShowCartModal(true);
+  };
+
+  const updateCartQuantity = (productId: string, quantity: number) => {
+    setCartItems((prev) =>
+      prev.map((i) => (i.productId === productId ? { ...i, quantity: Math.max(1, quantity) } : i))
+    );
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCartItems((prev) => prev.filter((i) => i.productId !== productId));
+  };
+
+  const clearCart = () => setCartItems([]);
 
   // Data states
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [flashDeals, setFlashDeals] = useState<Product[]>([]);
-  const [trending, setTrending] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
 
@@ -137,54 +240,30 @@ function MainMarketplace() {
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
 
   const productCatalogRef = useRef<HTMLDivElement>(null);
-  const flashDealsRef = useRef<HTMLElement>(null);
+  const downloadAppRef = useRef<HTMLElement>(null);
 
   const handleProductPostSuccess = async () => {
-    // Reset filters so user sees newly posted items in flash deals and all category
     setSelectedCategory('all');
     setSelectedState('all');
     setSearchQuery('');
     setViewingFavouritesOnly(false);
 
-    // Refresh all feeds
-    await Promise.all([
-      loadCatalogProducts(1),
-      loadFlashAndTrending(),
-      loadCategories()
-    ]);
+    await Promise.all([loadCatalogProducts(1), loadCategories()]);
+    showToast('Product published on FU MARKET');
 
-    // Show toast message
-    showToast('Product posted successfully');
-
-    // Smooth scroll to NAIJA FLASH DEALS
     setTimeout(() => {
-      const el = document.getElementById('naija-flash-deals') || flashDealsRef.current;
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (productCatalogRef.current) {
+      if (productCatalogRef.current) {
         productCatalogRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }, 350);
+    }, 300);
   };
+
   const loadCategories = async () => {
     try {
       const data = await fetchCategories();
       setCategories(data);
     } catch (err) {
       console.error('Failed to load categories', err);
-    }
-  };
-
-  const loadFlashAndTrending = async () => {
-    try {
-      const [deals, trend] = await Promise.all([
-        fetchFlashDeals(),
-        fetchTrendingProducts()
-      ]);
-      setFlashDeals(deals);
-      setTrending(trend);
-    } catch (err) {
-      console.error('Failed to load flash deals or trending products', err);
     }
   };
 
@@ -213,7 +292,6 @@ function MainMarketplace() {
 
   useEffect(() => {
     loadCategories();
-    loadFlashAndTrending();
   }, []);
 
   useEffect(() => {
@@ -223,6 +301,18 @@ function MainMarketplace() {
   const handleStartShopping = () => {
     if (productCatalogRef.current) {
       productCatalogRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleTriggerPWAHelp = () => {
+    setShowPWAInstructions(true);
+    if (currentView !== 'marketplace') {
+      navigateToView('marketplace');
+      setTimeout(() => {
+        downloadAppRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 250);
+    } else {
+      downloadAppRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -238,15 +328,19 @@ function MainMarketplace() {
   };
 
   const displayedProducts = viewingFavouritesOnly
-    ? products.filter(p => favourites.includes(p.id))
+    ? products.filter((p) => favourites.includes(p.id))
     : products;
 
+  const totalCartItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+
   return (
-    <div className="min-h-screen bg-[#F5F5F5] text-[#222222] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#000000] text-white flex flex-col font-sans">
+      <OfflineIndicator />
+
       {/* Toast Notification */}
       {notificationToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1C1917] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border border-gray-700 animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-[#1C1C1C] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border border-[#FFFFFF]">
+          <CheckCircle2 className="w-4 h-4 text-[#FFFFFF]" />
           <span>{notificationToast}</span>
         </div>
       )}
@@ -264,39 +358,45 @@ function MainMarketplace() {
         onOpenAuthModal={handleOpenAuth}
         onOpenSellerDashboard={() => setShowSellerDashboard(true)}
         onOpenAdminDashboard={() => setShowAdminDashboard(true)}
-        onOpenFavourites={() => setViewingFavouritesOnly(!viewingFavouritesOnly)}
+        onOpenFavourites={() => {
+          if (currentView !== 'marketplace') navigateToView('marketplace');
+          setViewingFavouritesOnly(!viewingFavouritesOnly);
+        }}
         onOpenSafetyModal={() => setShowSafetyModal(true)}
-        onOpenBikeRiders={navigateToBikeRiders}
-        isBikeRidersActive={currentView === 'bike-riders'}
-        onOpenHub={navigateToHub}
-        onOpenFriends={navigateToFriends}
-        onOpenHux={navigateToHux}
+        onOpenCart={() => setShowCartModal(true)}
+        cartCount={totalCartItems}
+        onNavigateView={navigateToView}
+        onTriggerPWAHelp={handleTriggerPWAHelp}
         activeView={currentView}
       />
 
-      {currentView === 'hub' ? (
+      {currentView === 'requests' ? (
+        <WhatStudentsNeedPage
+          onBackToHome={() => navigateToView('marketplace')}
+          onStartDirectChat={handleStartDirectChat}
+        />
+      ) : currentView === 'hub' ? (
         <SingleHubPage
-          onBackToHome={navigateToMarketplace}
-          onNavigateToFriends={navigateToFriends}
-          onNavigateToHux={navigateToHux}
+          onBackToHome={() => navigateToView('marketplace')}
+          onNavigateToFriends={() => navigateToView('friends')}
+          onStartDirectChat={handleStartDirectChat}
         />
       ) : currentView === 'friends' ? (
         <FriendsPage
-          onBackToHome={navigateToMarketplace}
-          onNavigateToHub={navigateToHub}
-          onNavigateToHux={navigateToHux}
+          onBackToHome={() => navigateToView('marketplace')}
+          onNavigateToHub={() => navigateToView('hub')}
+          initialChatTarget={directChatTarget}
+          onClearChatTarget={() => setDirectChatTarget(null)}
         />
       ) : currentView === 'hux' ? (
         <HuxPage
-          onBackToHome={navigateToMarketplace}
-          onNavigateToHub={navigateToHub}
-          onNavigateToFriends={navigateToFriends}
+          onBackToHome={() => navigateToView('marketplace')}
+          onStartDirectChat={handleStartDirectChat}
         />
       ) : currentView === 'bike-riders' ? (
-        <BikeRidersPage onBackToMarketplace={navigateToMarketplace} />
+        <BikeRidersPage onBackToMarketplace={() => navigateToView('marketplace')} />
       ) : (
         <>
-          {/* Categories Bar */}
           <CategoryBar
             categories={categories}
             selectedCategory={selectedCategory}
@@ -304,346 +404,505 @@ function MainMarketplace() {
               setSelectedCategory(catId);
               setViewingFavouritesOnly(false);
             }}
-            onOpenBikeRiders={navigateToBikeRiders}
+            onOpenBikeRiders={() => navigateToView('bike-riders')}
           />
 
-      {/* Hero Banner (Shown when not filtering by specific favourites) */}
-      {!viewingFavouritesOnly && !searchQuery && (
-        <HeroBanner
-          onStartShopping={handleStartShopping}
-          onOpenSellModal={() => setShowSellModal(true)}
-          onSelectCategory={(catId) => {
-            setSelectedCategory(catId);
-            handleStartShopping();
-          }}
-        />
-      )}
+          {/* SECTION 1: Welcome Banner */}
+          {!viewingFavouritesOnly && !searchQuery && (
+            <HeroBanner
+              onStartShopping={handleStartShopping}
+              onOpenSellModal={() => setShowSellModal(true)}
+              onNavigateView={navigateToView}
+            />
+          )}
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
-        {/* FLASH DEALS SECTION (Only shown when browsing all and no search query) */}
-        {!viewingFavouritesOnly && !searchQuery && selectedCategory === 'all' && flashDeals.length > 0 && (
-          <section id="naija-flash-deals" ref={flashDealsRef} className="mb-8 scroll-mt-24">
-            <div className="bg-gradient-to-r from-red-600 to-[#F68B1F] p-4 sm:p-5 rounded-3xl text-white shadow-lg mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black">
-                  <Flame className="w-6 h-6 text-yellow-300 fill-current animate-pulse" />
+          {/* Main 10-Section Homepage Content */}
+          <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-10">
+            {/* SECTION 2: Student Marketplace + SECTION 5: Latest Genuine Products */}
+            <section ref={productCatalogRef} className="scroll-mt-24 space-y-5">
+              {/* Section 2 Header & Filter Controls */}
+              <div className="bg-[#121212] p-4 sm:p-5 rounded-2xl border border-[#333333] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF]">
+                    Student Marketplace
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <h2 className="text-lg sm:text-xl font-black text-white">
+                      {viewingFavouritesOnly
+                        ? 'Saved Favourites'
+                        : selectedCategory !== 'all'
+                        ? categories.find((c) => c.id === selectedCategory)?.name || 'Category Products'
+                        : searchQuery
+                        ? `Search Results for "${searchQuery}"`
+                        : 'Latest Genuine Products'}
+                    </h2>
+                    {selectedState !== 'all' && (
+                      <span className="bg-[#1C1C1C] border border-[#FFFFFF]/40 text-[#FFFFFF] text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> {selectedState}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#BDBDBD] mt-0.5">
+                    Showing {displayedProducts.length} of {pagination.total} verified listings • 100% real student submissions
+                  </p>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-[#1C1C1C] border border-[#333333] px-3 py-2 rounded-xl text-xs font-bold text-white">
+                    <MapPin className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                    <select
+                      value={selectedState}
+                      onChange={(e) => setSelectedState(e.target.value)}
+                      className="bg-transparent border-0 outline-none text-xs font-bold text-white cursor-pointer"
+                    >
+                      <option value="all" className="bg-[#121212]">
+                        All Locations
+                      </option>
+                      {NIGERIA_STATES.map((st) => (
+                        <option key={st} value={st} className="bg-[#121212]">
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center bg-[#1C1C1C] border border-[#333333] p-0.5 rounded-xl text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setConditionFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg transition ${
+                        conditionFilter === 'all' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConditionFilter('new')}
+                      className={`px-3 py-1.5 rounded-lg transition ${
+                        conditionFilter === 'new' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
+                      }`}
+                    >
+                      New
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConditionFilter('used')}
+                      className={`px-3 py-1.5 rounded-lg transition ${
+                        conditionFilter === 'used' ? 'bg-[#FFFFFF] text-black' : 'text-[#BDBDBD] hover:text-white'
+                      }`}
+                    >
+                      Used
+                    </button>
+                  </div>
+
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value as any)}
+                    className="bg-[#1C1C1C] border border-[#333333] text-xs font-bold text-white py-2 px-3 rounded-xl outline-none focus:border-[#FFFFFF]"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="popular">Most Popular</option>
+                  </select>
+
+                  {(selectedCategory !== 'all' ||
+                    selectedState !== 'all' ||
+                    conditionFilter !== 'all' ||
+                    searchQuery ||
+                    viewingFavouritesOnly) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory('all');
+                        setSelectedState('all');
+                        setConditionFilter('all');
+                        setSearchQuery('');
+                        setViewingFavouritesOnly(false);
+                      }}
+                      className="px-3 py-2 text-xs text-red-400 hover:bg-red-950/50 rounded-xl font-bold transition flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 5: Products Grid or Exact Empty State */}
+              {loading ? (
+                <div className="py-16 text-center">
+                  <div className="w-10 h-10 border-4 border-[#FFFFFF] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-xs font-bold text-[#BDBDBD]">
+                    Loading genuine FU MARKET listings...
+                  </p>
+                </div>
+              ) : displayedProducts.length === 0 ? (
+                <div className="bg-[#121212] rounded-3xl p-10 text-center border border-[#333333] max-w-xl mx-auto">
+                  <ShoppingBag className="w-12 h-12 text-[#333333] mx-auto mb-3" />
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    {products.length === 0
+                      ? 'No products have been posted yet. Be the first student to advertise something!'
+                      : 'No matching products found'}
+                  </h3>
+                  {products.length > 0 && (
+                    <p className="text-xs text-[#BDBDBD] mt-1 mb-4">
+                      Try clearing your search or changing category filters.
+                    </p>
+                  )}
+                  <div className="flex items-center justify-center gap-3 mt-5">
+                    {products.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory('all');
+                          setSelectedState('all');
+                          setSearchQuery('');
+                          setConditionFilter('all');
+                        }}
+                        className="px-4 py-2 bg-[#1C1C1C] border border-[#333333] text-white text-xs font-bold rounded-xl"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowSellModal(true)}
+                      className="px-5 py-2.5 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs font-black rounded-xl transition"
+                    >
+                      Post a Product
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                  {displayedProducts.map((prod) => (
+                    <ProductCard
+                      key={prod.id}
+                      product={prod}
+                      onOpenDetail={setSelectedProduct}
+                      onOpenStorefront={setSelectedSellerStorefrontId}
+                      onAddToCart={addToCart}
+                      onStartDirectChat={handleStartDirectChat}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* SECTION 3 & 6: What Students Need + Latest Genuine Student Requests */}
+            <section className="bg-[#121212] border border-[#333333] rounded-3xl p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF]">
+                    What Students Need
+                  </span>
+                  <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2 mt-0.5">
+                    <HelpCircle className="w-5 h-5 text-[#FFFFFF]" />
+                    <span>Latest Genuine Student Requests</span>
+                  </h2>
+                  <p className="text-xs text-[#BDBDBD] mt-0.5">
+                    Looking for a textbook, gadget, appliance, or campus item? Post your budget and let student sellers find you.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => navigateToView('requests')}
+                    className="px-4 py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs rounded-xl flex items-center gap-1.5 transition"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Post What You Need</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateToView('requests')}
+                    className="px-4 py-2 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-xs rounded-xl flex items-center gap-1 transition"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {latestRequests.length === 0 ? (
+                <div className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-6 text-center text-xs text-[#BDBDBD]">
+                  No student requests available yet. Post what you need and connect with other students.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {latestRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      onClick={() => navigateToView('requests')}
+                      className="bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] rounded-2xl p-4 cursor-pointer transition space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-black text-[#FFFFFF]">
+                          Budget: {formatNaira(req.budget)}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#121212] border border-[#333333] text-[#BDBDBD]">
+                          {req.status}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-white line-clamp-1">{req.title}</h3>
+                      <p className="text-xs text-[#BDBDBD] line-clamp-2">{req.description}</p>
+                      <div className="text-[11px] text-[#BDBDBD] pt-2 border-t border-[#333333] flex items-center justify-between">
+                        <span className="truncate">{req.location}</span>
+                        <span className="text-[#FFFFFF] font-bold shrink-0">Respond →</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* SECTION 4 & 7: Wukari Agent + Available Genuine Accommodation */}
+            <section className="bg-[#121212] border border-[#333333] rounded-3xl p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF]">
+                    Wukari Agent
+                  </span>
+                  <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2 mt-0.5">
+                    <Home className="w-5 h-5 text-[#FFFFFF]" />
+                    <span>Available Genuine Accommodation</span>
+                  </h2>
+                  <p className="text-xs text-[#BDBDBD] mt-0.5">
+                    Find verified student lodges, self-contains, flats, and roommates around FUWUKARI.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigateToView('hux')}
+                  className="px-4 py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0"
+                >
+                  <span>Explore Wukari Agent</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {latestAccommodation.length === 0 ? (
+                <div className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-6 text-center text-xs text-[#BDBDBD]">
+                  No accommodation listings available yet. Check back later or contact a registered agent.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {latestAccommodation.map((hux) => (
+                    <div
+                      key={hux.id}
+                      onClick={() => navigateToView('hux')}
+                      className="bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col"
+                    >
+                      {hux.imageUrl || (hux.images && hux.images[0]) ? (
+                        <div className="h-36 bg-black overflow-hidden">
+                          <img
+                            src={hux.imageUrl || hux.images[0]}
+                            alt={hux.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="p-4 space-y-1.5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="font-bold text-[#FFFFFF]">{hux.type}</span>
+                            <span className="text-[#BDBDBD]">{hux.location}</span>
+                          </div>
+                          <h3 className="text-sm font-bold text-white line-clamp-1 mt-1">{hux.title}</h3>
+                        </div>
+                        <div className="pt-2 border-t border-[#333333] flex items-center justify-between">
+                          <span className="text-sm font-black text-[#FFFFFF]">
+                            {formatNaira(hux.price)}
+                            <span className="text-[10px] text-[#BDBDBD] font-normal">/{hux.pricePer}</span>
+                          </span>
+                          <span className="text-xs font-bold text-white">Inspect →</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* SECTION 8: Marketplace Categories */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <Grid className="w-5 h-5 text-[#FFFFFF]" />
+                  <span>Marketplace Categories</span>
+                </h2>
+                <span className="text-xs text-[#BDBDBD]">{categories.length} Categories</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+                {categories.slice(0, 14).map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      handleStartShopping();
+                    }}
+                    className="p-3 bg-[#1C1C1C] hover:border-[#FFFFFF] border border-[#333333] rounded-2xl transition text-center flex flex-col items-center justify-center group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#121212] border border-[#333333] text-[#FFFFFF] group-hover:scale-110 flex items-center justify-center transition mb-1.5">
+                      {getCategoryIcon(cat.icon)}
+                    </div>
+                    <span className="text-xs font-bold text-white line-clamp-1 group-hover:text-[#FFFFFF]">
+                      {cat.name.split(' ')[0]}
+                    </span>
+                    <span className="text-[10px] text-[#BDBDBD]">
+                      {cat.productCount ? `${cat.productCount} items` : 'Browse'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* SECTION 9: Student Messaging (Single Hub + Direct 1-on-1) */}
+            <section className="bg-[#121212] border border-[#333333] rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#FFFFFF]">
+                  Student Messaging
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Connect Instantly with FUWUKARI Peers, Sellers &amp; Agents
+                </h2>
+                <p className="text-xs sm:text-sm text-[#BDBDBD] leading-relaxed">
+                  Join the live Single Hub campus discussion or open real-time 1-on-1 private chats directly with sellers, Wukari housing agents, and fellow students.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => navigateToView('hub')}
+                  className="px-5 py-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 transition"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Open Single Hub</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateToView('friends')}
+                  className="px-5 py-3 bg-[#1C1C1C] hover:bg-black border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 transition"
+                >
+                  <Users className="w-4 h-4 text-[#FFFFFF]" />
+                  <span>Direct &amp; Friends Chat</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Campus Safety Reminder */}
+            <section className="bg-[#1C1C1C] border border-[#333333] rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 text-[#FFFFFF] flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-black tracking-tight">NAIJA FLASH DEALS</h2>
-                    <span className="bg-yellow-300 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                      UP TO 30% OFF
-                    </span>
-                  </div>
-                  <p className="text-xs text-white/90">
-                    Genuine discounts from top Nigerian merchants. Negotiate and buy directly on WhatsApp!
+                  <h3 className="font-black text-sm sm:text-base text-white">
+                    FUWUKARI Safe Trading Guidelines
+                  </h3>
+                  <p className="text-xs text-[#BDBDBD] max-w-2xl mt-0.5 leading-relaxed">
+                    Meet sellers and agents in open, busy campus areas. Inspect every item or lodge in person before transferring money. Never pay advance delivery or inspection fees.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-semibold bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-sm self-start sm:self-auto">
-                <Clock className="w-3.5 h-3.5 text-yellow-300" />
-                <span>Strict 7-Day Live Inventory</span>
-              </div>
-            </div>
+              <button
+                type="button"
+                onClick={() => setShowSafetyModal(true)}
+                className="px-4 py-2 bg-[#121212] border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-xs rounded-xl transition shrink-0"
+              >
+                Read Safety Charter
+              </button>
+            </section>
 
-            {/* Flash Deals Horizontal Carousel / Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-              {flashDeals.slice(0, 5).map((deal) => (
-                <ProductCard
-                  key={deal.id}
-                  product={deal}
-                  onOpenDetail={setSelectedProduct}
-                  onOpenStorefront={setSelectedSellerStorefrontId}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* POPULAR CATEGORIES VISUAL GRID (Temu & Jumia style visual tiles) */}
-        {!viewingFavouritesOnly && !searchQuery && selectedCategory === 'all' && (
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base sm:text-lg font-black text-[#222222] flex items-center gap-2">
-                <Grid className="w-5 h-5 text-[#F68B1F]" />
-                Explore Departments
-              </h2>
-              <span className="text-xs text-gray-500 font-medium">15 Categories</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
-              {categories.slice(0, 14).map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    handleStartShopping();
-                  }}
-                  className="p-3 bg-white hover:bg-orange-50 border border-gray-200/80 hover:border-[#F68B1F]/60 rounded-2xl transition text-center flex flex-col items-center justify-center group shadow-sm"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-orange-100/70 text-[#E07A15] group-hover:scale-110 flex items-center justify-center transition mb-1.5">
-                    {getCategoryIcon(cat.icon)}
-                  </div>
-                  <span className="text-xs font-bold text-gray-800 line-clamp-1 group-hover:text-[#F68B1F]">
-                    {cat.name.split(' ')[0]}
-                  </span>
-                  <span className="text-[10px] text-gray-400">
-                    {cat.productCount ? `${cat.productCount} items` : 'Browse'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* NIGERIAN BUYER SAFETY BANNER */}
-        <section className="mb-8 bg-gradient-to-r from-emerald-800 via-teal-900 to-emerald-950 rounded-3xl p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6 text-emerald-300" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
-                Nigeria Safe Shopping Charter
-                <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                  Important
+            {/* SECTION 10: Download FU MARKET App (PWA Install) */}
+            <section
+              ref={downloadAppRef}
+              id="download-fu-market"
+              className="bg-[#121212] border border-[#FFFFFF]/50 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+            >
+              <div className="space-y-2 max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#FFFFFF] bg-[#1C1C1C] border border-[#333333] px-3 py-1 rounded-full">
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Download FU MARKET App</span>
                 </span>
-              </h3>
-              <p className="text-xs text-emerald-100 max-w-2xl mt-0.5 leading-relaxed">
-                Meet sellers in public spaces like shopping complexes. Always test and inspect items before transferring money. Never pay advance dispatch or commitment fees!
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setShowSafetyModal(true)}
-            className="px-4 py-2 bg-white text-emerald-900 hover:bg-emerald-50 font-extrabold text-xs rounded-xl shadow transition shrink-0"
-          >
-            Read Scam Prevention Tips
-          </button>
-        </section>
-
-        {/* MAIN PRODUCT CATALOG SECTION */}
-        <section ref={productCatalogRef}>
-          {/* Header & Filter Controls Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-black text-[#222222]">
-                  {viewingFavouritesOnly
-                    ? 'Saved Favourites'
-                    : selectedCategory !== 'all'
-                    ? categories.find(c => c.id === selectedCategory)?.name || 'Category Products'
-                    : searchQuery
-                    ? `Results for "${searchQuery}"`
-                    : 'Marketplace Feed'}
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Install FU MARKET on Android, iPhone, or Desktop
                 </h2>
-                {selectedState !== 'all' && (
-                  <span className="bg-orange-100 text-[#E07A15] text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {selectedState}
-                  </span>
+                <p className="text-xs sm:text-sm text-[#BDBDBD] leading-relaxed">
+                  Add FU MARKET to your home screen for one-tap launch, faster campus loading, and offline browsing of cached marketplace items.
+                </p>
+
+                {(showPWAInstructions || (isIOS && !isInstalled)) && (
+                  <div className="p-3.5 bg-[#1C1C1C] border border-[#333333] rounded-2xl text-xs text-[#BDBDBD] flex items-start gap-2 mt-2">
+                    <Info className="w-4 h-4 text-[#FFFFFF] shrink-0 mt-0.5" />
+                    <div>
+                      {isIOS ? (
+                        <span>
+                          On iPhone/iPad Safari: tap the <strong className="text-white">Share</strong> button at the bottom of Safari, then select <strong className="text-white">Add to Home Screen</strong>.
+                        </span>
+                      ) : (
+                        <span>
+                          In Chrome or Edge: click the <strong className="text-white">Install</strong> icon in the address bar or open browser menu → <strong className="text-white">Install FU MARKET</strong>.
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                Showing {displayedProducts.length} of {pagination.total} listings • Automatic 7-day lifecycle
-              </p>
-            </div>
 
-            {/* Filter Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* State Filter Dropdown (36 States + FCT) */}
-              <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-2 rounded-xl text-xs font-bold text-gray-700">
-                <MapPin className="w-3.5 h-3.5 text-[#F68B1F]" />
-                <select
-                  value={selectedState}
-                  onChange={(e) => setSelectedState(e.target.value)}
-                  className="bg-transparent border-0 outline-none text-xs font-bold text-gray-800 cursor-pointer"
-                >
-                  <option value="all">All Nigerian States</option>
-                  {NIGERIA_STATES.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Condition Filter */}
-              <div className="flex items-center bg-gray-100 p-0.5 rounded-xl text-xs font-bold">
-                <button
-                  onClick={() => setConditionFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    conditionFilter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setConditionFilter('new')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    conditionFilter === 'new' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Brand New
-                </button>
-                <button
-                  onClick={() => setConditionFilter('used')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    conditionFilter === 'used' ? 'bg-white text-amber-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Direct Used
-                </button>
-              </div>
-
-              {/* Sort Selector */}
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as any)}
-                className="bg-gray-100 border-0 text-xs font-bold text-gray-700 py-2 px-3 rounded-xl outline-none focus:ring-2 focus:ring-[#F68B1F]"
-              >
-                <option value="newest">Newest First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="popular">Most Popular</option>
-              </select>
-
-              {/* Reset Filters */}
-              {(selectedCategory !== 'all' || selectedState !== 'all' || conditionFilter !== 'all' || searchQuery || viewingFavouritesOnly) && (
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSelectedState('all');
-                    setConditionFilter('all');
-                    setSearchQuery('');
-                    setViewingFavouritesOnly(false);
-                  }}
-                  className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-xl font-bold transition flex items-center gap-1"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* PRODUCTS GRID */}
-          {loading ? (
-            <div className="py-20 text-center">
-              <div className="w-10 h-10 border-4 border-[#F68B1F] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-              <p className="text-xs font-bold text-gray-500">Loading verified Nigerian marketplace listings...</p>
-            </div>
-          ) : displayedProducts.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-gray-200 shadow-sm max-w-lg mx-auto my-8">
-              <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base sm:text-lg font-black text-gray-900">
-                {products.length === 0
-                  ? 'No products yet — Be the first to publish.'
-                  : 'No Matching Products Found'}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1 mb-5 leading-relaxed">
-                {products.length === 0
-                  ? 'There are currently no active listings. Be the very first merchant to post your items with genuine photos and get buyers reaching you directly on WhatsApp!'
-                  : "We couldn't find any active listings matching your current filters. Try selecting a different state or category!"}
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                {products.length > 0 && (
+              <div className="shrink-0">
+                {isInstalled ? (
+                  <div className="px-5 py-3 bg-emerald-950/60 border border-emerald-700 text-emerald-300 font-black text-xs sm:text-sm rounded-xl flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>App Installed</span>
+                  </div>
+                ) : isInstallable ? (
                   <button
-                    onClick={() => {
-                      setSelectedCategory('all');
-                      setSelectedState('all');
-                      setSearchQuery('');
-                      setConditionFilter('all');
-                    }}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition"
+                    type="button"
+                    onClick={() => install()}
+                    className="px-6 py-3.5 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-sm rounded-xl active:scale-95 transition flex items-center gap-2"
                   >
-                    Reset Filters
+                    <Download className="w-4 h-4" />
+                    <span>Install FU MARKET App</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowPWAInstructions(true)}
+                    className="px-6 py-3.5 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-sm rounded-xl active:scale-95 transition flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>How to Install App</span>
                   </button>
                 )}
-                <button
-                  onClick={() => setShowSellModal(true)}
-                  className="px-5 py-2.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white text-xs font-extrabold rounded-xl shadow-md shadow-orange-500/25 active:scale-95 transition"
-                >
-                  Publish Product
-                </button>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-              {displayedProducts.map((prod) => (
-                <ProductCard
-                  key={prod.id}
-                  product={prod}
-                  onOpenDetail={setSelectedProduct}
-                  onOpenStorefront={setSelectedSellerStorefrontId}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+            </section>
+          </main>
 
-        {/* BECOME A SELLER PROMOTIONAL SECTION */}
-        <section className="mt-14 mb-8">
-          <div className="bg-gradient-to-r from-[#1C1917] via-[#2A2624] to-[#1C1917] rounded-3xl p-6 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="max-w-xl text-center md:text-left">
-              <span className="text-[10px] font-black text-[#F68B1F] uppercase tracking-wider bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
-                GROW YOUR NIGERIAN BUSINESS
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-black mt-2 mb-2 leading-tight">
-                Turn Your Stock into Cash on ZangaMarket
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-4">
-                Whether you sell phones in Computer Village, fabrics in Balogun, groceries in Wuse 2, or inverters in Port Harcourt — upload your goods in 60 seconds with genuine photos and get buyers reaching you directly on WhatsApp.
-              </p>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-gray-300 font-semibold">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 100% Free to Post
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Direct WhatsApp Chats
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Zero Middleman Deductions
-                </span>
-              </div>
-            </div>
-
-            <div className="shrink-0">
-              <button
-                onClick={() => {
-                  if (!user) {
-                    handleOpenAuth('register', 'seller');
-                  } else {
-                    setShowSellModal(true);
-                  }
-                }}
-                className="px-6 py-3.5 bg-gradient-to-r from-[#F68B1F] to-[#FF7A00] hover:from-[#E07A15] hover:to-[#F68B1F] text-white font-extrabold text-sm rounded-full shadow-lg shadow-orange-500/30 active:scale-95 transition flex items-center gap-2"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Start Selling Free Today</span>
-              </button>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <Footer
-        categories={categories}
-        onSelectCategory={(catId) => {
-          setSelectedCategory(catId);
-          handleStartShopping();
-        }}
-        onOpenSellModal={() => setShowSellModal(true)}
-        onOpenSafetyModal={() => setShowSafetyModal(true)}
-      />
+          <Footer
+            categories={categories}
+            onSelectCategory={(catId) => {
+              setSelectedCategory(catId);
+              handleStartShopping();
+            }}
+            onOpenSellModal={() => setShowSellModal(true)}
+            onOpenSafetyModal={() => setShowSafetyModal(true)}
+            onNavigateView={navigateToView}
+            onTriggerPWAHelp={handleTriggerPWAHelp}
+          />
         </>
       )}
 
       {/* MODALS */}
-      {/* 1. Product Details Modal */}
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
@@ -652,17 +911,16 @@ function MainMarketplace() {
             setSelectedProduct(null);
             setSelectedSellerStorefrontId(sellerId);
           }}
+          onAddToCart={addToCart}
+          onStartDirectChat={handleStartDirectChat}
         />
       )}
 
-      {/* 2. Mandatory Image Upload & Sell Product Modal */}
       {showSellModal && (
         <SellProductModal
           categories={categories}
           onClose={() => setShowSellModal(false)}
-          onSuccess={() => {
-            handleProductPostSuccess();
-          }}
+          onSuccess={handleProductPostSuccess}
           onViewProduct={(product) => {
             setShowSellModal(false);
             setSelectedProduct(product);
@@ -671,20 +929,18 @@ function MainMarketplace() {
         />
       )}
 
-      {/* 3. Authentication Modal */}
       {showAuthModal && (
         <AuthModal
           initialMode={authModalMode}
           defaultRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
           onSuccess={() => {
-            showToast('Authentication successful! Welcome to ZangaMarket.');
+            showToast('Welcome to FU MARKET!');
             loadCatalogProducts(1);
           }}
         />
       )}
 
-      {/* 4. Seller Dashboard */}
       {showSellerDashboard && (
         <SellerDashboard
           onClose={() => setShowSellerDashboard(false)}
@@ -699,16 +955,16 @@ function MainMarketplace() {
         />
       )}
 
-      {/* 5. Public Seller Storefront Modal */}
       {selectedSellerStorefrontId && (
         <SellerStorefrontModal
           sellerId={selectedSellerStorefrontId}
           onClose={() => setSelectedSellerStorefrontId(null)}
           onOpenProductDetail={setSelectedProduct}
+          onAddToCart={addToCart}
+          onStartDirectChat={handleStartDirectChat}
         />
       )}
 
-      {/* 6. Admin Dashboard */}
       {showAdminDashboard && (
         <AdminDashboard
           onClose={() => setShowAdminDashboard(false)}
@@ -716,12 +972,17 @@ function MainMarketplace() {
         />
       )}
 
-      {/* 7. Safety, Terms & Scam Prevention Modal */}
-      {showSafetyModal && (
-        <SafetyModal onClose={() => setShowSafetyModal(false)} />
-      )}
+      {showSafetyModal && <SafetyModal onClose={() => setShowSafetyModal(false)} />}
 
-      {/* Bottom Navigation for Mobile & Quick switching */}
+      <CartOrderReviewModal
+        isOpen={showCartModal}
+        items={cartItems}
+        onClose={() => setShowCartModal(false)}
+        onUpdateQuantity={updateCartQuantity}
+        onRemoveItem={removeFromCart}
+        onClearCart={clearCart}
+      />
+
       <BottomNav
         currentView={currentView}
         onNavigate={navigateToView}

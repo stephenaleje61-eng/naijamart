@@ -10,11 +10,14 @@ import {
   LogOut,
   Store,
   LayoutDashboard,
-  Sparkles,
-  PhoneCall
+  ShoppingCart,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { Category } from '../types.js';
+import { NIGERIA_STATES } from '../constants/states.js';
+import { usePWAInstall } from '../hooks/usePWAInstall.js';
+import { AppView } from './BottomNav.js';
 
 interface HeaderProps {
   categories: Category[];
@@ -30,25 +33,16 @@ interface HeaderProps {
   onOpenAdminDashboard: () => void;
   onOpenFavourites: () => void;
   onOpenSafetyModal: () => void;
-  onOpenBikeRiders?: () => void;
-  isBikeRidersActive?: boolean;
-  onOpenHub?: () => void;
-  onOpenFriends?: () => void;
-  onOpenHux?: () => void;
-  activeView?: string;
+  onOpenCart: () => void;
+  cartCount: number;
+  onNavigateView: (view: AppView) => void;
+  onTriggerPWAHelp: () => void;
+  activeView: AppView;
 }
 
-import { NIGERIA_STATES } from '../constants/states.js';
-
-export const NIGERIAN_STATES = [
-  'All Nigeria',
-  ...NIGERIA_STATES
-];
+export const NIGERIAN_STATES = ['All Locations', 'Taraba', ...NIGERIA_STATES.filter((s) => s !== 'Taraba')];
 
 export const Header: React.FC<HeaderProps> = ({
-  categories,
-  selectedCategory,
-  onSelectCategory,
   selectedState,
   onSelectState,
   searchQuery,
@@ -59,17 +53,16 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminDashboard,
   onOpenFavourites,
   onOpenSafetyModal,
-  onOpenBikeRiders,
-  isBikeRidersActive,
-  onOpenHub,
-  onOpenFriends,
-  onOpenHux,
+  onOpenCart,
+  cartCount,
+  onNavigateView,
+  onTriggerPWAHelp,
   activeView
 }) => {
   const { user, sellerProfile, favourites, logout } = useAuth();
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showLocationMenu, setShowLocationMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   const locationRef = useRef<HTMLDivElement>(null);
@@ -79,7 +72,6 @@ export const Header: React.FC<HeaderProps> = ({
     setLocalSearch(searchQuery);
   }, [searchQuery]);
 
-  // Click outside listeners
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (locationRef.current && !locationRef.current.contains(e.target as Node)) {
@@ -96,104 +88,114 @@ export const Header: React.FC<HeaderProps> = ({
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearchChange(localSearch);
-    setShowSuggestions(false);
+    if (activeView !== 'marketplace') {
+      onNavigateView('marketplace');
+    }
   };
 
-  const sampleSearchTerms = [
-    'iPhone 15 Pro Max',
-    'MacBook M2',
-    'Senator Fabric',
-    'Benue Yam',
-    'Solar Inverter',
-    'Chelsea Boots',
-    'PS5 Console'
-  ];
+  const handleInstallClick = async () => {
+    if (isInstallable) {
+      const outcome = await install();
+      if (outcome === 'unavailable') {
+        onTriggerPWAHelp();
+      }
+    } else {
+      onTriggerPWAHelp();
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
-      {/* Top Announcement Bar (Jumia/Temu inspired) */}
-      <div className="bg-[#1C1917] text-white text-xs py-1.5 px-4">
+    <header className="sticky top-0 z-40 bg-[#121212] border-b border-[#333333] shadow-lg">
+      {/* Top Announcement Bar */}
+      <div className="bg-[#000000] border-b border-[#333333] text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-medium">
-            <span className="bg-[#008751] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">🇳🇬 NIGERIA</span>
-            <span>Direct WhatsApp Deals • 0% Listing Commission • Verified Local Sellers</span>
+          <div className="flex items-center gap-2 font-medium text-[#BDBDBD]">
+            <span className="bg-[#FFFFFF] text-black text-[10px] font-black px-1.5 py-0.5 rounded">
+              FUWUKARI
+            </span>
+            <span>Your Campus. Your Marketplace. Your Opportunities.</span>
           </div>
-          <div className="flex items-center gap-4 text-gray-300 text-[11px]">
+          <div className="flex items-center gap-4 text-[#BDBDBD] text-[11px]">
             <button
               onClick={onOpenSafetyModal}
               className="hover:text-white flex items-center gap-1 transition"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#F68B1F]" />
-              Buyer Safety & Scam Warnings
+              <ShieldCheck className="w-3.5 h-3.5 text-[#FFFFFF]" />
+              Campus Buyer Safety
             </button>
-            <span className="hidden sm:inline text-gray-500">•</span>
-            <span className="hidden sm:inline font-mono text-[#F68B1F]">
-              ⏳ Automatic 7-Day Fresh Listings
-            </span>
+            {!isInstalled && (
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="text-[#FFFFFF] hover:underline font-bold flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isIOS ? 'Install on iPhone' : 'Install FU MARKET App'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between gap-3 md:gap-6">
-          {/* Logo & Brand Slogan */}
-          <div className="flex items-center gap-3 shrink-0">
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                onSearchChange('');
-                onSelectCategory('all');
-              }}
-              className="flex items-center gap-2 group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#E07A15] to-[#F68B1F] flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition transform">
-                <span className="text-white font-black text-xl tracking-tighter">ZM</span>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1">
-                  <span className="font-extrabold text-2xl tracking-tight text-[#222222]">
-                    ZANGA<span className="text-[#F68B1F]">MARKET</span>
-                  </span>
-                  <span className="w-2 h-2 rounded-full bg-[#008751]" title="Nigeria"></span>
-                </div>
-                <span className="text-[10px] font-semibold text-gray-600 tracking-wider hidden sm:block -mt-1">
-                  Shop More. Save More. Sell to Everyone.
-                </span>
-              </div>
-            </a>
-          </div>
+      {/* Main Navigation Row */}
+      <div className="max-w-7xl mx-auto px-4 py-3 space-y-2.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
+          {/* Logo */}
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              onSearchChange('');
+              onNavigateView('marketplace');
+            }}
+            className="flex items-center gap-2.5 shrink-0 group"
+          >
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FFFFFF] flex items-center justify-center shadow-md group-hover:scale-105 transition">
+              <span className="text-black font-black text-base sm:text-lg tracking-tighter">FU</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-lg sm:text-xl tracking-tight text-white">
+                FU <span className="text-[#FFFFFF]">MARKET</span>
+              </span>
+              <span className="text-[10px] font-semibold text-[#BDBDBD] hidden sm:block -mt-0.5">
+                FUWUKARI Student Marketplace
+              </span>
+            </div>
+          </a>
 
-          {/* Delivery Location Selector */}
+          {/* Location Selector */}
           <div className="relative hidden lg:block shrink-0" ref={locationRef}>
             <button
+              type="button"
               onClick={() => setShowLocationMenu(!showLocationMenu)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 transition"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#1C1C1C] hover:border-[#FFFFFF] border border-[#333333] rounded-xl text-xs font-medium text-white transition"
             >
-              <MapPin className="w-3.5 h-3.5 text-[#F68B1F]" />
-              <span className="max-w-[120px] truncate">{selectedState === 'all' ? 'All Nigeria' : selectedState}</span>
-              <ChevronDown className="w-3 h-3 text-gray-400" />
+              <MapPin className="w-3.5 h-3.5 text-[#FFFFFF]" />
+              <span className="max-w-[115px] truncate">
+                {selectedState === 'all' ? 'All Locations' : selectedState}
+              </span>
+              <ChevronDown className="w-3 h-3 text-[#BDBDBD]" />
             </button>
 
             {showLocationMenu && (
-              <div className="absolute left-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 max-h-72 overflow-y-auto">
-                <div className="px-3 py-1 text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+              <div className="absolute left-0 mt-1 w-52 bg-[#1C1C1C] rounded-xl shadow-2xl border border-[#333333] py-2 z-50 max-h-72 overflow-y-auto">
+                <div className="px-3 py-1 text-[10px] font-bold text-[#BDBDBD] uppercase tracking-wider">
                   Select State
                 </div>
                 {NIGERIAN_STATES.map((st) => {
-                  const stateVal = st === 'All Nigeria' ? 'all' : st;
+                  const stateVal = st === 'All Locations' ? 'all' : st;
                   return (
                     <button
                       key={st}
+                      type="button"
                       onClick={() => {
                         onSelectState(stateVal);
                         setShowLocationMenu(false);
                       }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 transition ${
-                        (selectedState === stateVal || (selectedState === 'all' && st === 'All Nigeria'))
-                          ? 'font-bold text-[#F68B1F] bg-orange-50/60'
-                          : 'text-gray-700'
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#121212] transition ${
+                        selectedState === stateVal || (selectedState === 'all' && st === 'All Locations')
+                          ? 'font-bold text-[#FFFFFF] bg-[#121212]'
+                          : 'text-[#BDBDBD]'
                       }`}
                     >
                       {st}
@@ -204,196 +206,109 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Search Bar with live search input */}
-          <div className="flex-1 max-w-2xl relative">
+          {/* Real Search Input (zero fake suggestion terms) */}
+          <div className="flex-1 max-w-xl">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
               <input
                 type="text"
-                placeholder="Search products, phones, cars, groceries, electronics..."
+                placeholder="Search products on FU MARKET..."
                 value={localSearch}
                 onChange={(e) => {
                   setLocalSearch(e.target.value);
-                  setShowSuggestions(true);
+                  onSearchChange(e.target.value);
                 }}
-                onFocus={() => setShowSuggestions(true)}
-                className="w-full pl-10 pr-24 py-2.5 bg-gray-50 hover:bg-white focus:bg-white border-2 border-gray-200 focus:border-[#F68B1F] rounded-full text-sm text-[#222222] placeholder-gray-600 transition outline-none"
+                className="w-full pl-9 pr-20 py-2 bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-full text-xs sm:text-sm text-white placeholder-[#BDBDBD]/70 transition outline-none"
               />
-              <Search className="w-4 h-4 text-gray-600 absolute left-3.5" />
+              <Search className="w-4 h-4 text-[#BDBDBD] absolute left-3" />
               <button
                 type="submit"
-                className="absolute right-1.5 px-4 py-1.5 bg-[#F68B1F] hover:bg-[#E07A15] text-white text-xs font-bold rounded-full transition shadow-sm"
+                className="absolute right-1 px-3.5 py-1 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs font-black rounded-full transition"
               >
                 Search
               </button>
             </form>
-
-            {/* Quick search suggestions popup */}
-            {showSuggestions && (
-              <div
-                className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-2xl border border-gray-100 p-3 z-50"
-                onMouseLeave={() => setShowSuggestions(false)}
-              >
-                <div className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-2">
-                  Popular Searches Across Nigeria:
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {sampleSearchTerms.map((term) => (
-                    <button
-                      key={term}
-                      onClick={() => {
-                        setLocalSearch(term);
-                        onSearchChange(term);
-                        setShowSuggestions(false);
-                      }}
-                      className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-orange-50 hover:text-[#F68B1F] rounded-lg text-gray-700 transition"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-                {localSearch && (
-                  <button
-                    onClick={() => {
-                      onSearchChange(localSearch);
-                      setShowSuggestions(false);
-                    }}
-                    className="w-full text-left pt-2 border-t border-gray-100 text-xs text-[#F68B1F] font-semibold hover:underline flex items-center gap-1"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    Press enter or click to search for "{localSearch}"
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* SELL ON NAIJAMART Button (Orange CTA) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
+              type="button"
               onClick={onOpenSellModal}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#F68B1F] to-[#FF7A00] hover:from-[#E07A15] hover:to-[#F68B1F] text-white font-bold text-xs sm:text-sm rounded-full shadow-md shadow-orange-500/25 active:scale-95 transition"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs rounded-full active:scale-95 transition"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap">Sell Product</span>
+              <span className="hidden sm:inline whitespace-nowrap">Sell Item</span>
             </button>
 
-            {/* Favourites */}
+            {/* Cart Button */}
             <button
+              type="button"
+              onClick={onOpenCart}
+              className="p-2 sm:px-3 sm:py-2 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-white rounded-full flex items-center gap-1.5 transition relative"
+              title="Review Cart & Order"
+            >
+              <ShoppingCart className="w-4 h-4 text-[#FFFFFF]" />
+              {cartCount > 0 && (
+                <span className="bg-[#FFFFFF] text-black text-[10px] font-black px-1.5 rounded-full min-w-4 text-center">
+                  {cartCount}
+                </span>
+              )}
+              <span className="hidden lg:inline text-xs font-bold">Cart</span>
+            </button>
+
+            {/* Saved Items */}
+            <button
+              type="button"
               onClick={onOpenFavourites}
-              className="p-2 sm:px-3 sm:py-2 text-gray-700 hover:text-[#F68B1F] hover:bg-orange-50 rounded-full flex items-center gap-1.5 transition relative"
+              className="p-2 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-[#BDBDBD] hover:text-white rounded-full flex items-center gap-1 transition relative"
               title="Saved Items"
             >
-              <Heart className="w-5 h-5 text-gray-600" />
+              <Heart className="w-4 h-4" />
               {favourites.length > 0 && (
-                <span className="absolute top-1 right-1 sm:static bg-[#F68B1F] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
+                <span className="bg-red-600 text-white text-[10px] font-black px-1.5 rounded-full min-w-4 text-center">
                   {favourites.length}
                 </span>
               )}
-              <span className="hidden md:inline text-xs font-semibold">Saved</span>
             </button>
-
-            {/* Campus Hub Link */}
-            {onOpenHub && (
-              <button
-                onClick={onOpenHub}
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
-                  activeView === 'hub'
-                    ? 'bg-[#008751] text-white shadow-md'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
-                }`}
-                title="Single Hub - FUWukari"
-              >
-                <span>💬</span>
-                <span className="whitespace-nowrap">Single Hub</span>
-              </button>
-            )}
-
-            {/* Friends Link */}
-            {onOpenFriends && (
-              <button
-                onClick={onOpenFriends}
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
-                  activeView === 'friends'
-                    ? 'bg-[#008751] text-white shadow-md'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
-                }`}
-                title="Friends & Private Chat"
-              >
-                <span>👥</span>
-                <span className="whitespace-nowrap">Friends</span>
-              </button>
-            )}
-
-            {/* Hux Hub Link */}
-            {onOpenHux && (
-              <button
-                onClick={onOpenHux}
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
-                  activeView === 'hux'
-                    ? 'bg-[#008751] text-white shadow-md'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-[#008751] border border-emerald-200'
-                }`}
-                title="Wukari Hux Hub"
-              >
-                <span>🏠</span>
-                <span className="whitespace-nowrap">Hux Hub</span>
-              </button>
-            )}
-
-            {/* Bike Man Okada Directory Button */}
-            {onOpenBikeRiders && (
-              <button
-                onClick={onOpenBikeRiders}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 ${
-                  isBikeRidersActive
-                    ? 'bg-[#F68B1F] text-white shadow-md shadow-orange-500/25'
-                    : 'bg-orange-50 hover:bg-orange-100 text-[#E07A15] border border-orange-200'
-                }`}
-                title="Wukari Bike Riders Directory"
-              >
-                <span className="text-sm">🏍️</span>
-                <span className="whitespace-nowrap">Bike Man</span>
-              </button>
-            )}
 
             {/* User Account Menu */}
             <div className="relative" ref={userMenuRef}>
               {user ? (
                 <button
+                  type="button"
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition border border-gray-200"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] transition"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#F68B1F]/20 text-[#E07A15] font-bold text-xs flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-[#FFFFFF] text-black font-black text-xs flex items-center justify-center">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-semibold text-gray-800 max-w-[90px] truncate hidden sm:inline">
+                  <span className="text-xs font-semibold text-white max-w-[80px] truncate hidden sm:inline">
                     {user.name.split(' ')[0]}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                  <ChevronDown className="w-3.5 h-3.5 text-[#BDBDBD]" />
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={() => onOpenAuthModal('login')}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#222222] hover:text-[#F68B1F] rounded-lg transition"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-xs font-bold text-white rounded-full transition"
                 >
-                  <UserIcon className="w-4 h-4 text-gray-600" />
+                  <UserIcon className="w-3.5 h-3.5 text-[#FFFFFF]" />
                   <span className="hidden sm:inline">Sign In</span>
                 </button>
               )}
 
-              {/* User Dropdown */}
               {showUserMenu && user && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-orange-100 text-[#E07A15]">
+                <div className="absolute right-0 mt-2 w-64 bg-[#1C1C1C] rounded-2xl shadow-2xl border border-[#333333] py-2 z-50">
+                  <div className="px-4 py-3 border-b border-[#333333]">
+                    <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                    <p className="text-[11px] text-[#BDBDBD] truncate">{user.email}</p>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#FFFFFF]/40">
                         {user.role}
                       </span>
                       {sellerProfile?.isVerified && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-0.5">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700 flex items-center gap-0.5">
                           <ShieldCheck className="w-3 h-3" /> Verified
                         </span>
                       )}
@@ -407,10 +322,10 @@ export const Header: React.FC<HeaderProps> = ({
                           setShowUserMenu(false);
                           onOpenSellerDashboard();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-[#F68B1F] flex items-center gap-2 font-medium transition"
+                        className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-[#121212] hover:text-[#FFFFFF] flex items-center gap-2 font-medium transition"
                       >
-                        <Store className="w-4 h-4 text-[#F68B1F]" />
-                        Seller Dashboard & Listings
+                        <Store className="w-4 h-4 text-[#FFFFFF]" />
+                        Seller Dashboard &amp; Listings
                       </button>
                     ) : (
                       <button
@@ -418,9 +333,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setShowUserMenu(false);
                           onOpenAuthModal('register', 'seller');
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#F68B1F] hover:bg-orange-50 flex items-center gap-2 font-bold transition"
+                        className="w-full text-left px-4 py-2.5 text-xs text-[#FFFFFF] hover:bg-[#121212] flex items-center gap-2 font-bold transition"
                       >
-                        <Store className="w-4 h-4 text-[#F68B1F]" />
+                        <Store className="w-4 h-4 text-[#FFFFFF]" />
                         Upgrade to Seller Account
                       </button>
                     )}
@@ -431,9 +346,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setShowUserMenu(false);
                           onOpenAdminDashboard();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-purple-700 hover:bg-purple-50 flex items-center gap-2 font-bold transition"
+                        className="w-full text-left px-4 py-2.5 text-xs text-[#FFFFFF] hover:bg-[#121212] flex items-center gap-2 font-bold transition"
                       >
-                        <LayoutDashboard className="w-4 h-4 text-purple-600" />
+                        <LayoutDashboard className="w-4 h-4" />
                         Admin Moderation Desk
                       </button>
                     )}
@@ -443,9 +358,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setShowUserMenu(false);
                         onOpenFavourites();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#BDBDBD] hover:text-white hover:bg-[#121212] flex items-center gap-2 transition"
                     >
-                      <Heart className="w-4 h-4 text-gray-500" />
+                      <Heart className="w-4 h-4" />
                       Saved Favourites ({favourites.length})
                     </button>
 
@@ -454,22 +369,22 @@ export const Header: React.FC<HeaderProps> = ({
                         setShowUserMenu(false);
                         onOpenSafetyModal();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#BDBDBD] hover:text-white hover:bg-[#121212] flex items-center gap-2 transition"
                     >
-                      <ShieldCheck className="w-4 h-4 text-gray-500" />
-                      Safety & Scam Prevention
+                      <ShieldCheck className="w-4 h-4" />
+                      Safety &amp; Scam Prevention
                     </button>
                   </div>
 
-                  <div className="border-t border-gray-100 pt-1 mt-1">
+                  <div className="border-t border-[#333333] pt-1 mt-1">
                     <button
                       onClick={() => {
                         setShowUserMenu(false);
                         logout();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 font-semibold transition"
+                      className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-950/50 flex items-center gap-2 font-semibold transition"
                     >
-                      <LogOut className="w-4 h-4 text-red-500" />
+                      <LogOut className="w-4 h-4" />
                       Sign Out
                     </button>
                   </div>
@@ -477,6 +392,31 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Campus Sections Sub-Navigation Bar */}
+        <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-0.5 text-xs font-bold">
+          {[
+            { id: 'marketplace' as AppView, label: 'Marketplace' },
+            { id: 'requests' as AppView, label: 'What Students Need' },
+            { id: 'hux' as AppView, label: 'Wukari Agent' },
+            { id: 'hub' as AppView, label: 'Single Hub' },
+            { id: 'friends' as AppView, label: 'Messaging' },
+            { id: 'bike-riders' as AppView, label: 'Bike Man' }
+          ].map((nav) => (
+            <button
+              key={nav.id}
+              type="button"
+              onClick={() => onNavigateView(nav.id)}
+              className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
+                activeView === nav.id
+                  ? 'bg-[#FFFFFF] text-black font-black'
+                  : 'bg-[#1C1C1C] text-[#BDBDBD] border border-[#333333] hover:text-white hover:border-[#FFFFFF]/60'
+              }`}
+            >
+              {nav.label}
+            </button>
+          ))}
         </div>
       </div>
     </header>

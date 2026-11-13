@@ -231,23 +231,13 @@ router.get('/', (req: Request, res: Response) => {
   }
 });
 
-// GET Flash Deals
+// GET Flash Deals (real discounted or newest genuine products without fake price inflation)
 router.get('/flash-deals', (_req: Request, res: Response) => {
   try {
     const deals = db.products
       .filter(p => {
         const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
         return p.status === 'active' && isModeratedApproved;
-      })
-      .map(p => {
-        // Guarantee an originalPrice discount anchor for Flash Deals presentation
-        const originalPrice = p.originalPrice && p.originalPrice > p.price
-          ? p.originalPrice
-          : Math.round(p.price * 1.25);
-        return {
-          ...p,
-          originalPrice
-        };
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 10);
@@ -320,7 +310,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 
   const appOrigin = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const productLink = `${appOrigin}/#product-${product.id}`;
-  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on NaijaMart. Is it still available? Listing link: ${productLink}`;
+  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on FU MARKET. Is it still available? Listing link: ${productLink}`;
 
   const link = formatWhatsAppLink(product.whatsappNumber, prefilledMessage);
 
@@ -349,8 +339,8 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       condition = 'new',
       whatsapp,
       whatsappNumber = whatsapp,
-      state = 'Lagos',
-      city = 'Ikeja',
+      state = 'Taraba',
+      city = 'Wukari',
       quantity = 1
     } = req.body;
 
@@ -483,7 +473,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       sellerProfile?.whatsappNumber ||
       user?.whatsappNumber ||
       user?.phone ||
-      '08031234567'
+      ''
     ).trim();
 
     // 2. Anti-fraud scan
@@ -515,20 +505,19 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
     const createdAt = now.toISOString();
     const expiresAt = new Date(now.getTime() + SEVEN_DAYS_MS).toISOString();
 
-    const calculatedOriginalPrice = originalPrice && Number(originalPrice) > parsedPrice
-      ? Number(originalPrice)
-      : Math.round(parsedPrice * 1.2); // Provide standard discount anchor so product appears immediately in Flash Deals
+    const calculatedOriginalPrice =
+      originalPrice && Number(originalPrice) > parsedPrice ? Number(originalPrice) : undefined;
 
     const newProduct: Product = {
       id: `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
-      sellerId: user?.id || 'seller-ikeja-01',
-      sellerName: user?.name || 'Verified Merchant',
-      shopName: sellerProfile?.shopName || 'ZangaMarket Merchant',
+      sellerId: user?.id || `seller-${Date.now()}`,
+      sellerName: user?.name || 'FUWUKARI Student',
+      shopName: sellerProfile?.shopName || `${user?.name || 'Student'}'s Store`,
       whatsappNumber: sellerPhone,
       title: String(title).trim(),
       description: String(description).trim(),
       price: parsedPrice,
-      originalPrice: calculatedOriginalPrice,
+      ...(calculatedOriginalPrice !== undefined ? { originalPrice: calculatedOriginalPrice } : {}),
       categoryId: String(categoryId || 'phones-tablets').trim(),
       condition: condition === 'used' ? 'used' : 'new',
       images: finalImages,
@@ -554,7 +543,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
         userId: user.id,
         shopName: `${user.name}'s Enterprise`,
         shopSlug: user.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `store-${Date.now()}`,
-        description: `Verified seller storefront on ZangaMarket. Based in ${state}, Nigeria.`,
+        description: `Student storefront on FU MARKET. Based in ${city}, ${state}.`,
         whatsappNumber: sellerPhone,
         state: String(state).trim(),
         city: String(city).trim(),

@@ -15,7 +15,8 @@ import {
   Dumbbell,
   BookOpen,
   Package,
-  Grid
+  Grid,
+  Bike
 } from 'lucide-react';
 import { Category } from '../types.js';
 
@@ -53,57 +54,55 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onOpenBikeRiders
 }) => {
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-[#121212] border-b border-[#333333]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none scroll-smooth">
-          {/* All Categories Option */}
           <button
+            type="button"
             onClick={() => onSelectCategory('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition shrink-0 ${
               selectedCategory === 'all'
-                ? 'bg-[#F68B1F] text-white shadow-sm'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-[#FFFFFF] text-black font-black'
+                : 'bg-[#1C1C1C] text-[#BDBDBD] border border-[#333333] hover:text-white'
             }`}
           >
             <Grid className="w-3.5 h-3.5" />
             <span>All Categories</span>
           </button>
 
-          {/* Wukari Bike Riders Shortcut */}
           {onOpenBikeRiders && (
             <button
+              type="button"
               onClick={onOpenBikeRiders}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition shrink-0 bg-orange-50 hover:bg-orange-100 text-[#E07A15] border border-orange-300 active:scale-95 shadow-sm"
-              title="Call Bike Man in Wukari"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition shrink-0 bg-[#1C1C1C] hover:border-[#FFFFFF] text-[#FFFFFF] border border-[#FFFFFF]/40"
+              title="Wukari Okada Directory"
             >
-              <span>🏍️</span>
+              <Bike className="w-3.5 h-3.5" />
               <span>Wukari Bike Riders</span>
             </button>
           )}
 
-          {/* Individual Category Buttons */}
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => onSelectCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition shrink-0 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
                   isSelected
-                    ? 'bg-[#F68B1F] text-white font-bold shadow-sm'
-                    : 'bg-gray-50 text-gray-700 hover:bg-orange-50 hover:text-[#F68B1F] border border-gray-100'
+                    ? 'bg-[#FFFFFF] text-black font-black'
+                    : 'bg-[#1C1C1C] text-[#BDBDBD] hover:text-white hover:border-[#FFFFFF]/60 border border-[#333333]'
                 }`}
               >
-                <span className={isSelected ? 'text-white' : 'text-[#F68B1F]'}>
+                <span className={isSelected ? 'text-black' : 'text-[#FFFFFF]'}>
                   {getCategoryIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {cat.productCount !== undefined && cat.productCount > 0 && (
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                      isSelected
-                        ? 'bg-white/25 text-white'
-                        : 'bg-gray-200 text-gray-600'
+                    className={`text-[10px] px-1.5 rounded-full font-mono ${
+                      isSelected ? 'bg-black/20 text-black' : 'bg-[#121212] text-[#BDBDBD]'
                     }`}
                   >
                     {cat.productCount}

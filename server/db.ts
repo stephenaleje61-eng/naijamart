@@ -206,13 +206,13 @@ class Database {
       const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
       const adminUser: User = {
         id: 'admin-001',
-        name: 'NaijaMart Moderation Desk',
-        email: 'admin@naijamart.ng',
+        name: 'FU Market Moderation Desk',
+        email: 'admin@fumarket.ng',
         passwordHash: adminPasswordHash,
         role: 'admin',
         phone: '08006245262',
-        state: 'Lagos',
-        city: 'Ikeja',
+        state: 'Taraba',
+        city: 'Wukari',
         createdAt: new Date().toISOString()
       };
       this.data.users.push(adminUser);
@@ -223,136 +223,6 @@ class Database {
     if (modified) {
       this.save();
     }
-  }
-
-  private seedInitialSellersAndProducts() {
-    const salt = bcrypt.genSaltSync(10);
-    const defaultPassword = bcrypt.hashSync('Password123!', salt);
-    const now = Date.now();
-
-    const sellerUsers: User[] = [
-      {
-        id: 'seller-ikeja-01',
-        name: 'Chinedu Okeke',
-        email: 'ikejatech@naijamart.demo',
-        passwordHash: defaultPassword,
-        role: 'seller',
-        phone: '08031234567',
-        whatsappNumber: '08031234567',
-        state: 'Lagos',
-        city: 'Ikeja',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        createdAt: new Date(now - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'seller-balogun-02',
-        name: 'Yetunde Adeleke',
-        email: 'yetundefashion@naijamart.demo',
-        passwordHash: defaultPassword,
-        role: 'seller',
-        phone: '08129876543',
-        whatsappNumber: '08129876543',
-        state: 'Lagos',
-        city: 'Lagos Island',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        createdAt: new Date(now - 86400000 * 3).toISOString()
-      },
-      {
-        id: 'seller-abuja-03',
-        name: 'Musa Ibrahim',
-        email: 'abujagrocery@naijamart.demo',
-        passwordHash: defaultPassword,
-        role: 'seller',
-        phone: '09055554433',
-        whatsappNumber: '09055554433',
-        state: 'Abuja (FCT)',
-        city: 'Wuse 2',
-        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-        createdAt: new Date(now - 86400000 * 1).toISOString()
-      },
-      {
-        id: 'seller-ph-04',
-        name: 'Emeka Nwachukwu',
-        email: 'phgadgets@naijamart.demo',
-        passwordHash: defaultPassword,
-        role: 'seller',
-        phone: '07088990011',
-        whatsappNumber: '07088990011',
-        state: 'Rivers',
-        city: 'Port Harcourt',
-        avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150',
-        createdAt: new Date(now - 86400000 * 2).toISOString()
-      }
-    ];
-
-    const profiles: SellerProfile[] = [
-      {
-        id: 'profile-ikeja-01',
-        userId: 'seller-ikeja-01',
-        shopName: 'Ikeja Computer Village Hub',
-        shopSlug: 'ikeja-computer-village-hub',
-        shopLogo: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=200',
-        coverImage: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800',
-        description: 'Direct importer of brand new and direct UK/US used iPhones, Samsung Galaxy, and M-series MacBooks. Physical shop at Otigba Street, Computer Village, Ikeja.',
-        whatsappNumber: '08031234567',
-        state: 'Lagos',
-        city: 'Ikeja',
-        address: '14 Otigba Street, Computer Village, Ikeja',
-        isVerified: true,
-        createdAt: new Date(now - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'profile-balogun-02',
-        userId: 'seller-balogun-02',
-        shopName: 'Yetty Chic & Fabric Empire',
-        shopSlug: 'yetty-chic-fabric-empire',
-        shopLogo: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=200',
-        coverImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-        description: 'Authentic Swiss & Austrian lace, Kampala adire, Senator fabrics, ready-to-wear caftans and tailored African outfits. Bulk discounts available!',
-        whatsappNumber: '08129876543',
-        state: 'Lagos',
-        city: 'Lagos Island',
-        address: 'Shop 24, Balogun Business Complex, Lagos Island',
-        isVerified: true,
-        createdAt: new Date(now - 86400000 * 3).toISOString()
-      },
-      {
-        id: 'profile-abuja-03',
-        userId: 'seller-abuja-03',
-        shopName: 'Northern Harvest & Foodstuffs',
-        shopSlug: 'northern-harvest-foodstuffs',
-        shopLogo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200',
-        coverImage: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800',
-        description: 'Premium Benue yam tubers, unadulterated cold-pressed palm oil from Nsukka, fresh honey, dried catfish, and Kano brown beans delivered to your doorstep.',
-        whatsappNumber: '09055554433',
-        state: 'Abuja (FCT)',
-        city: 'Wuse 2',
-        address: 'Plot 102 Aminu Kano Crescent, Wuse 2, Abuja',
-        isVerified: true,
-        createdAt: new Date(now - 86400000 * 1).toISOString()
-      },
-      {
-        id: 'profile-ph-04',
-        userId: 'seller-ph-04',
-        shopName: 'Garden City Smart Living',
-        shopSlug: 'garden-city-smart-living',
-        shopLogo: 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=200',
-        coverImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-        description: 'Inverters, solar panels, smart TVs, home audio, and gaming consoles in Port Harcourt. Fast inspection and testing on pickup.',
-        whatsappNumber: '07088990011',
-        state: 'Rivers',
-        city: 'Port Harcourt',
-        address: '88 Olu Obasanjo Road, Port Harcourt',
-        isVerified: true,
-        createdAt: new Date(now - 86400000 * 2).toISOString()
-      }
-    ];
-
-    this.data.users.push(...sellerUsers);
-    this.data.sellerProfiles.push(...profiles);
-
-    // Real Firestore-only products: no mock or hardcoded products
-    this.data.products = [];
   }
 
   // --- PERMANENT PRODUCTION PERSISTENCE ---

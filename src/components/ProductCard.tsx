@@ -2,21 +2,22 @@ import React from 'react';
 import {
   Heart,
   MapPin,
-  Clock,
-  ShieldCheck,
-  Flame,
-  MessageCircle
+  MessageCircle,
+  ShoppingCart
 } from 'lucide-react';
 import { Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { triggerWhatsAppChat } from '../services/api.js';
 import { ProductImage } from './ProductImage.js';
 import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
+import { DirectChatTarget } from './FriendsPage.js';
 
 interface ProductCardProps {
   product: Product;
   onOpenDetail: (product: Product) => void;
   onOpenStorefront?: (sellerId: string) => void;
+  onAddToCart?: (product: Product) => void;
+  onStartDirectChat?: (target: DirectChatTarget) => void;
 }
 
 export const formatNaira = (amount: number): string => {
@@ -26,29 +27,35 @@ export const formatNaira = (amount: number): string => {
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onOpenDetail,
-  onOpenStorefront
+  onOpenStorefront,
+  onAddToCart,
+  onStartDirectChat
 }) => {
   const { isFavourite, toggleFavourite } = useAuth();
   const favourited = isFavourite(product.id);
 
-  // Calculate discount percentage
+  // Genuine discount percentage only when seller specified a higher originalPrice
   const discountPercent =
     product.originalPrice && product.originalPrice > product.price
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
 
-  const handleWhatsAppClick = async (e: React.MouseEvent) => {
+  const buildWhatsAppHref = (): string | null => {
+    const raw = (product.whatsappNumber || '').trim();
+    if (!raw) return null;
+    let cleaned = raw.replace(/[^0-9]/g, '');
+    if (!cleaned) return null;
+    if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
+    else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
+    const text = encodeURIComponent(
+      `Hello, I saw your product "${product.title}" (${formatNaira(product.price)}) on FU MARKET. Is it available?`
+    );
+    return `https://wa.me/${cleaned}?text=${text}`;
+  };
+
+  const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      const res = await triggerWhatsAppChat(product.id);
-      window.open(res.link, '_blank');
-    } catch {
-      // Fallback direct link
-      let cleaned = product.whatsappNumber.replace(/[^0-9]/g, '');
-      if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
-      const text = encodeURIComponent(`Hello, I saw your product "${product.title}" on NaijaMart. Is it available?`);
-      window.open(`https://wa.me/${cleaned}?text=${text}`, '_blank');
-    }
+    triggerWhatsAppChat(product.id).catch(() => {});
   };
 
   const handleFavouriteClick = (e: React.MouseEvent) => {
@@ -58,14 +65,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const primaryImage = getProductDisplayImage(product.images, product.imageUrl);
   const allValidImages = getValidProductImages(product.images, product.imageUrl);
+  const whatsappHref = buildWhatsAppHref();
 
   return (
     <div
       onClick={() => onOpenDetail(product)}
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-200/80 hover:border-[#F68B1F]/60 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer"
+      className="group bg-[#1C1C1C] rounded-2xl overflow-hidden border border-[#333333] hover:border-[#FFFFFF] shadow-lg transition-all duration-300 flex flex-col cursor-pointer"
     >
       {/* Product Image Container */}
-      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
+      <div className="relative aspect-square w-full bg-[#121212] overflow-hidden">
         <ProductImage
           src={primaryImage}
           fallbackSrcs={allValidImages}
@@ -75,76 +83,68 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           loading="lazy"
         />
 
-        {/* Top Floating Badges */}
+        {/* Top Left Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
-          {/* Discount Pill */}
           {discountPercent && (
-            <span className="bg-[#E02424] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+            <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-md">
               -{discountPercent}%
             </span>
           )}
 
-          {/* Condition Pill */}
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm ${
               product.condition === 'new'
-                ? 'bg-blue-600 text-white'
-                : 'bg-amber-600 text-white'
+                ? 'bg-[#FFFFFF] text-black'
+                : 'bg-[#121212]/90 border border-[#333333] text-white'
             }`}
           >
-            {product.condition === 'new' ? 'Brand New' : 'Direct Used'}
+            {product.condition === 'new' ? 'New' : 'Used'}
           </span>
         </div>
 
         {/* Favourite Button */}
         <button
           onClick={handleFavouriteClick}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-md hover:scale-110 active:scale-95 flex items-center justify-center transition z-10"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 border border-[#333333] hover:border-[#FFFFFF] active:scale-95 flex items-center justify-center transition z-10"
           title={favourited ? 'Remove from Saved' : 'Save Item'}
         >
           <Heart
             className={`w-4 h-4 transition ${
-              favourited ? 'fill-red-500 text-red-500' : 'text-gray-500 hover:text-red-500'
+              favourited ? 'fill-red-500 text-red-500' : 'text-[#BDBDBD] hover:text-red-400'
             }`}
           />
         </button>
-
-        {/* Permanent Active Listing Badge */}
-        <div className="absolute bottom-2 left-2 z-10">
-          <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 shadow-sm bg-black/70 text-emerald-300"
-          >
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>Active Listing</span>
-          </span>
-        </div>
       </div>
 
       {/* Product Content Details */}
-      <div className="p-3.5 flex-1 flex flex-col justify-between">
+      <div className="p-3.5 flex-1 flex flex-col justify-between gap-2.5">
         <div>
-          {/* Title */}
-          <h3 className="text-xs sm:text-sm font-semibold text-[#222222] line-clamp-2 leading-snug group-hover:text-[#F68B1F] transition mb-1.5">
+          <h3 className="text-xs sm:text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-[#FFFFFF] transition mb-1.5">
             {product.title}
           </h3>
 
           {/* Price Row */}
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-base sm:text-lg font-black text-[#222222]">
+            <span className="text-base sm:text-lg font-black text-[#FFFFFF]">
               {formatNaira(product.price)}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-xs text-gray-500 line-through">
+              <span className="text-xs text-[#BDBDBD] line-through">
                 {formatNaira(product.originalPrice)}
               </span>
             )}
           </div>
 
           {/* Location & Seller Shop Name */}
-          <div className="flex items-center justify-between text-[11px] text-gray-600 mb-3 pt-1 border-t border-gray-100">
-            <div className="flex items-center gap-1 truncate max-w-[130px]" title={`${product.city}, ${product.state}`}>
-              <MapPin className="w-3 h-3 text-[#F68B1F] shrink-0" />
-              <span className="truncate">{product.city}, {product.state}</span>
+          <div className="flex items-center justify-between text-[11px] text-[#BDBDBD] pt-1.5 border-t border-[#333333]">
+            <div
+              className="flex items-center gap-1 truncate max-w-[130px]"
+              title={`${product.city}, ${product.state}`}
+            >
+              <MapPin className="w-3 h-3 text-[#FFFFFF] shrink-0" />
+              <span className="truncate">
+                {product.city}, {product.state}
+              </span>
             </div>
 
             <button
@@ -152,7 +152,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 if (onOpenStorefront) onOpenStorefront(product.sellerId);
               }}
-              className="text-[11px] font-medium text-gray-600 hover:text-[#F68B1F] truncate max-w-[100px] text-right"
+              className="text-[11px] font-medium text-[#BDBDBD] hover:text-[#FFFFFF] truncate max-w-[100px] text-right"
               title={product.shopName}
             >
               {product.shopName}
@@ -160,14 +160,54 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Action Button: Chat with Seller on WhatsApp (WhatsApp Green #25D366) */}
-        <button
-          onClick={handleWhatsAppClick}
-          className="w-full py-2 px-3 bg-[#25D366] hover:bg-[#20BA5C] text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-md active:scale-95 transition flex items-center justify-center gap-1.5"
-        >
-          <MessageCircle className="w-3.5 h-3.5 fill-current" />
-          <span>Chat on WhatsApp</span>
-        </button>
+        {/* Actions: Add to Cart + Direct Chat / WhatsApp */}
+        <div className="space-y-1.5">
+          {onAddToCart && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(product);
+              }}
+              className="w-full py-2 px-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs rounded-xl active:scale-95 transition flex items-center justify-center gap-1.5"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>Add to Cart</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            {onStartDirectChat && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartDirectChat({
+                    id: product.sellerId,
+                    name: product.shopName || product.sellerName
+                  });
+                }}
+                className="flex-1 py-2 px-2.5 bg-[#121212] hover:bg-black border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                <span>In-App Chat</span>
+              </button>
+            )}
+
+            {whatsappHref && (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleWhatsAppClick}
+                className="flex-1 py-2 px-2.5 bg-[#25D366] hover:bg-[#20BA5C] text-black font-black text-[11px] rounded-xl active:scale-95 transition flex items-center justify-center gap-1"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </a>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

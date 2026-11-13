@@ -2,7 +2,7 @@
   "entities": {
     "Product": {
       "title": "Product",
-      "description": "A marketplace product listing published by a merchant or seller",
+      "description": "A genuine student marketplace product listing on FU MARKET",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Unique product ID" },
@@ -13,14 +13,15 @@
         "title": { "type": "string", "description": "Product title" },
         "description": { "type": "string", "description": "Detailed description of the product" },
         "price": { "type": "number", "description": "Selling price in Naira" },
-        "originalPrice": { "type": "number", "description": "Anchor or original price before discount" },
+        "originalPrice": { "type": "number", "description": "Original price before discount" },
         "categoryId": { "type": "string", "description": "Category identifier" },
         "condition": { "type": "string", "enum": ["new", "used"], "description": "Condition of item" },
         "images": { "type": "array", "description": "Persistent URLs of product images" },
+        "imageUrl": { "type": "string", "description": "Primary product image URL" },
         "state": { "type": "string", "description": "Nigerian state location" },
-        "city": { "type": "string", "description": "City or LGA location" },
+        "city": { "type": "string", "description": "City or campus location" },
         "quantity": { "type": "number", "description": "Available stock quantity" },
-        "status": { "type": "string", "enum": ["active", "sold", "unavailable"], "description": "Listing status" },
+        "status": { "type": "string", "enum": ["active", "sold", "unavailable", "expired"], "description": "Listing status" },
         "moderationStatus": { "type": "string", "enum": ["approved", "pending_review", "rejected"], "description": "Moderation status" },
         "views": { "type": "number", "description": "Number of views" },
         "whatsappClicks": { "type": "number", "description": "Number of WhatsApp clicks" },
@@ -30,71 +31,153 @@
       },
       "required": ["id", "sellerId", "title", "price", "categoryId", "images", "status"]
     },
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "User account profile information",
+    "StudentRequest": {
+      "title": "StudentRequest",
+      "description": "What Students Need request posted by a FUWUKARI student",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "User UID" },
-        "name": { "type": "string", "description": "User display name" },
-        "email": { "type": "string", "format": "email", "description": "User email address" },
-        "role": { "type": "string", "enum": ["buyer", "seller", "admin"], "description": "User role" },
-        "phone": { "type": "string", "description": "User phone number" },
-        "whatsappNumber": { "type": "string", "description": "User WhatsApp number" },
-        "state": { "type": "string", "description": "State" },
-        "city": { "type": "string", "description": "City" },
-        "createdAt": { "type": "string", "description": "Creation timestamp" }
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "budget": { "type": "number" },
+        "location": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "matricNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "fulfilled"] },
+        "createdAt": { "type": "string" }
       },
-      "required": ["id", "name", "email", "role"]
+      "required": ["id", "title", "budget", "location", "phone", "userId", "status"]
+    },
+    "OrderRecord": {
+      "title": "OrderRecord",
+      "description": "Cart order summary saved after REVIEW ORDER BEFORE PAYMENT",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerPhone": { "type": "string" },
+        "deliveryLocation": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["pay_on_inspection", "whatsapp_arrangement"] },
+        "status": { "type": "string", "enum": ["pending_confirmation", "confirmed", "completed", "cancelled"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "buyerId", "buyerName", "buyerPhone", "items", "totalAmount", "status"]
+    },
+    "HuxListing": {
+      "title": "HuxListing",
+      "description": "Wukari Agent accommodation or roommate listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string", "enum": ["rent", "roommate"] },
+        "title": { "type": "string" },
+        "location": { "type": "string" },
+        "price": { "type": "number" },
+        "pricePer": { "type": "string", "enum": ["year", "semester", "month"] },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "images": { "type": "array" },
+        "type": { "type": "string" },
+        "rooms": { "type": "number" },
+        "facilities": { "type": "array" },
+        "isAvailable": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "category", "title", "location", "price", "phone", "type", "userId"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered student, seller, or admin profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["buyer", "seller", "admin"] },
+        "phone": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "matricNumber": { "type": "string" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
     },
     "SellerProfile": {
       "title": "SellerProfile",
-      "description": "Verified seller and shop profile",
+      "description": "Seller storefront profile",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "Seller profile ID" },
-        "userId": { "type": "string", "description": "Associated user UID" },
-        "shopName": { "type": "string", "description": "Store name" },
-        "shopSlug": { "type": "string", "description": "Unique shop slug" },
-        "description": { "type": "string", "description": "Store description" },
-        "whatsappNumber": { "type": "string", "description": "Business contact WhatsApp" },
-        "state": { "type": "string", "description": "State" },
-        "city": { "type": "string", "description": "City" },
-        "isVerified": { "type": "boolean", "description": "Verification badge status" },
-        "createdAt": { "type": "string", "description": "Creation timestamp" }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "shopName": { "type": "string" },
+        "shopSlug": { "type": "string" },
+        "description": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["id", "userId", "shopName", "whatsappNumber", "state", "city"]
+      "required": ["id", "userId", "shopName", "whatsappNumber"]
     },
-    "Category": {
-      "title": "Category",
-      "description": "Product category",
+    "BikeRider": {
+      "title": "BikeRider",
+      "description": "Wukari Okada rider listing",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "Category ID" },
-        "name": { "type": "string", "description": "Category display name" },
-        "slug": { "type": "string", "description": "Category URL slug" },
-        "icon": { "type": "string", "description": "Lucide icon name" },
-        "itemCount": { "type": "number", "description": "Count of items" }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "area": { "type": "string" },
+        "isAvailable": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["id", "name", "slug"]
+      "required": ["id", "name", "photoUrl", "phoneNumber", "area"]
     }
   },
   "firestore": {
     "/products/{productId}": {
       "schema": "Product",
-      "description": "Collection of all marketplace product listings"
+      "description": "Marketplace product listings"
+    },
+    "/studentRequests/{requestId}": {
+      "schema": "StudentRequest",
+      "description": "What Students Need requests"
+    },
+    "/orders/{orderId}": {
+      "schema": "OrderRecord",
+      "description": "Buyer cart orders"
+    },
+    "/hux/{huxId}": {
+      "schema": "HuxListing",
+      "description": "Wukari Agent accommodation and roommate listings"
+    },
+    "/bikeRiders/{riderId}": {
+      "schema": "BikeRider",
+      "description": "Wukari Okada riders directory"
     },
     "/users/{userId}": {
       "schema": "UserProfile",
-      "description": "Registered buyer and seller profiles"
+      "description": "Registered student and seller profiles"
     },
     "/sellerProfiles/{sellerId}": {
       "schema": "SellerProfile",
       "description": "Merchant storefront profiles"
-    },
-    "/categories/{categoryId}": {
-      "schema": "Category",
-      "description": "Marketplace categories"
     }
   }
 }

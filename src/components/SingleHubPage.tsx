@@ -3,29 +3,25 @@ import {
   Send,
   Smile,
   Image as ImageIcon,
-  Users,
   Radio,
-  Sparkles,
   ArrowLeft,
   X,
-  Upload,
-  Clock,
   ShieldCheck,
   GraduationCap,
-  AlertCircle,
   Loader2,
   RefreshCw,
-  Phone,
   MessageSquare
 } from 'lucide-react';
-import { HubMessage, HubActiveUser, RegisteredUser } from '../types.js';
+import { UploadTask } from 'firebase/storage';
+import { HubMessage, RegisteredUser } from '../types.js';
 import {
   subscribeToHubMessages,
   sendHubMessage,
   updateHubPresence,
   subscribeToHubActiveUsers
 } from '../services/firebase.js';
-import { uploadHubChatPhoto } from '../services/imageStorage.js';
+import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
+import { isValidImageFormat } from '../utils/imagePersistence.js';
 import { getLocalStudentSession } from '../utils/studentAuth.js';
 import { StudentLoginModal } from './StudentLoginModal.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -33,7 +29,7 @@ import { useAuth } from '../context/AuthContext.js';
 interface SingleHubPageProps {
   onBackToHome: () => void;
   onNavigateToFriends: () => void;
-  onNavigateToHux: () => void;
+  onStartDirectChat: (target: { id: string; name: string; matricNumber?: string }) => void;
 }
 
 const COMMON_EMOJIS = ['😂', '🔥', '❤️', '👍', '🙏', '🎓', '⚡', '💯', '🏍️', '₦', '👏', '🥳', '📚', '🍲', '💪', '🙌'];
@@ -41,31 +37,36 @@ const COMMON_EMOJIS = ['😂', '🔥', '❤️', '👍', '🙏', '🎓', '⚡', 
 export const SingleHubPage: React.FC<SingleHubPageProps> = ({
   onBackToHome,
   onNavigateToFriends,
-  onNavigateToHux
+  onStartDirectChat
 }) => {
   const { user: authUser } = useAuth();
   const [student, setStudent] = useState<RegisteredUser | null>(() => getLocalStudentSession());
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [messages, setMessages] = useState<HubMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [onlineCount, setOnlineCount] = useState<number>(1);
-  const [onlineUsers, setOnlineUsers] = useState<HubActiveUser[]>([]);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+  const activeTaskRef = useRef<UploadTask | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync with AuthContext user if logged in
   useEffect(() => {
-    if (authUser && (!student || student.name !== authUser.name)) {
-      const updated: RegisteredUser = {
+    document.title = 'Single Hub — FUWUKARI Group Chat | FU MARKET';
+  }, []);
+
+  useEffect(() => {
+    if (authUser && (!student || student.id !== authUser.id)) {
+      setStudent({
         id: authUser.id,
         name: authUser.name,
         matricNumber: student?.matricNumber || 'FUW-STUDENT',
@@ -73,12 +74,10 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         whatsappNumber: authUser.whatsappNumber,
         isOnline: true,
         lastSeen: Date.now()
-      };
-      setStudent(updated);
+      });
     }
   }, [authUser]);
 
-  // Subscribe to real-time hub messages in Firestore
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToHubMessages((msgs) => {
@@ -88,7 +87,6 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
     return () => unsubscribe();
   }, []);
 
-  // Presence heartbeat in Firestore
   useEffect(() => {
     if (student) {
       updateHubPresence(student.id, student.name, student.matricNumber);
@@ -99,16 +97,14 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
     }
   }, [student?.id, student?.name, student?.matricNumber]);
 
-  // Subscribe to active online count
+  // Real online count only (no artificial Math.max floor)
   useEffect(() => {
-    const unsub = subscribeToHubActiveUsers((count, users) => {
-      setOnlineCount(Math.max(count, 1));
-      setOnlineUsers(users);
+    const unsub = subscribeToHubActiveUsers((count) => {
+      setOnlineCount(count);
     });
     return () => unsub();
   }, []);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, filePreview]);
@@ -117,19 +113,37 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file (JPG, PNG, WebP).');
+    if (!isValidImageFormat(file)) {
+      setUploadError('Only JPG, JPEG, PNG, and WebP images are allowed.');
       return;
     }
 
     setSelectedFile(file);
     setUploadError(null);
     setUploadProgress(0);
-    const preview = URL.createObjectURL(file);
-    setFilePreview(preview);
+    setFilePreview(URL.createObjectURL(file));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCancelUpload = () => {
+    if (activeTaskRef.current) {
+      try {
+        activeTaskRef.current.cancel();
+      } catch {}
+      activeTaskRef.current = null;
+    }
+    setIsUploading(false);
+    setIsSending(false);
+    setUploadError('Image upload cancelled. Click Send to retry or remove attachment.');
   };
 
   const removeSelectedFile = () => {
+    if (activeTaskRef.current) {
+      try {
+        activeTaskRef.current.cancel();
+      } catch {}
+      activeTaskRef.current = null;
+    }
     setSelectedFile(null);
     if (filePreview) {
       URL.revokeObjectURL(filePreview);
@@ -159,11 +173,18 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
     try {
       if (selectedFile) {
         setIsUploading(true);
-        uploadedImageUrl = await uploadHubChatPhoto(
-          selectedFile,
-          student.id,
-          (percent) => setUploadProgress(percent)
-        );
+        const result = await uploadImageToFirebaseStorage(selectedFile, {
+          folder: 'hub_chats',
+          ownerId: student.id,
+          timeoutMs: 30000,
+          onProgress: (pct) => setUploadProgress(pct),
+          onTaskCreated: (task) => {
+            activeTaskRef.current = task;
+          },
+          allowPersistentFallback: true
+        });
+        activeTaskRef.current = null;
+        uploadedImageUrl = result.downloadUrl;
         setIsUploading(false);
       }
 
@@ -179,7 +200,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
       removeSelectedFile();
       setShowEmojiPicker(false);
     } catch (err: any) {
-      console.error('Failed to send hub message:', err);
+      activeTaskRef.current = null;
       setUploadError(err?.message || 'Could not send message. Please retry.');
     } finally {
       setIsSending(false);
@@ -187,69 +208,69 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
     }
   };
 
-  const addEmoji = (emoji: string) => {
-    setInputText((prev) => prev + emoji);
-  };
-
   const formatMessageTime = (isoString?: string) => {
     if (!isoString) return '';
     try {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return '';
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col font-sans pb-20 sm:pb-0">
-      
-      {/* 1. TOP NAV BAR (WhatsApp Campus Group Header Style) */}
-      <div className="bg-[#008751] text-white px-3 sm:px-4 py-2.5 shadow-md sticky top-0 z-30 flex items-center justify-between">
+    <div className="min-h-screen bg-[#000000] text-[#FFFFFF] flex flex-col font-sans pb-20 sm:pb-0">
+      {/* Header */}
+      <div className="bg-[#121212] border-b border-[#333333] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onBackToHome}
-            className="p-1.5 rounded-full hover:bg-black/15 transition text-white"
-            title="Back to Marketplace"
+            className="p-2 rounded-xl bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-[#BDBDBD] hover:text-white transition"
+            title="Back to FU MARKET"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
 
-          {/* Group Avatar */}
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-white text-[#008751] font-black flex items-center justify-center text-lg shadow-sm border border-emerald-300">
+            <div className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#FFFFFF] text-[#FFFFFF] font-black flex items-center justify-center text-lg">
               🎓
             </div>
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#008751] rounded-full animate-pulse" />
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#121212] rounded-full" />
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                Single Hub - FUWukari
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white">
+                Single Hub — FUWUKARI
               </h1>
-              <span className="bg-emerald-800/80 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                <Radio className="w-2.5 h-2.5 text-emerald-300 animate-ping" />
+              <span className="bg-[#1C1C1C] border border-[#333333] text-[#FFFFFF] text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                <Radio className="w-2.5 h-2.5 animate-ping" />
                 Live
               </span>
             </div>
-            <p className="text-[11px] text-emerald-100 flex items-center gap-1.5">
-              <span className="font-semibold">{onlineCount} online</span>
+            <p className="text-[11px] text-[#BDBDBD] flex items-center gap-1.5">
+              <span className="font-semibold text-white">{onlineCount} active now</span>
               <span>•</span>
-              <span className="opacity-90">Open campus group</span>
+              <span>Real campus group chat</span>
             </p>
           </div>
         </div>
 
-        {/* Student Profile Action */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onNavigateToFriends}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-white rounded-xl text-xs font-bold"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-[#FFFFFF]" />
+            <span>Direct Chats</span>
+          </button>
+
           {student ? (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border border-white/20"
-              title="Edit your campus identity"
+              className="bg-[#1C1C1C] hover:border-[#FFFFFF] border border-[#333333] text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
             >
-              <div className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-black uppercase">
+              <div className="w-5 h-5 rounded-full bg-[#FFFFFF] text-black flex items-center justify-center text-[10px] font-black uppercase">
                 {student.name.charAt(0)}
               </div>
               <span className="hidden sm:inline max-w-[100px] truncate">{student.name}</span>
@@ -257,7 +278,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#F68B1F] hover:bg-[#E07A15] text-white px-3 py-1.5 rounded-xl text-xs font-black shadow transition active:scale-95 flex items-center gap-1"
+              className="bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1"
             >
               <GraduationCap className="w-3.5 h-3.5" />
               <span>Join Hub</span>
@@ -266,48 +287,42 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         </div>
       </div>
 
-      {/* 2. CHAT MESSAGES CONTAINER */}
+      {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-4xl w-full mx-auto flex flex-col justify-between">
-        
-        {/* Notice Banner */}
-        <div className="my-2 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-3 text-center text-xs shadow-xs max-w-md mx-auto">
-          <p className="font-bold flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Welcome to FUWukari Single Hub!</span>
+        <div className="my-2 bg-[#121212] border border-[#333333] rounded-2xl p-3 text-center text-xs max-w-md mx-auto">
+          <p className="font-black text-white flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-[#FFFFFF]" />
+            <span>FUWUKARI Open Student Messaging</span>
           </p>
-          <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
-            Real-time open chat for all Federal University Wukari students. Discuss campus updates, find course mates, and share information.
+          <p className="text-[11px] text-[#BDBDBD] mt-0.5 leading-relaxed">
+            Every message here is posted live by verified students. Click any peer&apos;s name to start a private 1-on-1 chat.
           </p>
         </div>
 
-        {/* Messages List */}
         {loading ? (
           <div className="py-20 text-center">
-            <div className="w-8 h-8 border-3 border-[#008751] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-xs font-bold text-gray-500">Connecting to FUWukari Hub messages...</p>
+            <Loader2 className="w-8 h-8 text-[#FFFFFF] animate-spin mx-auto mb-2" />
+            <p className="text-xs font-bold text-[#BDBDBD]">Loading FUWUKARI Hub messages...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="py-16 text-center max-w-sm mx-auto">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#008751] text-3xl flex items-center justify-center mx-auto mb-3">
+            <div className="w-16 h-16 rounded-2xl bg-[#1C1C1C] border border-[#333333] text-3xl flex items-center justify-center mx-auto mb-3">
               💬
             </div>
-            <h3 className="text-sm sm:text-base font-black text-gray-800">
-              No messages yet in FUWukari Hub
+            <h3 className="text-sm sm:text-base font-black text-white">
+              No messages yet in Single Hub
             </h3>
-            <p className="text-xs text-gray-500 mt-1 mb-4 leading-relaxed">
-              Be the first to say hello, ask a question, or share an update with the campus!
+            <p className="text-xs text-[#BDBDBD] mt-1 mb-4 leading-relaxed">
+              Be the first student to start a real conversation with your course mates!
             </p>
             <button
               onClick={() => {
-                if (!student) {
-                  setShowLoginModal(true);
-                } else {
-                  setInputText('Hello FUWukari! 👋');
-                }
+                if (!student) setShowLoginModal(true);
+                else setInputText('Hello FUWUKARI!');
               }}
-              className="px-4 py-2 bg-[#008751] hover:bg-[#007043] text-white text-xs font-extrabold rounded-xl shadow transition"
+              className="px-4 py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs font-black rounded-xl"
             >
-              Say Hello 👋
+              Say Hello
             </button>
           </div>
         ) : (
@@ -320,47 +335,54 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                   className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 shadow-xs relative transition ${
+                    className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 border relative ${
                       isOwn
-                        ? 'bg-[#DCF8C6] text-gray-900 rounded-br-xs border border-emerald-200'
-                        : 'bg-white text-gray-900 rounded-bl-xs border border-gray-200'
+                        ? 'bg-[#1C1C1C] border-[#FFFFFF]/60 text-white rounded-br-xs'
+                        : 'bg-[#121212] border-[#333333] text-white rounded-bl-xs'
                     }`}
                   >
-                    {/* Sender Header */}
                     {!isOwn && (
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-xs font-black text-[#008751] line-clamp-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onStartDirectChat({
+                            id: msg.senderId,
+                            name: msg.senderName,
+                            matricNumber: msg.matricNumber
+                          })
+                        }
+                        className="flex items-center gap-1.5 mb-1 text-left hover:underline"
+                        title="Start 1-on-1 private chat"
+                      >
+                        <span className="text-xs font-black text-[#FFFFFF] line-clamp-1">
                           {msg.senderName}
                         </span>
                         {msg.matricNumber && (
-                          <span className="text-[10px] bg-emerald-50 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded border border-emerald-200 uppercase">
+                          <span className="text-[10px] bg-[#1C1C1C] text-[#BDBDBD] font-mono px-1.5 py-0.2 rounded border border-[#333333] uppercase">
                             {msg.matricNumber}
                           </span>
                         )}
-                      </div>
+                      </button>
                     )}
 
-                    {/* Image Attachment if present */}
                     {msg.imageUrl && (
-                      <div className="rounded-xl overflow-hidden mb-2 bg-gray-100 max-h-72">
+                      <div className="rounded-xl overflow-hidden mb-2 bg-[#000000] max-h-72 border border-[#333333]">
                         <img
                           src={msg.imageUrl}
                           alt="Hub attachment"
-                          className="w-full h-auto object-cover max-h-72 rounded-xl cursor-pointer hover:opacity-95 transition"
-                          onClick={() => window.open(msg.imageUrl, '_blank')}
+                          className="w-full h-auto object-cover max-h-72 rounded-xl cursor-pointer hover:opacity-95"
+                          onClick={() => setLightboxImage(msg.imageUrl!)}
                         />
                       </div>
                     )}
 
-                    {/* Text Content */}
                     {msg.text && (
-                      <p className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap break-words">
+                      <p className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap break-words text-white">
                         {msg.text}
                       </p>
                     )}
 
-                    {/* Timestamp */}
-                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-gray-400">
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-[#BDBDBD]">
                       <span>{formatMessageTime(msg.createdAt)}</span>
                     </div>
                   </div>
@@ -372,58 +394,61 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         )}
       </div>
 
-      {/* 3. INPUT COMPONENT & EMOJI DRAWER */}
-      <div className="bg-white border-t border-gray-200 p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20 shadow-lg">
+      {/* Input Bar */}
+      <div className="bg-[#121212] border-t border-[#333333] p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20">
         <div className="max-w-4xl mx-auto">
-          
-          {/* Selected Image Preview with Progress */}
           {filePreview && (
-            <div className="relative mb-2.5 p-2 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-3">
+            <div className="relative mb-2.5 p-2.5 bg-[#1C1C1C] border border-[#333333] rounded-2xl flex items-center gap-3">
               <img
                 src={filePreview}
                 alt="Upload preview"
-                className="w-14 h-14 object-cover rounded-xl border border-gray-300"
+                className="w-14 h-14 object-cover rounded-xl border border-[#333333]"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-gray-800 truncate">
+                <p className="text-xs font-bold text-white truncate">
                   {selectedFile?.name || 'Photo attachment'}
                 </p>
                 {isUploading ? (
-                  <div className="mt-1">
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <div className="mt-1 space-y-1">
+                    <div className="w-full bg-[#333333] rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="bg-[#008751] h-1.5 transition-all duration-200"
+                        className="bg-[#FFFFFF] h-1.5 transition-all duration-200"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-bold text-[#008751]">
-                      Uploading to Firebase {uploadProgress}%
-                    </span>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-[#FFFFFF]">Uploading {uploadProgress}%</span>
+                      <button
+                        type="button"
+                        onClick={handleCancelUpload}
+                        className="text-red-400 hover:text-red-300 font-bold"
+                      >
+                        Cancel Upload
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-[10px] text-gray-500">Ready to send with message</span>
+                  <span className="text-[10px] text-[#BDBDBD]">Ready to upload &amp; send</span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={removeSelectedFile}
-                disabled={isUploading}
-                className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition"
+                className="w-7 h-7 rounded-full bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          {/* Quick Emoji Bar */}
           {showEmojiPicker && (
-            <div className="p-2 mb-2 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2 overflow-x-auto">
+            <div className="p-2 mb-2 bg-[#1C1C1C] border border-[#333333] rounded-2xl flex items-center gap-2 overflow-x-auto">
               {COMMON_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => addEmoji(emoji)}
-                  className="text-lg p-1.5 hover:bg-white hover:scale-125 rounded-lg transition shrink-0"
+                  onClick={() => setInputText((prev) => prev + emoji)}
+                  className="text-lg p-1.5 hover:bg-[#333333] rounded-lg transition shrink-0"
                 >
                   {emoji}
                 </button>
@@ -431,33 +456,41 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
             </div>
           )}
 
-          {/* Upload Error Banner */}
           {uploadError && (
-            <div className="mb-2 p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
+            <div className="mb-2 p-2.5 bg-red-950/60 border border-red-700 text-red-200 text-xs rounded-xl flex items-center justify-between gap-2">
               <span>{uploadError}</span>
-              <button
-                type="button"
-                onClick={() => setUploadError(null)}
-                className="text-red-700 font-bold ml-2"
-              >
-                Dismiss
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {selectedFile && (
+                  <button
+                    type="button"
+                    onClick={() => handleSendMessage()}
+                    className="px-2 py-0.5 bg-[#FFFFFF] text-black font-black rounded flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Retry</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setUploadError(null)}
+                  className="text-red-300 font-bold"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Main Input Bar */}
           <form onSubmit={handleSendMessage} className="flex items-center gap-1.5 sm:gap-2">
-            {/* Emoji Toggle */}
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 text-gray-500 hover:text-[#008751] hover:bg-gray-100 rounded-full transition shrink-0"
+              className="p-2 text-[#BDBDBD] hover:text-[#FFFFFF] hover:bg-[#1C1C1C] rounded-full transition shrink-0"
               title="Add Emoji"
             >
               <Smile className="w-5 h-5" />
             </button>
 
-            {/* Photo Attachment Button */}
             <input
               type="file"
               ref={fileInputRef}
@@ -468,61 +501,71 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-500 hover:text-[#008751] hover:bg-gray-100 rounded-full transition shrink-0"
+              className="p-2 text-[#BDBDBD] hover:text-[#FFFFFF] hover:bg-[#1C1C1C] rounded-full transition shrink-0"
               title="Attach Photo"
             >
               <ImageIcon className="w-5 h-5" />
             </button>
 
-            {/* Text Input */}
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={student ? "Type a message to FUWukari Hub..." : "Enter name & matric to chat..."}
-              className="flex-1 py-2.5 px-4 bg-gray-100 border border-transparent focus:border-[#008751] focus:bg-white rounded-full text-xs sm:text-sm font-medium text-gray-900 focus:outline-none transition"
+              placeholder={student ? 'Message FUWUKARI Single Hub...' : 'Enter name & matric to chat...'}
+              className="flex-1 py-2.5 px-4 bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-white placeholder-[#BDBDBD]/60 outline-none"
             />
 
-            {/* Send Button */}
             <button
               type="submit"
               disabled={isSending || (!inputText.trim() && !selectedFile)}
-              className="w-10 h-10 rounded-full bg-[#008751] hover:bg-[#007043] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition shrink-0"
-              title="Send message"
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] hover:bg-[#E5E5E5] disabled:opacity-40 text-black flex items-center justify-center shrink-0"
             >
-              {isSending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 translate-x-0.5" />
-              )}
+              {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </form>
 
-          {/* Prompt if not authenticated */}
           {!student && (
-            <p className="text-center text-[11px] text-gray-500 mt-1.5">
-              <span>You're browsing as guest. </span>
+            <p className="text-center text-[11px] text-[#BDBDBD] mt-1.5">
+              <span>Browsing as guest. </span>
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="text-[#008751] font-bold underline"
+                className="text-[#FFFFFF] font-bold underline"
               >
-                Sign in with Name & Matric Number to send messages
+                Sign in with Name &amp; Matric Number to send messages
               </button>
             </p>
           )}
         </div>
       </div>
 
-      {/* Student Login Modal */}
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#1C1C1C] border border-[#333333] text-white flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Full attachment"
+            className="max-w-full max-h-[85vh] rounded-2xl border border-[#333333]"
+          />
+        </div>
+      )}
+
       <StudentLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="FUWukari Campus ID"
-        subtitle="Set your name and matric number to join the Single Hub discussion, send friend requests, and post housing listings."
+        title="FUWUKARI Campus ID — FU MARKET"
+        subtitle="Set your name and matric number to join Single Hub, send friend requests, and chat 1-on-1."
       />
-
     </div>
   );
 };

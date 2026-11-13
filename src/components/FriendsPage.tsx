@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Users,
   UserPlus,
   MessageCircle,
   Search,
   Check,
   X,
   ArrowLeft,
-  Clock,
-  ShieldCheck,
   Send,
   Smile,
   Image as ImageIcon,
   Loader2,
   CheckCheck,
-  Sparkles,
-  Phone,
-  GraduationCap
+  RefreshCw,
+  GraduationCap,
+  AlertCircle
 } from 'lucide-react';
+import { UploadTask } from 'firebase/storage';
 import {
   RegisteredUser,
   FriendRequest,
@@ -32,21 +30,31 @@ import {
   respondToFriendRequest,
   subscribeToFriends,
   getPrivateChatId,
+  openOrCreateDirectChat,
+  subscribeToMyPrivateChats,
   subscribeToPrivateMessages,
   sendPrivateMessage,
   setChatTypingStatus,
   subscribeToChatMetadata,
   markPrivateMessagesSeen
 } from '../services/firebase.js';
-import { uploadHubChatPhoto } from '../services/imageStorage.js';
+import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
+import { isValidImageFormat } from '../utils/imagePersistence.js';
 import { getLocalStudentSession } from '../utils/studentAuth.js';
 import { StudentLoginModal } from './StudentLoginModal.js';
 import { useAuth } from '../context/AuthContext.js';
 
+export interface DirectChatTarget {
+  id: string;
+  name: string;
+  matricNumber?: string;
+}
+
 interface FriendsPageProps {
   onBackToHome: () => void;
   onNavigateToHub: () => void;
-  onNavigateToHux: () => void;
+  initialChatTarget?: DirectChatTarget | null;
+  onClearChatTarget?: () => void;
 }
 
 const COMMON_EMOJIS = ['😂', '🔥', '❤️', '👍', '🙏', '🎓', '⚡', '💯', '🏍️', '₦', '👏', '🥳', '📚'];
@@ -54,23 +62,31 @@ const COMMON_EMOJIS = ['😂', '🔥', '❤️', '👍', '🙏', '🎓', '⚡', 
 export const FriendsPage: React.FC<FriendsPageProps> = ({
   onBackToHome,
   onNavigateToHub,
-  onNavigateToHux
+  initialChatTarget,
+  onClearChatTarget
 }) => {
   const { user: authUser } = useAuth();
   const [student, setStudent] = useState<RegisteredUser | null>(() => getLocalStudentSession());
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Active view: 'directory' | 'chat'
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'discover'>('friends');
-  const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
+  const [activeTab, setActiveTab] = useState<'chats' | 'friends' | 'requests' | 'discover'>('chats');
+  const [activePeer, setActivePeer] = useState<{
+    userId: string;
+    name: string;
+    matricNumber?: string;
+    chatId: string;
+    isOnline?: boolean;
+  } | null>(null);
 
   // Data states
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [directChats, setDirectChats] = useState<ChatMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // 1-on-1 Chat States
   const [chatMessages, setChatMessages] = useState<PrivateMessage[]>([]);
@@ -80,18 +96,24 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   const [chatFilePreview, setChatFilePreview] = useState<string | null>(null);
   const [chatUploadProgress, setChatUploadProgress] = useState(0);
   const [chatIsUploading, setChatIsUploading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [chatMetadata, setChatMetadata] = useState<ChatMetadata | null>(null);
   const [showChatEmoji, setShowChatEmoji] = useState(false);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+  const activeTaskRef = useRef<UploadTask | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync auth context
   useEffect(() => {
-    if (authUser && (!student || student.name !== authUser.name)) {
-      const updated: RegisteredUser = {
+    document.title = 'Student Messaging & Friends | FU MARKET';
+  }, []);
+
+  useEffect(() => {
+    if (authUser && (!student || student.id !== authUser.id)) {
+      setStudent({
         id: authUser.id,
         name: authUser.name,
         matricNumber: student?.matricNumber || 'FUW-STUDENT',
@@ -99,10 +121,43 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         whatsappNumber: authUser.whatsappNumber,
         isOnline: true,
         lastSeen: Date.now()
-      };
-      setStudent(updated);
+      });
     }
   }, [authUser]);
+
+  // Open incoming direct chat target (Buyer -> Seller / Student -> Agent / Student -> Requester)
+  useEffect(() => {
+    if (!initialChatTarget) return;
+    if (!student) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const chatId = await openOrCreateDirectChat(
+          { id: student.id, name: student.name, matricNumber: student.matricNumber },
+          initialChatTarget
+        );
+        if (!cancelled) {
+          setActivePeer({
+            userId: initialChatTarget.id,
+            name: initialChatTarget.name,
+            matricNumber: initialChatTarget.matricNumber,
+            chatId
+          });
+          if (onClearChatTarget) onClearChatTarget();
+        }
+      } catch (err: any) {
+        setActionError(err?.message || 'Could not open direct chat.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialChatTarget?.id, student?.id]);
 
   // Subscriptions when student is available
   useEffect(() => {
@@ -112,48 +167,43 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     }
 
     setLoading(true);
-
-    // 1. Subscribe to all registered campus users
     const unsubUsers = subscribeToRegisteredUsers(student.id, (users) => {
       setAllUsers(users);
       setLoading(false);
     });
-
-    // 2. Subscribe to friend requests (incoming & outgoing)
     const unsubRequests = subscribeToFriendRequests(student.id, (requests) => {
       setFriendRequests(requests);
     });
-
-    // 3. Subscribe to accepted friends
     const unsubFriends = subscribeToFriends(student.id, (myFriends) => {
       setFriends(myFriends);
+    });
+    const unsubChats = subscribeToMyPrivateChats(student.id, (chats) => {
+      setDirectChats(chats);
     });
 
     return () => {
       unsubUsers();
       unsubRequests();
       unsubFriends();
+      unsubChats();
     };
   }, [student?.id]);
 
   // Active 1-on-1 Chat Subscriptions
   useEffect(() => {
-    if (!student || !activeFriend) {
+    if (!student || !activePeer) {
       setChatMessages([]);
       return;
     }
 
     setChatLoading(true);
-    const chatId = activeFriend.chatId || getPrivateChatId(student.id, activeFriend.userId);
+    const chatId = activePeer.chatId || getPrivateChatId(student.id, activePeer.userId);
 
-    // Subscribe to messages in privateChats/{chatId}/messages
     const unsubMessages = subscribeToPrivateMessages(chatId, (msgs) => {
       setChatMessages(msgs);
       setChatLoading(false);
       markPrivateMessagesSeen(chatId, student.id);
     });
-
-    // Subscribe to chat metadata (typing indicators)
     const unsubMeta = subscribeToChatMetadata(chatId, (meta) => {
       setChatMetadata(meta);
     });
@@ -162,26 +212,43 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       unsubMessages();
       unsubMeta();
     };
-  }, [student?.id, activeFriend?.userId]);
+  }, [student?.id, activePeer?.userId, activePeer?.chatId]);
 
-  // Auto-scroll chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages.length, chatFilePreview]);
 
-  // Handle typing indicator trigger
   const handleInputChange = (text: string) => {
     setChatInputText(text);
-
-    if (!student || !activeFriend) return;
-    const chatId = activeFriend.chatId || getPrivateChatId(student.id, activeFriend.userId);
-
+    if (!student || !activePeer) return;
+    const chatId = activePeer.chatId || getPrivateChatId(student.id, activePeer.userId);
     setChatTypingStatus(chatId, student.id, true);
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setChatTypingStatus(chatId, student.id, false);
     }, 2500);
+  };
+
+  const handleOpenDirectConversation = async (target: DirectChatTarget) => {
+    if (!student) {
+      setShowLoginModal(true);
+      return;
+    }
+    setActionError(null);
+    try {
+      const chatId = await openOrCreateDirectChat(
+        { id: student.id, name: student.name, matricNumber: student.matricNumber },
+        target
+      );
+      setActivePeer({
+        userId: target.id,
+        name: target.name,
+        matricNumber: target.matricNumber,
+        chatId
+      });
+    } catch (err: any) {
+      setActionError(err?.message || 'Could not open conversation.');
+    }
   };
 
   const handleSendFriendRequest = async (targetUser: RegisteredUser) => {
@@ -189,7 +256,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       setShowLoginModal(true);
       return;
     }
-
+    setActionError(null);
     setActionLoading((prev) => ({ ...prev, [targetUser.id]: true }));
     try {
       await sendFriendRequest(
@@ -199,24 +266,22 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           matricNumber: student.matricNumber,
           avatarUrl: student.avatarUrl
         },
-        {
-          id: targetUser.id,
-          name: targetUser.name
-        }
+        { id: targetUser.id, name: targetUser.name }
       );
     } catch (err: any) {
-      alert(err.message || 'Could not send friend request.');
+      setActionError(err?.message || 'Could not send friend request.');
     } finally {
       setActionLoading((prev) => ({ ...prev, [targetUser.id]: false }));
     }
   };
 
   const handleRespondRequest = async (request: FriendRequest, action: 'accepted' | 'rejected') => {
+    setActionError(null);
     setActionLoading((prev) => ({ ...prev, [request.id]: true }));
     try {
       await respondToFriendRequest(request, action);
     } catch (err: any) {
-      alert(err.message || 'Could not update request.');
+      setActionError(err?.message || 'Could not update request.');
     } finally {
       setActionLoading((prev) => ({ ...prev, [request.id]: false }));
     }
@@ -225,48 +290,74 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   const handleSelectChatFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image (JPG, PNG, WebP).');
+    if (!isValidImageFormat(file)) {
+      setChatError('Only JPG, JPEG, PNG, and WebP images are allowed.');
       return;
     }
-
+    setChatError(null);
     setChatSelectedFile(file);
     setChatUploadProgress(0);
-    const preview = URL.createObjectURL(file);
-    setChatFilePreview(preview);
+    setChatFilePreview(URL.createObjectURL(file));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCancelChatUpload = () => {
+    if (activeTaskRef.current) {
+      try {
+        activeTaskRef.current.cancel();
+      } catch {}
+      activeTaskRef.current = null;
+    }
+    setChatIsUploading(false);
+    setIsSendingMsg(false);
+    setChatError('Upload cancelled. Click Send to retry or remove the photo.');
   };
 
   const removeChatFile = () => {
+    if (activeTaskRef.current) {
+      try {
+        activeTaskRef.current.cancel();
+      } catch {}
+      activeTaskRef.current = null;
+    }
     setChatSelectedFile(null);
     if (chatFilePreview) {
       URL.revokeObjectURL(chatFilePreview);
       setChatFilePreview(null);
     }
     setChatUploadProgress(0);
+    setChatError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSendPrivateMsg = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!student || !activeFriend) return;
+    if (!student || !activePeer) return;
 
     const text = chatInputText.trim();
     if (!text && !chatSelectedFile) return;
 
-    const chatId = activeFriend.chatId || getPrivateChatId(student.id, activeFriend.userId);
+    const chatId = activePeer.chatId || getPrivateChatId(student.id, activePeer.userId);
     setIsSendingMsg(true);
+    setChatError(null);
 
     let uploadedImageUrl: string | undefined = undefined;
 
     try {
       if (chatSelectedFile) {
         setChatIsUploading(true);
-        uploadedImageUrl = await uploadHubChatPhoto(
-          chatSelectedFile,
-          student.id,
-          (percent) => setChatUploadProgress(percent)
-        );
+        const result = await uploadImageToFirebaseStorage(chatSelectedFile, {
+          folder: 'hub_chats',
+          ownerId: student.id,
+          timeoutMs: 30000,
+          onProgress: (pct) => setChatUploadProgress(pct),
+          onTaskCreated: (task) => {
+            activeTaskRef.current = task;
+          },
+          allowPersistentFallback: true
+        });
+        activeTaskRef.current = null;
+        uploadedImageUrl = result.downloadUrl;
         setChatIsUploading(false);
       }
 
@@ -274,7 +365,8 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         senderId: student.id,
         senderName: student.name,
         text: text || undefined,
-        imageUrl: uploadedImageUrl
+        imageUrl: uploadedImageUrl,
+        participants: [student.id, activePeer.userId].sort()
       });
 
       setChatInputText('');
@@ -282,15 +374,14 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       setShowChatEmoji(false);
       setChatTypingStatus(chatId, student.id, false);
     } catch (err: any) {
-      console.error('Failed to send private message:', err);
-      alert(err?.message || 'Failed to send message. Please retry.');
+      activeTaskRef.current = null;
+      setChatError(err?.message || 'Failed to send message. Please retry.');
     } finally {
       setIsSendingMsg(false);
       setChatIsUploading(false);
     }
   };
 
-  // Helper filters
   const pendingIncoming = friendRequests.filter(
     (r) => r.toId === student?.id && r.status === 'pending'
   );
@@ -301,61 +392,58 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
 
   const filteredDiscoverUsers = allUsers.filter((u) => {
     if (friendIds.includes(u.id)) return false;
-    const matchesSearch =
-      !searchQuery ||
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.matricNumber && u.matricNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (u.department && u.department.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      u.name.toLowerCase().includes(q) ||
+      (u.matricNumber && u.matricNumber.toLowerCase().includes(q)) ||
+      (u.department && u.department.toLowerCase().includes(q))
+    );
   });
 
-  const isFriendTyping =
-    activeFriend &&
+  const isPeerTyping =
+    activePeer &&
     chatMetadata?.typing &&
-    chatMetadata.typing[activeFriend.userId] &&
-    Date.now() - chatMetadata.typing[activeFriend.userId] < 3500;
+    chatMetadata.typing[activePeer.userId] &&
+    Date.now() - chatMetadata.typing[activePeer.userId] < 3500;
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col font-sans pb-20 sm:pb-0">
-      
-      {/* 1. TOP HEADER */}
-      <div className="bg-[#008751] text-white px-3 sm:px-4 py-2.5 shadow-md sticky top-0 z-30 flex items-center justify-between">
+    <div className="min-h-screen bg-[#000000] text-[#FFFFFF] flex flex-col font-sans pb-20 sm:pb-0">
+      {/* Header */}
+      <div className="bg-[#121212] border-b border-[#333333] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
-          {activeFriend ? (
+          {activePeer ? (
             <button
-              onClick={() => setActiveFriend(null)}
-              className="p-1.5 rounded-full hover:bg-black/15 transition text-white"
-              title="Back to Friends list"
+              onClick={() => setActivePeer(null)}
+              className="p-2 rounded-xl bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-white"
+              title="Back to Conversations"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={onBackToHome}
-              className="p-1.5 rounded-full hover:bg-black/15 transition text-white"
-              title="Back to Marketplace"
+              className="p-2 rounded-xl bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-white"
+              title="Back to FU MARKET"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
-          {activeFriend ? (
+          {activePeer ? (
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-emerald-700 text-white font-black flex items-center justify-center text-sm shadow border border-emerald-400 uppercase">
-                {activeFriend.name.charAt(0)}
+              <div className="w-9 h-9 rounded-full bg-[#FFFFFF] text-black font-black flex items-center justify-center text-sm uppercase">
+                {activePeer.name.charAt(0)}
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-black tracking-tight leading-tight line-clamp-1">
-                  {activeFriend.name}
+                <h2 className="text-sm sm:text-base font-black text-white line-clamp-1">
+                  {activePeer.name}
                 </h2>
-                <p className="text-[11px] text-emerald-100 flex items-center gap-1.5">
-                  {isFriendTyping ? (
-                    <span className="text-emerald-200 font-bold animate-pulse">Typing...</span>
+                <p className="text-[11px] text-[#BDBDBD] flex items-center gap-1.5">
+                  {isPeerTyping ? (
+                    <span className="text-[#FFFFFF] font-bold animate-pulse">Typing...</span>
                   ) : (
-                    <>
-                      <span className="w-2 h-2 rounded-full bg-emerald-300" />
-                      <span>{activeFriend.matricNumber || 'Verified Peer'}</span>
-                    </>
+                    <span>{activePeer.matricNumber || 'FUWUKARI Peer / Seller'}</span>
                   )}
                 </p>
               </div>
@@ -363,38 +451,44 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           ) : (
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                  Friends & Private Chat
+                <h1 className="text-sm sm:text-base font-black text-white">
+                  Student Messaging &amp; Friends
                 </h1>
                 {pendingIncoming.length > 0 && (
-                  <span className="bg-[#F68B1F] text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-bounce">
-                    {pendingIncoming.length} new
+                  <span className="bg-[#FFFFFF] text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                    {pendingIncoming.length} req
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-emerald-100">
-                1-on-1 private messaging for FUWukari students
+              <p className="text-[11px] text-[#BDBDBD]">
+                Direct buyer-seller chat &amp; 1-on-1 campus messaging
               </p>
             </div>
           )}
         </div>
 
-        {/* Identity badge */}
-        <div>
+        <div className="flex items-center gap-2">
+          {!activePeer && (
+            <button
+              type="button"
+              onClick={onNavigateToHub}
+              className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-[#1C1C1C] border border-[#333333] hover:border-[#FFFFFF] text-xs font-bold text-white rounded-xl"
+            >
+              <span>Open Group Hub</span>
+            </button>
+          )}
           {student ? (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border border-white/20"
+              className="bg-[#1C1C1C] border border-[#333333] text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
             >
               <span className="hidden sm:inline max-w-[100px] truncate">{student.name}</span>
-              <span className="font-mono text-[10px] bg-emerald-800 px-1.5 py-0.5 rounded text-emerald-200">
-                {student.matricNumber}
-              </span>
+              <span className="font-mono text-[10px] text-[#FFFFFF]">{student.matricNumber}</span>
             </button>
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#F68B1F] hover:bg-[#E07A15] text-white px-3 py-1.5 rounded-xl text-xs font-black shadow transition active:scale-95"
+              className="bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black px-3 py-1.5 rounded-xl text-xs font-black"
             >
               Sign In
             </button>
@@ -402,35 +496,30 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         </div>
       </div>
 
-      {/* 2. BODY: EITHER PRIVATE CHAT VIEW OR FRIENDS DIRECTORY TABS */}
-      {activeFriend ? (
-        // ==========================================
-        // 1-ON-1 PRIVATE CHAT INTERFACE
-        // ==========================================
+      {activePeer ? (
         <div className="flex-1 flex flex-col justify-between max-w-3xl w-full mx-auto">
-          {/* Chat Messages Flow */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
             {chatLoading ? (
               <div className="py-20 text-center">
-                <div className="w-8 h-8 border-3 border-[#008751] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-xs font-bold text-gray-500">Loading conversation...</p>
+                <Loader2 className="w-8 h-8 text-[#FFFFFF] animate-spin mx-auto mb-2" />
+                <p className="text-xs font-bold text-[#BDBDBD]">Loading conversation...</p>
               </div>
             ) : chatMessages.length === 0 ? (
               <div className="py-16 text-center max-w-sm mx-auto">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#008751] text-2xl flex items-center justify-center mx-auto mb-3">
+                <div className="w-14 h-14 rounded-2xl bg-[#1C1C1C] border border-[#333333] text-2xl flex items-center justify-center mx-auto mb-3">
                   🤝
                 </div>
-                <h4 className="text-sm font-black text-gray-800">
-                  You are now connected with {activeFriend.name}!
+                <h4 className="text-sm font-black text-white">
+                  Direct Chat with {activePeer.name}
                 </h4>
-                <p className="text-xs text-gray-500 mt-1 mb-4 leading-relaxed">
-                  Start your private 1-on-1 conversation. Messages are encrypted and stored securely in Firebase.
+                <p className="text-xs text-[#BDBDBD] mt-1 mb-4 leading-relaxed">
+                  Send a real message about products, campus requests, or accommodation.
                 </p>
                 <button
-                  onClick={() => setChatInputText('Hey! Are you on campus? 👋')}
-                  className="px-4 py-2 bg-[#008751] hover:bg-[#007043] text-white text-xs font-black rounded-xl shadow transition"
+                  onClick={() => setChatInputText('Hello, I am reaching out from FU MARKET!')}
+                  className="px-4 py-2 bg-[#FFFFFF] text-black text-xs font-black rounded-xl"
                 >
-                  Say Hi 👋
+                  Say Hello
                 </button>
               </div>
             ) : (
@@ -442,19 +531,19 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                     className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 shadow-xs relative transition ${
+                      className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 border ${
                         isOwn
-                          ? 'bg-[#DCF8C6] text-gray-900 rounded-br-xs border border-emerald-200'
-                          : 'bg-white text-gray-900 rounded-bl-xs border border-gray-200'
+                          ? 'bg-[#1C1C1C] border-[#FFFFFF]/60 text-white rounded-br-xs'
+                          : 'bg-[#121212] border-[#333333] text-white rounded-bl-xs'
                       }`}
                     >
                       {msg.imageUrl && (
-                        <div className="rounded-xl overflow-hidden mb-2 bg-gray-100 max-h-72">
+                        <div className="rounded-xl overflow-hidden mb-2 bg-[#000000] max-h-72 border border-[#333333]">
                           <img
                             src={msg.imageUrl}
                             alt="Chat attachment"
-                            className="w-full h-auto object-cover max-h-72 rounded-xl cursor-pointer hover:opacity-95 transition"
-                            onClick={() => window.open(msg.imageUrl, '_blank')}
+                            className="w-full h-auto object-cover max-h-72 cursor-pointer"
+                            onClick={() => setLightboxImage(msg.imageUrl!)}
                           />
                         </div>
                       )}
@@ -465,8 +554,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                         </p>
                       )}
 
-                      {/* Footer: Time & Seen tick */}
-                      <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-gray-400">
+                      <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-[#BDBDBD]">
                         <span>
                           {msg.createdAt
                             ? new Date(msg.createdAt).toLocaleTimeString([], {
@@ -476,7 +564,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                             : ''}
                         </span>
                         {isOwn && (
-                          <span className={msg.seen ? 'text-blue-500 font-bold' : 'text-gray-400'}>
+                          <span className={msg.seen ? 'text-[#FFFFFF]' : 'text-[#BDBDBD]'}>
                             <CheckCheck className="w-3.5 h-3.5" />
                           </span>
                         )}
@@ -487,61 +575,91 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               })
             )}
 
-            {isFriendTyping && (
-              <div className="flex items-center gap-2 p-2 max-w-[120px] bg-white rounded-xl shadow-xs border border-gray-200 text-xs text-emerald-700 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            {isPeerTyping && (
+              <div className="flex items-center gap-2 p-2 max-w-[120px] bg-[#1C1C1C] rounded-xl border border-[#333333] text-xs text-[#FFFFFF] font-bold">
+                <span className="w-2 h-2 rounded-full bg-[#FFFFFF] animate-ping" />
                 <span>Typing...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 1-on-1 Chat Input Box */}
-          <div className="bg-white border-t border-gray-200 p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20 shadow-lg">
+          {/* 1-on-1 Chat Input */}
+          <div className="bg-[#121212] border-t border-[#333333] p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20">
             <div className="max-w-3xl mx-auto">
               {chatFilePreview && (
-                <div className="relative mb-2.5 p-2 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-3">
+                <div className="relative mb-2.5 p-2.5 bg-[#1C1C1C] border border-[#333333] rounded-2xl flex items-center gap-3">
                   <img
                     src={chatFilePreview}
                     alt="Preview"
-                    className="w-14 h-14 object-cover rounded-xl border border-gray-300"
+                    className="w-14 h-14 object-cover rounded-xl border border-[#333333]"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-800 truncate">
+                    <p className="text-xs font-bold text-white truncate">
                       {chatSelectedFile?.name || 'Attachment'}
                     </p>
-                    {chatIsUploading && (
-                      <div className="mt-1">
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    {chatIsUploading ? (
+                      <div className="mt-1 space-y-1">
+                        <div className="w-full bg-[#333333] rounded-full h-1.5 overflow-hidden">
                           <div
-                            className="bg-[#008751] h-1.5 transition-all duration-200"
+                            className="bg-[#FFFFFF] h-1.5 transition-all duration-200"
                             style={{ width: `${chatUploadProgress}%` }}
                           />
                         </div>
-                        <span className="text-[10px] font-bold text-[#008751]">
-                          Uploading {chatUploadProgress}%
-                        </span>
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="font-bold text-[#FFFFFF]">Uploading {chatUploadProgress}%</span>
+                          <button
+                            type="button"
+                            onClick={handleCancelChatUpload}
+                            className="text-red-400 font-bold"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <span className="text-[10px] text-[#BDBDBD]">Ready to send</span>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={removeChatFile}
-                    className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition"
+                    className="w-7 h-7 rounded-full bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white flex items-center justify-center"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               )}
 
+              {chatError && (
+                <div className="mb-2 p-2.5 bg-red-950/60 border border-red-700 text-red-200 text-xs rounded-xl flex items-center justify-between gap-2">
+                  <span>{chatError}</span>
+                  <div className="flex items-center gap-2">
+                    {chatSelectedFile && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendPrivateMsg()}
+                        className="px-2 py-0.5 bg-[#FFFFFF] text-black font-black rounded flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Retry</span>
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setChatError(null)} className="font-bold">
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {showChatEmoji && (
-                <div className="p-2 mb-2 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2 overflow-x-auto">
+                <div className="p-2 mb-2 bg-[#1C1C1C] border border-[#333333] rounded-2xl flex items-center gap-2 overflow-x-auto">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => setChatInputText((prev) => prev + emoji)}
-                      className="text-lg p-1.5 hover:bg-white hover:scale-125 rounded-lg transition shrink-0"
+                      className="text-lg p-1.5 hover:bg-[#333333] rounded-lg shrink-0"
                     >
                       {emoji}
                     </button>
@@ -553,8 +671,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowChatEmoji(!showChatEmoji)}
-                  className="p-2 text-gray-500 hover:text-[#008751] hover:bg-gray-100 rounded-full transition shrink-0"
-                  title="Emoji"
+                  className="p-2 text-[#BDBDBD] hover:text-[#FFFFFF] hover:bg-[#1C1C1C] rounded-full shrink-0"
                 >
                   <Smile className="w-5 h-5" />
                 </button>
@@ -569,8 +686,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-gray-500 hover:text-[#008751] hover:bg-gray-100 rounded-full transition shrink-0"
-                  title="Attach Photo"
+                  className="p-2 text-[#BDBDBD] hover:text-[#FFFFFF] hover:bg-[#1C1C1C] rounded-full shrink-0"
                 >
                   <ImageIcon className="w-5 h-5" />
                 </button>
@@ -579,177 +695,247 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                   type="text"
                   value={chatInputText}
                   onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder={`Message ${activeFriend.name}...`}
-                  className="flex-1 py-2.5 px-4 bg-gray-100 border border-transparent focus:border-[#008751] focus:bg-white rounded-full text-xs sm:text-sm font-medium text-gray-900 focus:outline-none transition"
+                  placeholder={`Message ${activePeer.name}...`}
+                  className="flex-1 py-2.5 px-4 bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-white placeholder-[#BDBDBD]/60 outline-none"
                 />
 
                 <button
                   type="submit"
                   disabled={isSendingMsg || (!chatInputText.trim() && !chatSelectedFile)}
-                  className="w-10 h-10 rounded-full bg-[#008751] hover:bg-[#007043] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition shrink-0"
+                  className="w-10 h-10 rounded-full bg-[#FFFFFF] hover:bg-[#E5E5E5] disabled:opacity-40 text-black flex items-center justify-center shrink-0"
                 >
-                  {isSendingMsg ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4 translate-x-0.5" />
-                  )}
+                  {isSendingMsg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
               </form>
             </div>
           </div>
         </div>
       ) : (
-        // ==========================================
-        // DIRECTORY & TABS INTERFACE
-        // ==========================================
         <div className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-5">
-          
-          {/* Sub Navigation Tabs */}
-          <div className="bg-white rounded-2xl p-1 shadow-sm border border-gray-200 flex items-center mb-4">
+          {actionError && (
+            <div className="mb-4 p-3 bg-red-950/60 border border-red-700 text-red-200 text-xs rounded-xl flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{actionError}</span>
+              </div>
+              <button onClick={() => setActionError(null)} className="font-bold">Dismiss</button>
+            </div>
+          )}
+
+          {/* Sub Tabs */}
+          <div className="bg-[#121212] rounded-2xl p-1 border border-[#333333] grid grid-cols-4 gap-1 mb-4">
+            <button
+              onClick={() => setActiveTab('chats')}
+              className={`py-2 rounded-xl text-xs font-bold transition ${
+                activeTab === 'chats' ? 'bg-[#FFFFFF] text-black font-black' : 'text-[#BDBDBD] hover:text-white'
+              }`}
+            >
+              Direct Chats ({directChats.length})
+            </button>
             <button
               onClick={() => setActiveTab('friends')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTab === 'friends'
-                  ? 'bg-[#008751] text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`py-2 rounded-xl text-xs font-bold transition ${
+                activeTab === 'friends' ? 'bg-[#FFFFFF] text-black font-black' : 'text-[#BDBDBD] hover:text-white'
               }`}
             >
-              <MessageCircle className="w-4 h-4" />
-              <span>My Friends ({friends.length})</span>
+              Friends ({friends.length})
             </button>
-
             <button
               onClick={() => setActiveTab('requests')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 relative ${
-                activeTab === 'requests'
-                  ? 'bg-[#008751] text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                activeTab === 'requests' ? 'bg-[#FFFFFF] text-black font-black' : 'text-[#BDBDBD] hover:text-white'
               }`}
             >
-              <UserPlus className="w-4 h-4" />
               <span>Requests</span>
               {pendingIncoming.length > 0 && (
-                <span className="bg-[#F68B1F] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                <span className="bg-red-600 text-white text-[10px] font-black px-1.5 rounded-full">
                   {pendingIncoming.length}
                 </span>
               )}
             </button>
-
             <button
               onClick={() => setActiveTab('discover')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTab === 'discover'
-                  ? 'bg-[#008751] text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`py-2 rounded-xl text-xs font-bold transition ${
+                activeTab === 'discover' ? 'bg-[#FFFFFF] text-black font-black' : 'text-[#BDBDBD] hover:text-white'
               }`}
             >
-              <Search className="w-4 h-4" />
-              <span>Find Students</span>
+              Find Students
             </button>
           </div>
 
-          {/* TAB 1: MY FRIENDS */}
-          {activeTab === 'friends' && (
-            <div>
-              {friends.length === 0 ? (
-                <div className="bg-white rounded-3xl p-10 text-center border border-gray-200 shadow-xs max-w-md mx-auto my-6">
-                  <div className="w-16 h-16 rounded-full bg-emerald-50 text-[#008751] text-3xl flex items-center justify-center mx-auto mb-3">
-                    👥
-                  </div>
-                  <h3 className="text-base font-black text-gray-900">
-                    No friends connected yet
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1 mb-5 leading-relaxed">
-                    Connect with fellow FUWukari students to unlock 1-on-1 private messaging, share course materials, and chat directly!
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('discover')}
-                    className="px-5 py-2.5 bg-[#008751] hover:bg-[#007043] text-white text-xs font-black rounded-xl shadow-md transition"
-                  >
-                    Find Course Mates & Friends
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {friends.map((f) => (
-                    <div
-                      key={f.id}
-                      onClick={() => setActiveFriend(f)}
-                      className="bg-white rounded-2xl p-4 border border-gray-200/90 hover:border-[#008751] shadow-xs hover:shadow-md cursor-pointer transition flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#008751] font-black flex items-center justify-center text-base border border-emerald-200 uppercase">
-                            {f.name.charAt(0)}
-                          </div>
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-black text-gray-900 truncate">
-                            {f.name}
-                          </h4>
-                          {f.matricNumber && (
-                            <span className="text-[10px] bg-emerald-50 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded border border-emerald-200">
-                              {f.matricNumber}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
+          {!student ? (
+            <div className="bg-[#1C1C1C] rounded-3xl p-10 text-center border border-[#333333] max-w-md mx-auto my-6">
+              <GraduationCap className="w-12 h-12 text-[#FFFFFF] mx-auto mb-3" />
+              <h3 className="text-base font-black text-white">Sign in to message students &amp; sellers</h3>
+              <p className="text-xs text-[#BDBDBD] mt-1 mb-5">
+                Enter your FUWUKARI name and matric number to view your direct chats, friend requests, and campus peers.
+              </p>
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="px-5 py-2.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl"
+              >
+                Sign In with Campus ID
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* TAB 0: DIRECT CHATS (Buyer<->Seller, Student<->Agent, Student<->Requester) */}
+              {activeTab === 'chats' && (
+                <div>
+                  {directChats.length === 0 ? (
+                    <div className="bg-[#1C1C1C] rounded-3xl p-10 text-center border border-[#333333] max-w-md mx-auto my-6">
+                      <MessageCircle className="w-12 h-12 text-[#FFFFFF] mx-auto mb-3" />
+                      <h3 className="text-base font-black text-white">No direct chats yet</h3>
+                      <p className="text-xs text-[#BDBDBD] mt-1 mb-5">
+                        Tap &quot;Chat&quot; on any product, housing listing, student request, or campus peer to start a private conversation.
+                      </p>
                       <button
-                        type="button"
-                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#008751] text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0"
+                        onClick={() => setActiveTab('discover')}
+                        className="px-5 py-2.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl"
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Chat</span>
+                        Browse FUWUKARI Students
                       </button>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-2.5">
+                      {directChats.map((chat) => {
+                        const peerId = chat.participants.find((p) => p !== student.id) || chat.participants[0];
+                        const peerName = chat.participantNames?.[peerId] || 'FUWUKARI Student';
+                        const peerMatric = chat.participantMatrics?.[peerId];
+                        return (
+                          <div
+                            key={chat.chatId}
+                            onClick={() =>
+                              setActivePeer({
+                                userId: peerId,
+                                name: peerName,
+                                matricNumber: peerMatric,
+                                chatId: chat.chatId
+                              })
+                            }
+                            className="bg-[#1C1C1C] hover:border-[#FFFFFF] border border-[#333333] rounded-2xl p-4 cursor-pointer flex items-center justify-between gap-3 transition"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-11 h-11 rounded-full bg-[#FFFFFF] text-black font-black flex items-center justify-center uppercase shrink-0">
+                                {peerName.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-black text-white truncate">{peerName}</h4>
+                                  {peerMatric && (
+                                    <span className="text-[10px] font-mono text-[#BDBDBD] bg-[#121212] border border-[#333333] px-1.5 rounded">
+                                      {peerMatric}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-[#BDBDBD] truncate mt-0.5">
+                                  {chat.lastMessageText || 'Tap to continue conversation'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1.5 bg-[#121212] border border-[#333333] text-[#FFFFFF] text-xs font-black rounded-xl shrink-0">
+                              Open
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* TAB 2: FRIEND REQUESTS */}
-          {activeTab === 'requests' && (
-            <div className="space-y-4">
-              {/* Incoming Requests */}
-              <div>
-                <h3 className="text-xs font-black uppercase text-gray-500 tracking-wider mb-2">
-                  Incoming Requests ({pendingIncoming.length})
-                </h3>
-                {pendingIncoming.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-6 text-center border border-gray-200 text-xs text-gray-500">
-                    No pending incoming friend requests.
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {pendingIncoming.map((req) => (
+              {/* TAB 1: FRIENDS */}
+              {activeTab === 'friends' && (
+                <div>
+                  {friends.length === 0 ? (
+                    <div className="bg-[#1C1C1C] rounded-3xl p-10 text-center border border-[#333333] max-w-md mx-auto my-6">
+                      <h3 className="text-base font-black text-white">No friends connected yet</h3>
+                      <p className="text-xs text-[#BDBDBD] mt-1 mb-5">
+                        Find course mates in Discover Students or message sellers directly in Direct Chats.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab('discover')}
+                        className="px-5 py-2.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl"
+                      >
+                        Find Students
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {friends.map((f) => (
+                        <div
+                          key={f.id}
+                          onClick={() =>
+                            setActivePeer({
+                              userId: f.userId,
+                              name: f.name,
+                              matricNumber: f.matricNumber,
+                              chatId: f.chatId,
+                              isOnline: f.isOnline
+                            })
+                          }
+                          className="bg-[#1C1C1C] rounded-2xl p-4 border border-[#333333] hover:border-[#FFFFFF] cursor-pointer flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative">
+                              <div className="w-11 h-11 rounded-full bg-[#121212] border border-[#FFFFFF] text-[#FFFFFF] font-black flex items-center justify-center uppercase">
+                                {f.name.charAt(0)}
+                              </div>
+                              <span
+                                className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-[#1C1C1C] rounded-full ${
+                                  f.isOnline ? 'bg-emerald-400' : 'bg-[#666666]'
+                                }`}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-black text-white truncate">{f.name}</h4>
+                              <p className="text-[11px] text-[#BDBDBD]">
+                                {f.isOnline ? 'Online' : 'Offline'} {f.matricNumber ? `• ${f.matricNumber}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl">
+                            Chat
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: FRIEND REQUESTS */}
+              {activeTab === 'requests' && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black uppercase text-[#BDBDBD] tracking-wider">
+                    Incoming Requests ({pendingIncoming.length})
+                  </h3>
+                  {pendingIncoming.length === 0 ? (
+                    <div className="bg-[#1C1C1C] rounded-2xl p-6 text-center border border-[#333333] text-xs text-[#BDBDBD]">
+                      No pending incoming friend requests.
+                    </div>
+                  ) : (
+                    pendingIncoming.map((req) => (
                       <div
                         key={req.id}
-                        className="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs flex items-center justify-between gap-3"
+                        className="bg-[#1C1C1C] rounded-2xl p-4 border border-[#333333] flex items-center justify-between gap-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-orange-100 text-[#F68B1F] font-black flex items-center justify-center text-sm uppercase">
+                          <div className="w-10 h-10 rounded-full bg-[#FFFFFF] text-black font-black flex items-center justify-center uppercase">
                             {req.fromName.charAt(0)}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-black text-gray-900 truncate">
-                              {req.fromName}
-                            </h4>
+                            <h4 className="text-xs sm:text-sm font-black text-white truncate">{req.fromName}</h4>
                             {req.fromMatric && (
-                              <span className="text-[10px] bg-gray-100 text-gray-600 font-mono px-1.5 py-0.2 rounded">
-                                {req.fromMatric}
-                              </span>
+                              <span className="text-[10px] text-[#BDBDBD] font-mono">{req.fromMatric}</span>
                             )}
                           </div>
                         </div>
-
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleRespondRequest(req, 'accepted')}
                             disabled={actionLoading[req.id]}
-                            className="px-3 py-1.5 bg-[#008751] hover:bg-[#007043] text-white text-xs font-bold rounded-xl transition flex items-center gap-1"
+                            className="px-3 py-1.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl flex items-center gap-1"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>Accept</span>
@@ -757,114 +943,148 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                           <button
                             onClick={() => handleRespondRequest(req, 'rejected')}
                             disabled={actionLoading[req.id]}
-                            className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-xl transition"
+                            className="px-2.5 py-1.5 bg-[#121212] border border-[#333333] text-[#BDBDBD] text-xs font-bold rounded-xl"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-                    ))}
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: DISCOVER STUDENTS */}
+              {activeTab === 'discover' && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-[#BDBDBD] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search students by name, matric number, or department..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-2xl text-xs font-semibold text-white outline-none"
+                    />
                   </div>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* TAB 3: DISCOVER STUDENTS */}
-          {activeTab === 'discover' && (
-            <div className="space-y-3">
-              {/* Search input */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search students by name, matric number, or department..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#008751] shadow-xs"
-                />
-              </div>
+                  {loading ? (
+                    <div className="py-16 text-center">
+                      <Loader2 className="w-8 h-8 text-[#FFFFFF] animate-spin mx-auto mb-2" />
+                      <p className="text-xs font-bold text-[#BDBDBD]">Loading campus students...</p>
+                    </div>
+                  ) : filteredDiscoverUsers.length === 0 ? (
+                    <div className="bg-[#1C1C1C] rounded-3xl p-8 text-center border border-[#333333] max-w-md mx-auto my-6">
+                      <GraduationCap className="w-12 h-12 text-[#BDBDBD] mx-auto mb-2" />
+                      <h4 className="text-sm font-bold text-white">No other registered students found yet</h4>
+                      <p className="text-xs text-[#BDBDBD] mt-1">
+                        Invite fellow FUWUKARI students to sign in on FU MARKET.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {filteredDiscoverUsers.map((target) => {
+                        const isPending = pendingOutgoingIds.includes(target.id);
+                        return (
+                          <div
+                            key={target.id}
+                            className="bg-[#1C1C1C] rounded-2xl p-4 border border-[#333333] flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="relative">
+                                <div className="w-11 h-11 rounded-full bg-[#121212] border border-[#333333] text-[#FFFFFF] font-black flex items-center justify-center uppercase">
+                                  {target.name.charAt(0)}
+                                </div>
+                                <span
+                                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-[#1C1C1C] ${
+                                    target.isOnline ? 'bg-emerald-400' : 'bg-[#666666]'
+                                  }`}
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-xs sm:text-sm font-black text-white truncate">{target.name}</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {target.matricNumber && (
+                                    <span className="text-[10px] text-[#FFFFFF] font-mono font-bold">
+                                      {target.matricNumber}
+                                    </span>
+                                  )}
+                                  {target.department && (
+                                    <span className="text-[10px] text-[#BDBDBD] truncate max-w-[120px]">
+                                      {target.department}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
 
-              {loading ? (
-                <div className="py-16 text-center">
-                  <div className="w-8 h-8 border-3 border-[#008751] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                  <p className="text-xs font-bold text-gray-500">Searching campus peers...</p>
-                </div>
-              ) : filteredDiscoverUsers.length === 0 ? (
-                <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-xs max-w-md mx-auto my-6">
-                  <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <h4 className="text-sm font-bold text-gray-800">No other students found</h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Invite your course mates to open SolveAI / ZangaMarket and join the Hub!
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {filteredDiscoverUsers.map((target) => {
-                    const isPending = pendingOutgoingIds.includes(target.id);
-                    return (
-                      <div
-                        key={target.id}
-                        className="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-emerald-50 text-[#008751] font-black flex items-center justify-center text-sm border border-emerald-200 uppercase">
-                            {target.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-black text-gray-900 truncate">
-                              {target.name}
-                            </h4>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {target.matricNumber && (
-                                <span className="text-[10px] bg-emerald-50 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded border border-emerald-200">
-                                  {target.matricNumber}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() =>
+                                  handleOpenDirectConversation({
+                                    id: target.id,
+                                    name: target.name,
+                                    matricNumber: target.matricNumber
+                                  })
+                                }
+                                className="px-2.5 py-1.5 bg-[#121212] border border-[#333333] hover:border-[#FFFFFF] text-white text-xs font-bold rounded-xl"
+                              >
+                                Message
+                              </button>
+                              {isPending ? (
+                                <span className="text-[10px] font-bold text-[#FFFFFF] bg-[#121212] px-2 py-1.5 rounded-xl border border-[#333333]">
+                                  Requested
                                 </span>
-                              )}
-                              {target.department && (
-                                <span className="text-[10px] text-gray-500 truncate max-w-[120px]">
-                                  {target.department}
-                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleSendFriendRequest(target)}
+                                  disabled={actionLoading[target.id]}
+                                  className="px-2.5 py-1.5 bg-[#FFFFFF] text-black text-xs font-black rounded-xl flex items-center gap-1"
+                                >
+                                  <UserPlus className="w-3.5 h-3.5" />
+                                  <span>Add</span>
+                                </button>
                               )}
                             </div>
                           </div>
-                        </div>
-
-                        {isPending ? (
-                          <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2.5 py-1.5 rounded-xl border border-orange-200 shrink-0">
-                            Requested
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleSendFriendRequest(target)}
-                            disabled={actionLoading[target.id]}
-                            className="px-3 py-1.5 bg-[#008751] hover:bg-[#007043] text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 shrink-0"
-                          >
-                            <UserPlus className="w-3.5 h-3.5" />
-                            <span>Add Friend</span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
-
         </div>
       )}
 
-      {/* Student Login Modal */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#1C1C1C] border border-[#333333] text-white flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Full attachment"
+            className="max-w-full max-h-[85vh] rounded-2xl border border-[#333333]"
+          />
+        </div>
+      )}
+
       <StudentLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="Connect with Friends"
-        subtitle="Set your name and matric number to send friend requests and chat 1-on-1."
+        title="Connect on FU MARKET"
+        subtitle="Set your name and matric number to message sellers, agents, and fellow FUWUKARI students."
       />
-
     </div>
   );
 };

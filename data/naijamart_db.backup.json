@@ -1,0 +1,701 @@
+{
+  "users": [
+    {
+      "id": "admin-001",
+      "name": "NaijaMart Moderation Desk",
+      "email": "admin@naijamart.ng",
+      "passwordHash": "$2b$10$JwtMuzSjoDT3lWosMLI.dOMqfb/NQHMpIXDvDZvRzR0YBLGL3MwfG",
+      "role": "admin",
+      "phone": "08006245262",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-12T18:42:13.597Z"
+    },
+    {
+      "id": "user-1791832551749-9f4027b9",
+      "name": "ALEJE STEPHEN AGBENYI",
+      "email": "stephenaleje61@gmail.com",
+      "passwordHash": "$2b$10$pTNIAFqvDNMrGIlkesVkveh6SzU1Dgg/.XSHG/ea0qDPzft2/lMiK",
+      "role": "buyer",
+      "phone": "",
+      "whatsappNumber": "08167258121",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-12T19:15:51.749Z"
+    },
+    {
+      "id": "user-1792009969645-24e2a65d",
+      "name": "Tunde Bakare",
+      "email": "testuser_1792009969530@zangamarket.ng",
+      "passwordHash": "$2b$10$gLbEdl5ZWzaprVVqjRx7DOC6DULKEnU2rtC7zeOGwDXG5k6QLeDfa",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-14T20:32:49.645Z"
+    },
+    {
+      "id": "user-1792010396206-3d3c709c",
+      "name": "Tunde Bakare",
+      "email": "testuser_1792010396083@zangamarket.ng",
+      "passwordHash": "$2b$10$nDfT3/AWs13RcJeEi9ERd.jL90Ms4tTZRSkLVjJsFCh.0BxZojLcS",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-14T20:39:56.206Z"
+    },
+    {
+      "id": "user-1792098779665-a4e9e858",
+      "name": "Tunde Bakare",
+      "email": "testuser_1792098779553@zangamarket.ng",
+      "passwordHash": "$2b$10$fvoaniIocSuy/yL9c.Cj7uH50o38RxIH5lAwkv8pE7BytKPKOVVTq",
+      "role": "seller",
+      "phone": "08022334455",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "createdAt": "2026-10-15T21:12:59.666Z"
+    }
+  ],
+  "sellerProfiles": [
+    {
+      "id": "profile-admin-001",
+      "userId": "admin-001",
+      "shopName": "NaijaMart Moderation Desk's Shop",
+      "shopSlug": "naijamart-moderation-desk-s-shop--001",
+      "description": "Welcome to NaijaMart Moderation Desk's Shop on NaijaMart. Verified marketplace vendor. Chat on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08006245262",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-12T18:42:13.597Z"
+    },
+    {
+      "id": "profile-user-1791832551749-9f4027b9",
+      "userId": "user-1791832551749-9f4027b9",
+      "shopName": "Stephen Aleje Store",
+      "shopSlug": "aleje-stephen-agbenyi-s-shop-27b9",
+      "description": "Welcome to ALEJE STEPHEN AGBENYI's Shop on NaijaMart. Verified marketplace vendor. Chat on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08167258121",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": true,
+      "createdAt": "2026-10-12T19:15:51.749Z"
+    },
+    {
+      "id": "profile-1792009969645-cf9b3071",
+      "userId": "user-1792009969645-24e2a65d",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-9645",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-14T20:32:49.645Z"
+    },
+    {
+      "id": "profile-1792010396206-f949d1a0",
+      "userId": "user-1792010396206-3d3c709c",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-6206",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-14T20:39:56.206Z"
+    },
+    {
+      "id": "profile-1792098779666-0e21d22c",
+      "userId": "user-1792098779665-a4e9e858",
+      "shopName": "Tunde Electronics",
+      "shopSlug": "tunde-electronics-9666",
+      "description": "Welcome to Tunde Electronics on ZangaMarket. Chat with us on WhatsApp for fast orders and swift delivery!",
+      "whatsappNumber": "08022334455",
+      "state": "Lagos",
+      "city": "Ikeja",
+      "isVerified": false,
+      "createdAt": "2026-10-15T21:12:59.666Z"
+    }
+  ],
+  "products": [],
+  "categories": [
+    {
+      "id": "phones-tablets",
+      "name": "Phones & Tablets",
+      "slug": "phones-tablets",
+      "icon": "Smartphone",
+      "description": "Smartphones, feature phones, iPads and accessories",
+      "featured": true
+    },
+    {
+      "id": "computers",
+      "name": "Computers & Accessories",
+      "slug": "computers",
+      "icon": "Laptop",
+      "description": "Laptops, desktops, monitors, printers and PC parts",
+      "featured": true
+    },
+    {
+      "id": "fashion",
+      "name": "Fashion & Clothing",
+      "slug": "fashion",
+      "icon": "Shirt",
+      "description": "Ankara, senator suits, dresses, shirts, jeans and traditional wear",
+      "featured": true
+    },
+    {
+      "id": "shoes-bags",
+      "name": "Shoes, Bags & Accessories",
+      "slug": "shoes-bags",
+      "icon": "Briefcase",
+      "description": "Sneakers, sandals, leather bags, wristwatches and jewelry",
+      "featured": true
+    },
+    {
+      "id": "beauty-care",
+      "name": "Beauty & Personal Care",
+      "slug": "beauty-care",
+      "icon": "Sparkles",
+      "description": "Skincare, perfumes, hair extensions, makeup and grooming",
+      "featured": true
+    },
+    {
+      "id": "home-kitchen",
+      "name": "Home & Kitchen",
+      "slug": "home-kitchen",
+      "icon": "Utensils",
+      "description": "Cookware, blenders, gas cookers, decor and tableware",
+      "featured": true
+    },
+    {
+      "id": "furniture-appliances",
+      "name": "Furniture & Appliances",
+      "slug": "furniture-appliances",
+      "icon": "Tv",
+      "description": "Refrigerators, generators, air conditioners, sofas and beds",
+      "featured": true
+    },
+    {
+      "id": "food-groceries",
+      "name": "Food & Groceries",
+      "slug": "food-groceries",
+      "icon": "Apple",
+      "description": "Gari, yam, palm oil, rice, crayfish, spices and packaged foods",
+      "featured": true
+    },
+    {
+      "id": "vehicles-auto",
+      "name": "Cars & Vehicle Accessories",
+      "slug": "vehicles-auto",
+      "icon": "Car",
+      "description": "Cars, bikes, batteries, tires, car audio and spare parts",
+      "featured": true
+    },
+    {
+      "id": "building-materials",
+      "name": "Building Materials",
+      "slug": "building-materials",
+      "icon": "HardHat",
+      "description": "Cement, tiles, roofing, plumbing and electrical supplies"
+    },
+    {
+      "id": "agriculture",
+      "name": "Agriculture & Farm Products",
+      "slug": "agriculture",
+      "icon": "Wheat",
+      "description": "Livestock, poultry, seeds, fertilizers and farm machinery"
+    },
+    {
+      "id": "baby-kids",
+      "name": "Baby & Children Products",
+      "slug": "baby-kids",
+      "icon": "Baby",
+      "description": "Baby gear, diapers, clothing, strollers and educational toys"
+    },
+    {
+      "id": "sports-fitness",
+      "name": "Sports & Fitness",
+      "slug": "sports-fitness",
+      "icon": "Dumbbell",
+      "description": "Jerseys, gym gear, footballs, bicycles and fitness trackers"
+    },
+    {
+      "id": "books-education",
+      "name": "Books & Educational Materials",
+      "slug": "books-education",
+      "icon": "BookOpen",
+      "description": "JAMB/WAEC textbooks, novels, stationery and study guides"
+    },
+    {
+      "id": "other-goods",
+      "name": "Other Permitted Goods",
+      "slug": "other-goods",
+      "icon": "Package",
+      "description": "Musical instruments, craft, hobbies and other legal marketplace goods"
+    }
+  ],
+  "favourites": [],
+  "reports": [
+    {
+      "id": "rep-1792098780646-hv1bb6",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1792098780079-dda29d",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1792098780076",
+      "sellerId": "user-1792098779665-a4e9e858",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-15T21:13:00.646Z"
+    },
+    {
+      "id": "rep-1792010396847-6oj7k3",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1792010396620-50c781",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1792010396615",
+      "sellerId": "user-1792010396206-3d3c709c",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-14T20:39:56.847Z"
+    },
+    {
+      "id": "rep-1792009970136-txw4im",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1792009970053-906e26",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1792009970050",
+      "sellerId": "user-1792009969645-24e2a65d",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-14T20:32:50.136Z"
+    },
+    {
+      "id": "rep-1791926533349-aqftwm",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791926533328-35fc13",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791926533324",
+      "sellerId": "user-1791926532841-87c36be9",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:22:13.349Z"
+    },
+    {
+      "id": "rep-auto-1791926533346",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791926533346-8d5fe3",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791926532841-87c36be9",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:22:13.346Z"
+    },
+    {
+      "id": "rep-auto-1791926514203",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791926514202-b1337e",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791926513638-c5549421",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:21:54.202Z"
+    },
+    {
+      "id": "rep-auto-1791925563697",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791925563697-56e9b5",
+      "productTitle": "Iphone 15",
+      "sellerId": "user-1791832551749-9f4027b9",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold; DUPLICATE_LISTING: Exact same title posted by seller within past 24 hours",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:06:03.697Z"
+    },
+    {
+      "id": "rep-1791925453919-237efd",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791925453900-084093",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791925453895",
+      "sellerId": "user-1791925453348-9e1a0ff5",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:04:13.919Z"
+    },
+    {
+      "id": "rep-auto-1791925453916",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791925453915-e592ab",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791925453348-9e1a0ff5",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:04:13.915Z"
+    },
+    {
+      "id": "rep-1791925422045-sgcbdd",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791925422026-233902",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791925422023",
+      "sellerId": "user-1791925421517-820a6902",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:03:42.045Z"
+    },
+    {
+      "id": "rep-auto-1791925422042",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791925422041-50688b",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791925421517-820a6902",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:03:42.041Z"
+    },
+    {
+      "id": "rep-1791925256141-nx6k8u",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791925256122-18e8a7",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791925256119",
+      "sellerId": "user-1791925255548-aa92fa3f",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:00:56.141Z"
+    },
+    {
+      "id": "rep-auto-1791925256137",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791925256136-472677",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791925255548-aa92fa3f",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T21:00:56.136Z"
+    },
+    {
+      "id": "rep-auto-1791925048566",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791925048566-b15a3d",
+      "productTitle": "Iphone 15",
+      "sellerId": "user-1791832551749-9f4027b9",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:57:28.566Z"
+    },
+    {
+      "id": "rep-1791924927869-h3dk67",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791924927854-f59557",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791924927851",
+      "sellerId": "user-1791924927310-c86ee67e",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:55:27.869Z"
+    },
+    {
+      "id": "rep-auto-1791924927866",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791924927866-c5a998",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791924927310-c86ee67e",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:55:27.866Z"
+    },
+    {
+      "id": "rep-1791924640413-hzbif4",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791924640391-3f0c4a",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791924640386",
+      "sellerId": "user-1791924639846-fc7bcd33",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:50:40.413Z"
+    },
+    {
+      "id": "rep-auto-1791924640410",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791924640410-a3ba3f",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791924639846-fc7bcd33",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:50:40.410Z"
+    },
+    {
+      "id": "rep-1791924070282-3z9nit",
+      "reporterEmail": "buyer_test@naijamart.ng",
+      "reporterName": "Concerned Buyer",
+      "productId": "prod-1791924070263-f49277",
+      "productTitle": "Original Tecno Camon 30 Pro 5G - 1791924070258",
+      "sellerId": "user-1791924069752-9447e0cf",
+      "reason": "Suspected fraudulent listing",
+      "details": "Seller asked for upfront commitment fee before meeting.",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:41:10.282Z"
+    },
+    {
+      "id": "rep-auto-1791924070279",
+      "reporterEmail": "system-anti-fraud@naijamart.ng",
+      "reporterName": "AI Safety Watchdog",
+      "productId": "prod-1791924070279-f744f2",
+      "productTitle": "Brand New Apple iPhone 16 Pro Max 1TB Sealed",
+      "sellerId": "user-1791924069752-9447e0cf",
+      "reason": "Automated Fraud/Risk Flag",
+      "details": "Automated system detected potential risk: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "status": "pending",
+      "createdAt": "2026-10-13T20:41:10.279Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit-1792098780422",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1792098779553@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-15T21:13:00.422Z"
+    },
+    {
+      "id": "audit-1792010396744",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1792010396083@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-14T20:39:56.744Z"
+    },
+    {
+      "id": "audit-1792009970094",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1792009969530@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-14T20:32:50.094Z"
+    },
+    {
+      "id": "audit-1791926533346",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791926532689@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T21:22:13.346Z"
+    },
+    {
+      "id": "audit-1791926533342",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791926532689@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T21:22:13.342Z"
+    },
+    {
+      "id": "audit-1791926533329",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791926532689@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791926533324\" published (₦385,000)",
+      "timestamp": "2026-10-13T21:22:13.328Z"
+    },
+    {
+      "id": "audit-1791926514203",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791926513486@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T21:21:54.202Z"
+    },
+    {
+      "id": "audit-1791926514198",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791926513486@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T21:21:54.198Z"
+    },
+    {
+      "id": "audit-1791926514187",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791926513486@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791926514183\" published (₦385,000)",
+      "timestamp": "2026-10-13T21:21:54.187Z"
+    },
+    {
+      "id": "audit-1791926501211",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "ikejatech@naijamart.demo",
+      "details": "Product \"Brand New Samsung Galaxy S24 Ultra 512GB\" published (₦1,350,000)",
+      "timestamp": "2026-10-13T21:21:41.211Z"
+    },
+    {
+      "id": "audit-1791925563697",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "stephenaleje61@gmail.com",
+      "details": "Listing \"Iphone 15\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold, DUPLICATE_LISTING: Exact same title posted by seller within past 24 hours",
+      "timestamp": "2026-10-13T21:06:03.697Z"
+    },
+    {
+      "id": "audit-1791925453916",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791925453187@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T21:04:13.915Z"
+    },
+    {
+      "id": "audit-1791925453912",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791925453187@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T21:04:13.912Z"
+    },
+    {
+      "id": "audit-1791925453900",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791925453187@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791925453895\" published (₦385,000)",
+      "timestamp": "2026-10-13T21:04:13.900Z"
+    },
+    {
+      "id": "audit-1791925422042",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791925421343@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T21:03:42.041Z"
+    },
+    {
+      "id": "audit-1791925422038",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791925421343@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T21:03:42.038Z"
+    },
+    {
+      "id": "audit-1791925422027",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791925421343@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791925422023\" published (₦385,000)",
+      "timestamp": "2026-10-13T21:03:42.026Z"
+    },
+    {
+      "id": "audit-1791925256137",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791925255382@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T21:00:56.136Z"
+    },
+    {
+      "id": "audit-1791925256132",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791925255382@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T21:00:56.132Z"
+    },
+    {
+      "id": "audit-1791925256122",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791925255382@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791925256119\" published (₦385,000)",
+      "timestamp": "2026-10-13T21:00:56.122Z"
+    },
+    {
+      "id": "audit-1791925048566",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "stephenaleje61@gmail.com",
+      "details": "Listing \"Iphone 15\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T20:57:28.566Z"
+    },
+    {
+      "id": "audit-1791924927866",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791924927178@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T20:55:27.866Z"
+    },
+    {
+      "id": "audit-1791924927862",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791924927178@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T20:55:27.862Z"
+    },
+    {
+      "id": "audit-1791924927854",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791924927178@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791924927851\" published (₦385,000)",
+      "timestamp": "2026-10-13T20:55:27.854Z"
+    },
+    {
+      "id": "audit-1791924640410",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791924639683@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T20:50:40.410Z"
+    },
+    {
+      "id": "audit-1791924640407",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791924639683@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T20:50:40.407Z"
+    },
+    {
+      "id": "audit-1791924640392",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791924639683@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791924640386\" published (₦385,000)",
+      "timestamp": "2026-10-13T20:50:40.391Z"
+    },
+    {
+      "id": "audit-1791924070279",
+      "action": "PRODUCT_FLAGGED_FOR_MODERATION",
+      "actor": "testuser_1791924069559@zangamarket.ng",
+      "details": "Listing \"Brand New Apple iPhone 16 Pro Max 1TB Sealed\" flagged with: UNREALISTIC_PRICE: Premium flagship gadget listed below ₦50,000 threshold",
+      "timestamp": "2026-10-13T20:41:10.279Z"
+    },
+    {
+      "id": "audit-1791924070276",
+      "action": "FRAUD_PREVENTED",
+      "actor": "testuser_1791924069559@zangamarket.ng",
+      "details": "Rejected fraudulent listing \"Illegal Firearm Pistol with Ammunition\": Listing contains prohibited goods or illegal commodities (\"ammunition\").",
+      "timestamp": "2026-10-13T20:41:10.276Z"
+    },
+    {
+      "id": "audit-1791924070264",
+      "action": "PRODUCT_PUBLISHED",
+      "actor": "testuser_1791924069559@zangamarket.ng",
+      "details": "Product \"Original Tecno Camon 30 Pro 5G - 1791924070258\" published (₦385,000)",
+      "timestamp": "2026-10-13T20:41:10.263Z"
+    }
+  ],
+  "cleanupStats": {
+    "lastRun": "2026-10-12T18:42:13.479Z",
+    "totalExpiredDeleted": 0
+  }
+}

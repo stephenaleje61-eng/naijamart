@@ -16,11 +16,9 @@ import { BikeRider } from '../../src/types.js';
 const router = Router();
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = (firebaseConfig as any).firestoreDatabaseId
-  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
-  : getFirestore(app);
+const db = getFirestore(app);
 
-// In-memory fallback cache in case Firestore is unreachable
+// In-memory cache if Firestore is temporarily unreachable
 let inMemoryRiders: BikeRider[] = [];
 
 // GET /api/bike-riders - List all bike riders with optional area filter
@@ -74,7 +72,7 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/bike-riders - Register a new bike rider
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, photoUrl, phoneNumber, whatsappNumber, area, isAvailable } = req.body;
+    const { name, photoUrl, phoneNumber, whatsappNumber, area, isAvailable, userId } = req.body;
 
     if (!name || !String(name).trim()) {
       return res.status(400).json({ success: false, error: 'Rider full name is required.' });
@@ -97,7 +95,8 @@ router.post('/', async (req: Request, res: Response) => {
       whatsappNumber: String(whatsappNumber || phoneNumber).trim(),
       area: String(area).trim(),
       isAvailable: isAvailable !== false,
-      createdAt: now
+      createdAt: now,
+      ...(userId ? { userId: String(userId).trim() } : {})
     };
 
     // Save to Firestore
