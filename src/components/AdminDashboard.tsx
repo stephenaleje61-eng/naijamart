@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   AlertTriangle,
   Trash2,
-  Users,
   Package,
   RotateCcw,
   Search,
@@ -75,7 +74,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
-  // Inline confirmation & reason modals (replaces window.confirm/prompt/alert)
   const [confirmDeleteProductId, setConfirmDeleteProductId] = useState<string | null>(null);
   const [confirmDeleteRequestId, setConfirmDeleteRequestId] = useState<string | null>(null);
   const [rejectProductTarget, setRejectProductTarget] = useState<Product | null>(null);
@@ -263,24 +261,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const pendingHuxReportsCount = huxReports.filter((r) => !r.status || r.status === 'pending').length;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-6xl bg-[#121212] border border-[#333333] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-6xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
         {/* Admin Header */}
-        <div className="bg-[#1C1C1C] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#333333]">
+        <div className="bg-[#0B6B3A] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#14532D]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFFFFF] flex items-center justify-center font-black text-black text-lg shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-[#F2B90D] flex items-center justify-center font-black text-[#111111] text-lg shadow-lg">
               <LayoutDashboard className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-tight text-white">
-                  FU MARKET Moderation Desk
+                <h2 className="text-lg font-black tracking-tight text-[#F2B90D]">
+                  WukariMart Moderation Desk
                 </h2>
-                <span className="bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#FFFFFF]/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full">
                   ADMIN
                 </span>
               </div>
-              <p className="text-xs text-[#BDBDBD]">
+              <p className="text-xs text-white/85">
                 Real Data Moderation • Products, Student Requests, Wukari Agent Reports &amp; Users
               </p>
             </div>
@@ -288,21 +286,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#121212] border border-[#333333] hover:border-[#FFFFFF] flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
           >
-            <X className="w-4 h-4 text-[#BDBDBD] hover:text-white" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-[#1C1C1C] border-b border-[#333333] px-5 flex items-center justify-between gap-3 shrink-0 overflow-x-auto">
+        <div className="bg-[#FFFFFF] border-b border-[#E5E7EB] px-5 flex items-center justify-between gap-3 shrink-0 overflow-x-auto">
           <div className="flex items-center gap-1.5 text-xs font-bold py-2.5">
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'overview'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Overview
@@ -311,8 +309,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('products')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'products'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Products ({products.length})
@@ -321,8 +319,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('reports')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'reports'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Product Reports ({pendingProductReportsCount})
@@ -331,8 +329,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('hux-reports')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'hux-reports'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Housing Reports ({pendingHuxReportsCount})
@@ -341,8 +339,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('requests')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'requests'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Student Requests ({studentRequests.length})
@@ -351,8 +349,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('users')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'users'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
               }`}
             >
               Users ({users.length})
@@ -361,7 +359,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={loadData}
-            className="text-xs text-[#BDBDBD] hover:text-[#FFFFFF] flex items-center gap-1 font-semibold shrink-0"
+            className="text-xs text-[#0B6B3A] hover:underline flex items-center gap-1 font-bold shrink-0"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Refresh
@@ -369,99 +367,101 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-[#F5F5F5]">
           {errorMsg && (
-            <div className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs rounded-xl flex items-center justify-between gap-2">
+            <div className="p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
               <span className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#111111] shrink-0" />
                 {errorMsg}
               </span>
-              <button onClick={() => setErrorMsg(null)} className="text-red-300 hover:text-white">
+              <button onClick={() => setErrorMsg(null)} className="text-[#111111] hover:opacity-70">
                 <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
           {statusMsg && (
-            <div className="p-3 bg-emerald-950/60 border border-emerald-700 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-3 bg-[#0B6B3A] border border-[#14532D] text-white text-xs rounded-xl flex items-center gap-2 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-[#F2B90D] shrink-0" />
               <span>{statusMsg}</span>
             </div>
           )}
 
           {loading ? (
-            <div className="py-12 text-center text-xs text-[#BDBDBD]">Loading moderation workspace...</div>
+            <div className="py-12 text-center text-xs font-semibold text-[#555555]">
+              Loading moderation workspace...
+            </div>
           ) : (
             <>
               {/* TAB 1: OVERVIEW */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333]">
-                      <span className="text-[11px] font-bold text-[#BDBDBD] uppercase tracking-wider block">
+                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
+                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Active Products
                       </span>
-                      <span className="text-2xl font-black text-white mt-1 block">
+                      <span className="text-2xl font-black text-[#111111] mt-1 block">
                         {products.filter((p) => p.status === 'active').length}
                       </span>
-                      <span className="text-[10px] text-[#BDBDBD]">
+                      <span className="text-[10px] text-[#555555]">
                         Total recorded: {products.length}
                       </span>
                     </div>
 
-                    <div className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333]">
-                      <span className="text-[11px] font-bold text-[#BDBDBD] uppercase tracking-wider block">
+                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
+                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Student Requests
                       </span>
-                      <span className="text-2xl font-black text-[#FFFFFF] mt-1 block flex items-center gap-1.5">
+                      <span className="text-2xl font-black text-[#0B6B3A] mt-1 block flex items-center gap-1.5">
                         <HelpCircle className="w-5 h-5" />
                         {studentRequests.length}
                       </span>
-                      <span className="text-[10px] text-[#BDBDBD]">What Students Need</span>
+                      <span className="text-[10px] text-[#555555]">What Students Need</span>
                     </div>
 
-                    <div className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333]">
-                      <span className="text-[11px] font-bold text-[#BDBDBD] uppercase tracking-wider block">
+                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
+                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Pending Reports
                       </span>
-                      <span className="text-2xl font-black text-red-400 mt-1 block flex items-center gap-1.5">
-                        <AlertTriangle className="w-5 h-5" />
+                      <span className="text-2xl font-black text-[#111111] mt-1 block flex items-center gap-1.5">
+                        <AlertTriangle className="w-5 h-5 text-[#F2B90D]" />
                         {pendingProductReportsCount + pendingHuxReportsCount}
                       </span>
-                      <span className="text-[10px] text-[#BDBDBD]">
+                      <span className="text-[10px] text-[#555555]">
                         Products ({pendingProductReportsCount}) • Housing ({pendingHuxReportsCount})
                       </span>
                     </div>
 
-                    <div className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333]">
-                      <span className="text-[11px] font-bold text-[#BDBDBD] uppercase tracking-wider block">
+                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
+                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         WhatsApp Leads
                       </span>
-                      <span className="text-2xl font-black text-[#25D366] mt-1 block flex items-center gap-1.5">
+                      <span className="text-2xl font-black text-[#0B6B3A] mt-1 block flex items-center gap-1.5">
                         <MessageCircle className="w-5 h-5" />
                         {metrics?.totalWhatsAppClicks ?? 0}
                       </span>
-                      <span className="text-[10px] text-[#BDBDBD]">Genuine buyer clicks</span>
+                      <span className="text-[10px] text-[#555555]">Genuine buyer clicks</span>
                     </div>
                   </div>
 
                   {/* Recent Audit Logs */}
-                  <div className="bg-[#1C1C1C] p-5 rounded-2xl border border-[#333333]">
-                    <h4 className="font-bold text-sm text-white mb-3">Recent Moderation Logs</h4>
+                  <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-xs">
+                    <h4 className="font-black text-sm text-[#111111] mb-3">Recent Moderation Logs</h4>
                     <div className="space-y-2 max-h-60 overflow-y-auto font-mono text-xs">
                       {auditLogs.length === 0 ? (
-                        <div className="text-[#BDBDBD] text-xs py-4 text-center">No logs recorded yet.</div>
+                        <div className="text-[#555555] text-xs py-4 text-center">No logs recorded yet.</div>
                       ) : (
                         auditLogs.map((log) => (
                           <div
                             key={log.id}
-                            className="p-2.5 bg-[#121212] rounded-xl border border-[#333333] flex flex-col gap-1"
+                            className="p-2.5 bg-[#F5F5F5] rounded-xl border border-[#E5E7EB] flex flex-col gap-1"
                           >
-                            <div className="flex items-center justify-between text-[11px] text-[#BDBDBD]">
-                              <span className="font-bold text-[#FFFFFF]">{log.action}</span>
+                            <div className="flex items-center justify-between text-[11px] text-[#555555]">
+                              <span className="font-bold text-[#0B6B3A]">{log.action}</span>
                               <span>{new Date(log.timestamp).toLocaleString()}</span>
                             </div>
-                            <p className="text-white/90">{log.details}</p>
+                            <p className="text-[#111111]">{log.details}</p>
                           </div>
                         ))
                       )}
@@ -475,24 +475,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="relative flex-1 max-w-md">
-                      <Search className="w-4 h-4 text-[#BDBDBD] absolute left-3 top-2.5" />
+                      <Search className="w-4 h-4 text-[#555555] absolute left-3 top-2.5" />
                       <input
                         type="text"
-                        placeholder="Search product title, seller, or city..."
+                        placeholder="Search product title, seller, or location..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#1C1C1C] border border-[#333333] text-white rounded-xl outline-none focus:border-[#FFFFFF]"
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#FFFFFF] border border-[#E5E7EB] text-[#111111] rounded-xl outline-none focus:border-[#0B6B3A]"
                       />
                     </div>
-                    <span className="text-xs text-[#BDBDBD] font-medium">
+                    <span className="text-xs text-[#555555] font-semibold">
                       Showing {filteredProducts.length} listings
                     </span>
                   </div>
 
-                  <div className="bg-[#1C1C1C] rounded-2xl border border-[#333333] overflow-hidden">
+                  <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#121212] text-[#BDBDBD] uppercase text-[10px] tracking-wider border-b border-[#333333]">
+                        <thead className="bg-[#F5F5F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
                           <tr>
                             <th className="p-3">Product</th>
                             <th className="p-3">Seller / Shop</th>
@@ -501,16 +501,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <th className="p-3">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#333333]">
+                        <tbody className="divide-y divide-[#E5E7EB]">
                           {filteredProducts.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#121212]/60 transition">
+                            <tr key={p.id} className="hover:bg-[#F5F5F5]/70 transition">
                               <td className="p-3">
                                 <button
                                   type="button"
                                   onClick={() => onOpenProductDetail(p)}
                                   className="flex items-center gap-2.5 text-left"
                                 >
-                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#333333] shrink-0 bg-[#121212]">
+                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#F5F5F5]">
                                     <ProductImage
                                       src={getProductDisplayImage(p.images, p.imageUrl)}
                                       fallbackSrcs={getValidProductImages(p.images, p.imageUrl)}
@@ -520,30 +520,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     />
                                   </div>
                                   <div>
-                                    <p className="font-bold text-white hover:text-[#FFFFFF] line-clamp-1 max-w-xs">
+                                    <p className="font-bold text-[#111111] hover:text-[#0B6B3A] line-clamp-1 max-w-xs">
                                       {p.title}
                                     </p>
-                                    <span className="text-[10px] text-[#BDBDBD] capitalize">
+                                    <span className="text-[10px] text-[#555555] capitalize">
                                       {p.categoryId} • {p.condition}
                                     </span>
                                   </div>
                                 </button>
                               </td>
-                              <td className="p-3 text-[#BDBDBD]">
-                                <span className="font-bold text-white block">{p.shopName}</span>
+                              <td className="p-3 text-[#555555]">
+                                <span className="font-bold text-[#111111] block">{p.shopName}</span>
                                 <span className="text-[10px] font-mono">{p.whatsappNumber || 'N/A'}</span>
                               </td>
                               <td className="p-3">
-                                <span className="font-bold text-[#FFFFFF]">{formatNaira(p.price)}</span>
+                                <span className="font-black bg-[#0B6B3A] text-[#F2B90D] px-2 py-0.5 rounded-md text-[11px]">
+                                  {formatNaira(p.price)}
+                                </span>
                                 {p.moderationStatus && (
                                   <div className="mt-1">
                                     <span
                                       className={`inline-flex items-center text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
                                         p.moderationStatus === 'approved'
-                                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                                          ? 'bg-[#0B6B3A]/10 text-[#0B6B3A] border border-[#0B6B3A]/30'
                                           : p.moderationStatus === 'rejected'
-                                          ? 'bg-red-950 text-red-300 border border-red-700'
-                                          : 'bg-white/10 text-white border border-white/40'
+                                          ? 'bg-[#111111] text-[#F2B90D] border border-[#111111]'
+                                          : 'bg-[#FFF8DB] text-[#111111] border border-[#F2B90D]'
                                       }`}
                                     >
                                       {p.moderationStatus.toUpperCase()}
@@ -551,7 +553,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   </div>
                                 )}
                               </td>
-                              <td className="p-3 text-[11px] text-[#BDBDBD]">
+                              <td className="p-3 text-[11px] text-[#555555]">
                                 {new Date(p.createdAt).toLocaleDateString()}
                               </td>
                               <td className="p-3">
@@ -559,7 +561,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       onClick={() => handleModerateProduct(p.id, 'approved')}
-                                      className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition"
+                                      className="px-2 py-1 bg-[#0B6B3A] hover:bg-[#14532D] text-white rounded text-[10px] font-bold transition"
                                     >
                                       Approve
                                     </button>
@@ -568,7 +570,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         setRejectProductTarget(p);
                                         setRejectReason('');
                                       }}
-                                      className="px-2 py-1 bg-[#333333] hover:bg-[#444444] border border-white/30 text-white rounded text-[10px] font-bold transition"
+                                      className="px-2 py-1 bg-[#F5F5F5] hover:bg-[#111111] hover:text-[#F2B90D] border border-[#E5E7EB] text-[#111111] rounded text-[10px] font-bold transition"
                                     >
                                       Reject
                                     </button>
@@ -579,8 +581,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       onClick={() => handleToggleFeatured(p)}
                                       className={`px-2 py-1 rounded text-[10px] font-bold transition ${
                                         p.isFeatured
-                                          ? 'bg-[#FFFFFF] text-black'
-                                          : 'bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white'
+                                          ? 'bg-[#F2B90D] text-[#111111] font-black'
+                                          : 'bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#111111]'
                                       }`}
                                     >
                                       {p.isFeatured ? 'Featured ★' : 'Feature'}
@@ -590,13 +592,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => handleConfirmRemoveProduct(p.id)}
-                                          className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-bold"
+                                          className="px-2 py-1 bg-[#111111] text-[#F2B90D] rounded text-[10px] font-bold"
                                         >
                                           Confirm
                                         </button>
                                         <button
                                           onClick={() => setConfirmDeleteProductId(null)}
-                                          className="px-2 py-1 bg-[#121212] border border-[#333333] text-[#BDBDBD] rounded text-[10px]"
+                                          className="px-2 py-1 bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] rounded text-[10px]"
                                         >
                                           No
                                         </button>
@@ -604,7 +606,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     ) : (
                                       <button
                                         onClick={() => setConfirmDeleteProductId(p.id)}
-                                        className="p-1 text-red-400 hover:text-red-300 rounded"
+                                        className="p-1 text-[#555555] hover:text-[#111111] rounded"
                                         title="Permanently Delete Listing"
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -626,33 +628,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {activeTab === 'reports' && (
                 <div className="space-y-3">
                   {reports.length === 0 ? (
-                    <div className="bg-[#1C1C1C] p-8 rounded-2xl text-center text-xs text-[#BDBDBD] border border-[#333333]">
+                    <div className="bg-[#FFFFFF] p-8 rounded-2xl text-center text-xs text-[#555555] border border-[#E5E7EB]">
+                      <Package className="w-8 h-8 text-[#0B6B3A] mx-auto mb-2" />
                       No product reports submitted yet.
                     </div>
                   ) : (
                     reports.map((rep) => (
                       <div
                         key={rep.id}
-                        className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                        className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
                       >
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="bg-red-950 border border-red-800 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                            <span className="bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                               {rep.reason}
                             </span>
-                            <span className="text-xs text-[#BDBDBD]">Reported by: {rep.reporterEmail}</span>
-                            <span className="text-[11px] text-[#BDBDBD]">
+                            <span className="text-xs text-[#555555]">Reported by: {rep.reporterEmail}</span>
+                            <span className="text-[11px] text-[#555555]">
                               • {new Date(rep.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <h4 className="font-bold text-sm text-white mt-1">
+                          <h4 className="font-bold text-sm text-[#111111] mt-1">
                             Product: {rep.productTitle || rep.productId || 'Unknown listing'}
                           </h4>
-                          <p className="text-xs text-[#BDBDBD] mt-1 bg-[#121212] p-2.5 rounded-xl border border-[#333333]">
+                          <p className="text-xs text-[#555555] mt-1 bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E7EB]">
                             &ldquo;{rep.details}&rdquo;
                           </p>
                           {rep.adminNotes && (
-                            <p className="text-[11px] text-[#FFFFFF] mt-1 font-semibold">
+                            <p className="text-[11px] text-[#0B6B3A] mt-1 font-semibold">
                               Admin resolution: {rep.adminNotes}
                             </p>
                           )}
@@ -666,7 +669,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   setResolveReportTarget({ id: rep.id, status: 'resolved' });
                                   setResolveNotes('');
                                 }}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl"
                               >
                                 Resolve
                               </button>
@@ -675,13 +678,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   setResolveReportTarget({ id: rep.id, status: 'dismissed' });
                                   setResolveNotes('');
                                 }}
-                                className="px-3 py-1.5 bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] font-bold text-xs rounded-xl"
                               >
                                 Dismiss
                               </button>
                             </>
                           ) : (
-                            <span className="text-xs font-bold text-[#BDBDBD] uppercase px-2.5 py-1 bg-[#121212] border border-[#333333] rounded-lg">
+                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E7EB] rounded-lg">
                               {rep.status}
                             </span>
                           )}
@@ -696,33 +699,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {activeTab === 'hux-reports' && (
                 <div className="space-y-3">
                   {huxReports.length === 0 ? (
-                    <div className="bg-[#1C1C1C] p-8 rounded-2xl text-center text-xs text-[#BDBDBD] border border-[#333333]">
-                      <Home className="w-8 h-8 text-[#333333] mx-auto mb-2" />
+                    <div className="bg-[#FFFFFF] p-8 rounded-2xl text-center text-xs text-[#555555] border border-[#E5E7EB]">
+                      <Home className="w-8 h-8 text-[#0B6B3A] mx-auto mb-2" />
                       No Wukari Agent accommodation scam reports yet.
                     </div>
                   ) : (
                     huxReports.map((rep) => (
                       <div
                         key={rep.id}
-                        className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                        className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
                       >
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="bg-red-950 border border-red-800 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                            <span className="bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                               {rep.reason}
                             </span>
-                            <span className="text-xs text-[#BDBDBD]">
+                            <span className="text-xs text-[#555555]">
                               Reporter: {rep.reporterName || 'Student'}{' '}
                               {rep.reporterContact ? `(${rep.reporterContact})` : ''}
                             </span>
-                            <span className="text-[11px] text-[#BDBDBD]">
+                            <span className="text-[11px] text-[#555555]">
                               • {new Date(rep.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <h4 className="font-bold text-sm text-white mt-1">
+                          <h4 className="font-bold text-sm text-[#111111] mt-1">
                             Listing: {rep.huxTitle || rep.huxId}
                           </h4>
-                          <p className="text-xs text-[#BDBDBD] mt-1 bg-[#121212] p-2.5 rounded-xl border border-[#333333]">
+                          <p className="text-xs text-[#555555] mt-1 bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E7EB]">
                             &ldquo;{rep.details}&rdquo;
                           </p>
                         </div>
@@ -732,19 +735,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <>
                               <button
                                 onClick={() => handleResolveHuxReport(rep.id, 'resolved')}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl"
                               >
                                 Resolve
                               </button>
                               <button
                                 onClick={() => handleResolveHuxReport(rep.id, 'dismissed')}
-                                className="px-3 py-1.5 bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] font-bold text-xs rounded-xl"
                               >
                                 Dismiss
                               </button>
                             </>
                           ) : (
-                            <span className="text-xs font-bold text-[#BDBDBD] uppercase px-2.5 py-1 bg-[#121212] border border-[#333333] rounded-lg">
+                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E7EB] rounded-lg">
                               {rep.status}
                             </span>
                           )}
@@ -759,35 +762,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {activeTab === 'requests' && (
                 <div className="space-y-3">
                   {studentRequests.length === 0 ? (
-                    <div className="bg-[#1C1C1C] p-8 rounded-2xl text-center text-xs text-[#BDBDBD] border border-[#333333]">
+                    <div className="bg-[#FFFFFF] p-8 rounded-2xl text-center text-xs text-[#555555] border border-[#E5E7EB]">
                       No student requests posted yet.
                     </div>
                   ) : (
                     studentRequests.map((req) => (
                       <div
                         key={req.id}
-                        className="bg-[#1C1C1C] p-4 rounded-2xl border border-[#333333] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                        className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
                                 req.status === 'fulfilled'
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                                  : 'bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#FFFFFF]/40'
+                                  ? 'bg-[#0B6B3A] text-white'
+                                  : 'bg-[#F2B90D] text-[#111111]'
                               }`}
                             >
                               {req.status}
                             </span>
-                            <span className="text-xs font-black text-[#FFFFFF]">
+                            <span className="text-xs font-black text-[#0B6B3A]">
                               Budget: {formatNaira(req.budget)}
                             </span>
-                            <span className="text-xs text-[#BDBDBD]">• {req.location}</span>
+                            <span className="text-xs text-[#555555]">• {req.location}</span>
                           </div>
-                          <h4 className="font-bold text-sm text-white mt-1">{req.title}</h4>
-                          <p className="text-xs text-[#BDBDBD] mt-0.5 line-clamp-2">{req.description}</p>
-                          <p className="text-[11px] text-[#BDBDBD] mt-1">
-                            Posted by: <strong className="text-white">{req.userName}</strong> ({req.phone})
+                          <h4 className="font-bold text-sm text-[#111111] mt-1">{req.title}</h4>
+                          <p className="text-xs text-[#555555] mt-0.5 line-clamp-2">{req.description}</p>
+                          <p className="text-[11px] text-[#555555] mt-1">
+                            Posted by: <strong className="text-[#111111]">{req.userName}</strong> ({req.phone})
                           </p>
                         </div>
 
@@ -796,13 +799,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <>
                               <button
                                 onClick={() => handleConfirmDeleteRequest(req.id)}
-                                className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-xl"
+                                className="px-3 py-1.5 bg-[#111111] text-[#F2B90D] text-xs font-bold rounded-xl"
                               >
                                 Confirm Delete
                               </button>
                               <button
                                 onClick={() => setConfirmDeleteRequestId(null)}
-                                className="px-2.5 py-1.5 bg-[#121212] border border-[#333333] text-[#BDBDBD] text-xs rounded-xl"
+                                className="px-2.5 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#555555] text-xs rounded-xl"
                               >
                                 Cancel
                               </button>
@@ -810,7 +813,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           ) : (
                             <button
                               onClick={() => setConfirmDeleteRequestId(req.id)}
-                              className="p-2 text-red-400 hover:text-red-300 bg-[#121212] border border-[#333333] rounded-xl"
+                              className="p-2 text-[#555555] hover:text-[#111111] bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl"
                               title="Remove Student Request"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -825,10 +828,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {/* TAB 6: USERS & SELLERS */}
               {activeTab === 'users' && (
-                <div className="bg-[#1C1C1C] rounded-2xl border border-[#333333] overflow-hidden">
+                <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-[#121212] text-[#BDBDBD] uppercase text-[10px] tracking-wider border-b border-[#333333]">
+                      <thead className="bg-[#F5F5F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
                         <tr>
                           <th className="p-3">User / Merchant</th>
                           <th className="p-3">Role</th>
@@ -837,26 +840,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <th className="p-3">Verification</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#333333]">
+                      <tbody className="divide-y divide-[#E5E7EB]">
                         {users.map((u) => (
-                          <tr key={u.id} className="hover:bg-[#121212]/60">
+                          <tr key={u.id} className="hover:bg-[#F5F5F5]/70">
                             <td className="p-3">
-                              <span className="font-bold text-white block">{u.name}</span>
-                              <span className="text-[10px] text-[#BDBDBD]">{u.email}</span>
+                              <span className="font-bold text-[#111111] block">{u.name}</span>
+                              <span className="text-[10px] text-[#555555]">{u.email}</span>
                             </td>
                             <td className="p-3">
-                              <span className="capitalize font-semibold text-[#BDBDBD]">{u.role}</span>
+                              <span className="capitalize font-semibold text-[#555555]">{u.role}</span>
                             </td>
-                            <td className="p-3 text-[#BDBDBD]">
+                            <td className="p-3 text-[#555555]">
                               {u.city || 'Wukari'}, {u.state || 'Taraba'}
                             </td>
-                            <td className="p-3 font-mono text-white">
+                            <td className="p-3 font-mono text-[#111111]">
                               {u.whatsappNumber || u.phone || 'N/A'}
                             </td>
                             <td className="p-3">
                               <div className="flex flex-col gap-1.5">
                                 {u.isSuspended && (
-                                  <span className="text-[10px] font-bold text-red-300 bg-red-950 border border-red-800 px-2 py-0.5 rounded-full self-start">
+                                  <span className="text-[10px] font-black text-[#F2B90D] bg-[#111111] px-2 py-0.5 rounded-full self-start">
                                     SUSPENDED
                                   </span>
                                 )}
@@ -864,7 +867,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   {u.role === 'seller' && (
                                     <button
                                       onClick={() => handleToggleVerifySeller(u.id)}
-                                      className="px-2.5 py-1 text-[11px] font-bold bg-emerald-950 border border-emerald-700 text-emerald-300 hover:bg-emerald-900 rounded-xl transition flex items-center gap-1"
+                                      className="px-2.5 py-1 text-[11px] font-bold bg-[#0B6B3A]/10 border border-[#0B6B3A]/30 text-[#0B6B3A] hover:bg-[#0B6B3A] hover:text-white rounded-xl transition flex items-center gap-1"
                                     >
                                       <ShieldCheck className="w-3.5 h-3.5" />
                                       Toggle Verified
@@ -884,8 +887,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       }}
                                       className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition ${
                                         u.isSuspended
-                                          ? 'bg-emerald-950 border border-emerald-700 text-emerald-300'
-                                          : 'bg-red-950 border border-red-800 text-red-300 hover:bg-red-900'
+                                          ? 'bg-[#0B6B3A] text-white'
+                                          : 'bg-[#111111] text-[#F2B90D] hover:bg-black'
                                       }`}
                                     >
                                       {u.isSuspended ? 'Lift Suspension' : 'Suspend Account'}
@@ -907,35 +910,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Inline Reject Reason Modal */}
         {rejectProductTarget && (
-          <div className="absolute inset-0 bg-black/85 z-30 p-4 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 z-30 p-4 flex items-center justify-center">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!rejectReason.trim()) return;
                 handleModerateProduct(rejectProductTarget.id, 'rejected', rejectReason.trim());
               }}
-              className="w-full max-w-md bg-[#121212] border border-[#333333] rounded-2xl p-5 space-y-3"
+              className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-bold text-white text-sm">Reject Listing: {rejectProductTarget.title}</h4>
+              <h4 className="font-black text-[#111111] text-sm">Reject Listing: {rejectProductTarget.title}</h4>
               <textarea
                 required
                 rows={3}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Reason for rejecting listing..."
-                className="w-full p-2.5 bg-[#1C1C1C] border border-[#333333] rounded-xl text-xs text-white outline-none focus:border-[#FFFFFF]"
+                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setRejectProductTarget(null)}
-                  className="px-3 py-1.5 text-xs text-[#BDBDBD]"
+                  className="px-3 py-1.5 text-xs text-[#555555] font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-red-600 text-white font-bold text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#111111] text-[#F2B90D] font-black text-xs rounded-xl"
                 >
                   Reject Listing
                 </button>
@@ -946,12 +949,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Inline Resolve Report Modal */}
         {resolveReportTarget && (
-          <div className="absolute inset-0 bg-black/85 z-30 p-4 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 z-30 p-4 flex items-center justify-center">
             <form
               onSubmit={handleSubmitResolveReport}
-              className="w-full max-w-md bg-[#121212] border border-[#333333] rounded-2xl p-5 space-y-3"
+              className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-bold text-white text-sm capitalize">
+              <h4 className="font-black text-[#111111] text-sm capitalize">
                 Mark Report as {resolveReportTarget.status}
               </h4>
               <textarea
@@ -959,19 +962,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 value={resolveNotes}
                 onChange={(e) => setResolveNotes(e.target.value)}
                 placeholder="Optional admin resolution notes..."
-                className="w-full p-2.5 bg-[#1C1C1C] border border-[#333333] rounded-xl text-xs text-white outline-none focus:border-[#FFFFFF]"
+                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setResolveReportTarget(null)}
-                  className="px-3 py-1.5 text-xs text-[#BDBDBD]"
+                  className="px-3 py-1.5 text-xs text-[#555555] font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#FFFFFF] text-black font-black text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#0B6B3A] text-white font-black text-xs rounded-xl"
                 >
                   Confirm
                 </button>
@@ -982,31 +985,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Inline Suspend User Modal */}
         {suspendUserTarget && (
-          <div className="absolute inset-0 bg-black/85 z-30 p-4 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 z-30 p-4 flex items-center justify-center">
             <form
               onSubmit={handleSubmitSuspendUser}
-              className="w-full max-w-md bg-[#121212] border border-[#333333] rounded-2xl p-5 space-y-3"
+              className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-bold text-white text-sm">Suspend User: {suspendUserTarget.name}</h4>
+              <h4 className="font-black text-[#111111] text-sm">Suspend User: {suspendUserTarget.name}</h4>
               <textarea
                 required
                 rows={3}
                 value={suspendReason}
                 onChange={(e) => setSuspendReason(e.target.value)}
                 placeholder="Enter reason for account suspension..."
-                className="w-full p-2.5 bg-[#1C1C1C] border border-[#333333] rounded-xl text-xs text-white outline-none focus:border-[#FFFFFF]"
+                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setSuspendUserTarget(null)}
-                  className="px-3 py-1.5 text-xs text-[#BDBDBD]"
+                  className="px-3 py-1.5 text-xs text-[#555555] font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-red-600 text-white font-bold text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#111111] text-[#F2B90D] font-black text-xs rounded-xl"
                 >
                   Suspend User
                 </button>

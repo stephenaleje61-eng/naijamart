@@ -3,15 +3,10 @@ import {
   Smartphone,
   Laptop,
   Shirt,
-  Briefcase,
-  Sparkles,
   Utensils,
-  Tv,
-  Apple,
-  Car,
-  HardHat,
-  Zap,
-  Wrench,
+  BookOpen,
+  BedDouble,
+  Flame,
   Package,
   RefreshCw,
   ImageOff,
@@ -47,7 +42,6 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Compile all candidate sources in priority order
   const candidateSources = React.useMemo(() => {
     const list: string[] = [];
     if (src && isValidImageUrl(src)) {
@@ -63,7 +57,6 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     return list;
   }, [src, fallbackSrcs]);
 
-  // Reset states whenever primary src or candidate sources change
   useEffect(() => {
     setHasError(false);
     setIsLoading(true);
@@ -80,7 +73,6 @@ export const ProductImage: React.FC<ProductImageProps> = ({
 
   const activeSrc = candidateSources[currentSourceIndex] || null;
 
-  // Construct source with optional retry cache-buster if needed (not on data URLs)
   const computeDisplaySrc = () => {
     if (!activeSrc) return null;
 
@@ -93,35 +85,29 @@ export const ProductImage: React.FC<ProductImageProps> = ({
 
   const displaySrc = computeDisplaySrc();
 
-  // Retry handler with exponential backoff and rate-limit guard
   const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isRetrying || retryCount >= MAX_RETRIES) return;
 
     setIsRetrying(true);
-
-    // Calculate sensible exponential backoff delay (800ms, 1500ms, 2500ms)
     const delay = Math.min(800 * Math.pow(1.6, retryCount), 2500);
 
     retryTimerRef.current = setTimeout(() => {
-      // If there's another candidate source available, try it first
       if (currentSourceIndex + 1 < candidateSources.length) {
-        setCurrentSourceIndex(prev => prev + 1);
+        setCurrentSourceIndex((prev) => prev + 1);
       }
-      setRetryCount(prev => prev + 1);
+      setRetryCount((prev) => prev + 1);
       setHasError(false);
       setIsLoading(true);
       setIsRetrying(false);
     }, delay);
   };
 
-  // Image load error handler: tries next fallback before declaring permanent error
   const handleImageError = () => {
     setIsLoading(false);
 
-    // If there is an untried fallback source, attempt loading it next
     if (currentSourceIndex + 1 < candidateSources.length) {
-      setCurrentSourceIndex(prev => prev + 1);
+      setCurrentSourceIndex((prev) => prev + 1);
       setIsLoading(true);
       setHasError(false);
     } else {
@@ -129,43 +115,36 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     }
   };
 
-  // Category Icon Resolver for neutral placeholders
   const renderCategoryIcon = () => {
     const cat = (category || '').toLowerCase();
-    const props = { className: 'w-10 h-10 text-gray-400 stroke-1' };
+    const props = { className: 'w-10 h-10 text-[#0B6B3A] stroke-1.5' };
 
-    if (cat.includes('phone') || cat.includes('tablet')) return <Smartphone {...props} />;
+    if (cat.includes('hostel')) return <BedDouble {...props} />;
+    if (cat.includes('textbook') || cat.includes('book') || cat.includes('past')) return <BookOpen {...props} />;
+    if (cat.includes('food')) return <Utensils {...props} />;
+    if (cat.includes('electronic') || cat.includes('phone')) return <Smartphone {...props} />;
     if (cat.includes('computer') || cat.includes('laptop')) return <Laptop {...props} />;
     if (cat.includes('fashion') || cat.includes('cloth')) return <Shirt {...props} />;
-    if (cat.includes('shoe') || cat.includes('bag')) return <Briefcase {...props} />;
-    if (cat.includes('beauty')) return <Sparkles {...props} />;
-    if (cat.includes('kitchen')) return <Utensils {...props} />;
-    if (cat.includes('appliance') || cat.includes('tv')) return <Tv {...props} />;
-    if (cat.includes('food') || cat.includes('grocer')) return <Apple {...props} />;
-    if (cat.includes('vehicle') || cat.includes('auto') || cat.includes('car')) return <Car {...props} />;
-    if (cat.includes('building')) return <HardHat {...props} />;
-    if (cat.includes('generator') || cat.includes('solar')) return <Zap {...props} />;
-    if (cat.includes('service') || cat.includes('job')) return <Wrench {...props} />;
+    if (cat.includes('gas') || cat.includes('cook')) return <Flame {...props} />;
     return <Package {...props} />;
   };
 
-  // If no source is provided or image failed to load, display neutral category placeholder
   if (!displaySrc || hasError) {
     const isRetryExhausted = retryCount >= MAX_RETRIES;
 
     return (
       <div
         onClick={onClick}
-        className={`w-full h-full bg-[#121212] flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
+        className={`w-full h-full bg-[#F5F5F5] flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
       >
-        <div className="w-14 h-14 rounded-2xl bg-[#1C1C1C] border border-[#333333] flex items-center justify-center mb-2">
+        <div className="w-14 h-14 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-center mb-2 shadow-xs">
           {renderCategoryIcon()}
         </div>
-        <span className="text-[11px] font-bold text-white line-clamp-1 max-w-[90%] px-1">
-          {alt || 'Product Listing'}
+        <span className="text-[11px] font-bold text-[#111111] line-clamp-1 max-w-[90%] px-1">
+          {alt || 'WukariMart Item'}
         </span>
-        <span className="text-[10px] text-[#BDBDBD] mt-0.5 flex items-center gap-1 font-medium">
-          <ImageOff className="w-3 h-3 text-[#BDBDBD]" />
+        <span className="text-[10px] text-[#555555] mt-0.5 flex items-center gap-1 font-medium">
+          <ImageOff className="w-3 h-3 text-[#555555]" />
           {hasError ? 'Photo unavailable' : 'No photo uploaded'}
         </span>
 
@@ -176,7 +155,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 type="button"
                 onClick={handleRetry}
                 disabled={isRetrying}
-                className="text-[10px] font-bold text-[#FFFFFF] bg-[#1C1C1C] hover:bg-[#333333] disabled:opacity-60 px-2.5 py-1 rounded-md border border-[#FFFFFF]/40 flex items-center gap-1 transition"
+                className="text-[10px] font-bold text-white bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 px-2.5 py-1 rounded-md flex items-center gap-1 transition"
                 title="Retry loading photo"
               >
                 {isRetrying ? (
@@ -192,7 +171,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 )}
               </button>
             ) : (
-              <span className="text-[9px] text-[#BDBDBD] italic">
+              <span className="text-[9px] text-[#666666] italic">
                 Photo could not be loaded
               </span>
             )}
@@ -203,9 +182,9 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#121212]" onClick={onClick}>
+    <div className="relative w-full h-full overflow-hidden bg-[#F5F5F5]" onClick={onClick}>
       {isLoading && (
-        <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-[#1C1C1C] to-[#121212] animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#F5F5F5] via-[#E5E7EB] to-[#F5F5F5] animate-pulse" />
       )}
       <img
         src={displaySrc}

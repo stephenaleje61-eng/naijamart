@@ -98,7 +98,7 @@ export const safeFetchJson = async (endpoint: string, options: RequestInit = {})
   } catch (networkErr: any) {
     console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
     throw new Error(
-      `Unable to connect to FU MARKET backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
+      `Unable to connect to WukariMart backend server at ${fullUrl}. Please check your internet connection or verify the backend service is running.`
     );
   }
 
@@ -170,6 +170,12 @@ export async function fetchProducts(filters: ProductFilter = {}): Promise<{ item
       categoryId: filters.category,
       sellerId: filters.sellerId,
       searchQuery: filters.q,
+      condition: filters.condition,
+      state: filters.state,
+      city: filters.city,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      sort: filters.sort,
       limitCount: filters.limit || 50
     });
     return {

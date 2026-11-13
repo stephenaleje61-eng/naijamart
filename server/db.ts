@@ -129,21 +129,12 @@ export interface DatabaseSchema {
 }
 
 const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'phones-tablets', name: 'Phones & Tablets', slug: 'phones-tablets', icon: 'Smartphone', description: 'Smartphones, feature phones, iPads and accessories', featured: true },
-  { id: 'computers', name: 'Computers & Accessories', slug: 'computers', icon: 'Laptop', description: 'Laptops, desktops, monitors, printers and PC parts', featured: true },
-  { id: 'fashion', name: 'Fashion & Clothing', slug: 'fashion', icon: 'Shirt', description: 'Ankara, senator suits, dresses, shirts, jeans and traditional wear', featured: true },
-  { id: 'shoes-bags', name: 'Shoes, Bags & Accessories', slug: 'shoes-bags', icon: 'Briefcase', description: 'Sneakers, sandals, leather bags, wristwatches and jewelry', featured: true },
-  { id: 'beauty-care', name: 'Beauty & Personal Care', slug: 'beauty-care', icon: 'Sparkles', description: 'Skincare, perfumes, hair extensions, makeup and grooming', featured: true },
-  { id: 'home-kitchen', name: 'Home & Kitchen', slug: 'home-kitchen', icon: 'Utensils', description: 'Cookware, blenders, gas cookers, decor and tableware', featured: true },
-  { id: 'furniture-appliances', name: 'Furniture & Appliances', slug: 'furniture-appliances', icon: 'Tv', description: 'Refrigerators, generators, air conditioners, sofas and beds', featured: true },
-  { id: 'food-groceries', name: 'Food & Groceries', slug: 'food-groceries', icon: 'Apple', description: 'Gari, yam, palm oil, rice, crayfish, spices and packaged foods', featured: true },
-  { id: 'vehicles-auto', name: 'Cars & Vehicle Accessories', slug: 'vehicles-auto', icon: 'Car', description: 'Cars, bikes, batteries, tires, car audio and spare parts', featured: true },
-  { id: 'building-materials', name: 'Building Materials', slug: 'building-materials', icon: 'HardHat', description: 'Cement, tiles, roofing, plumbing and electrical supplies' },
-  { id: 'agriculture', name: 'Agriculture & Farm Products', slug: 'agriculture', icon: 'Wheat', description: 'Livestock, poultry, seeds, fertilizers and farm machinery' },
-  { id: 'baby-kids', name: 'Baby & Children Products', slug: 'baby-kids', icon: 'Baby', description: 'Baby gear, diapers, clothing, strollers and educational toys' },
-  { id: 'sports-fitness', name: 'Sports & Fitness', slug: 'sports-fitness', icon: 'Dumbbell', description: 'Jerseys, gym gear, footballs, bicycles and fitness trackers' },
-  { id: 'books-education', name: 'Books & Educational Materials', slug: 'books-education', icon: 'BookOpen', description: 'JAMB/WAEC textbooks, novels, stationery and study guides' },
-  { id: 'other-goods', name: 'Other Permitted Goods', slug: 'other-goods', icon: 'Package', description: 'Musical instruments, craft, hobbies and other legal marketplace goods' }
+  { id: 'hostel-items', name: 'Hostel Items', slug: 'hostel-items', icon: 'BedDouble', description: 'Mattresses, standing fans, buckets, study tables, curtains & hostel essentials', featured: true },
+  { id: 'textbooks-past-questions', name: 'Textbooks & Past Questions', slug: 'textbooks-past-questions', icon: 'BookOpen', description: 'Course handouts, past questions, scientific calculators, lab coats & textbooks', featured: true },
+  { id: 'food', name: 'Food', slug: 'food', icon: 'Utensils', description: 'Fresh campus meals, provisions, snacks, garri, rice, indomie & cold drinks', featured: true },
+  { id: 'electronics', name: 'Electronics', slug: 'electronics', icon: 'Smartphone', description: 'Smartphones, laptops, power banks, chargers, earphones & gadgets', featured: true },
+  { id: 'fashion', name: 'Fashion', slug: 'fashion', icon: 'Shirt', description: 'Clothes, sneakers, bags, wristwatches, perfumes & student outfits', featured: true },
+  { id: 'gas-cooking', name: 'Gas & Cooking', slug: 'gas-cooking', icon: 'Flame', description: 'Gas cylinders, camp gas burners, pots, electric kettles & kitchen utensils', featured: true }
 ];
 
 export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -193,8 +184,10 @@ class Database {
   private ensureInitialData() {
     let modified = false;
 
-    // Check categories
-    if (!this.data.categories || this.data.categories.length === 0) {
+    // Check categories — always keep synchronized with the 6 core WukariMart categories
+    const expectedIds = DEFAULT_CATEGORIES.map(c => c.id).join(',');
+    const currentIds = (this.data.categories || []).map(c => c.id).join(',');
+    if (currentIds !== expectedIds) {
       this.data.categories = DEFAULT_CATEGORIES;
       modified = true;
     }
@@ -206,7 +199,7 @@ class Database {
       const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
       const adminUser: User = {
         id: 'admin-001',
-        name: 'FU Market Moderation Desk',
+        name: 'WukariMart Moderation Desk',
         email: 'admin@fumarket.ng',
         passwordHash: adminPasswordHash,
         role: 'admin',

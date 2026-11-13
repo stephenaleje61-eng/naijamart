@@ -93,40 +93,94 @@ export function toIsoString(val: any): string {
 
 export function mapLegacyCategory(raw: any): string {
   const value = String(raw || '').toLowerCase().trim();
-  if (!value) return 'phones-tablets';
-  if (value.includes('phone') || value.includes('tablet') || value.includes('gadget')) return 'phones-tablets';
-  if (value.includes('computer') || value.includes('laptop') || value.includes('pc') || value.includes('electronic')) return 'computers';
-  if (value.includes('fashion') || value.includes('cloth') || value.includes('wear') || value.includes('shirt')) return 'fashion';
-  if (value.includes('shoe') || value.includes('bag') || value.includes('watch')) return 'shoes-bags';
-  if (value.includes('beauty') || value.includes('skin') || value.includes('hair') || value.includes('perfume')) return 'beauty-care';
-  if (value.includes('kitchen') || value.includes('cook')) return 'home-kitchen';
-  if (value.includes('furniture') || value.includes('appliance') || value.includes('home')) return 'furniture-appliances';
-  if (value.includes('food') || value.includes('grocer') || value.includes('provision') || value.includes('snack')) return 'food-groceries';
-  if (value.includes('car') || value.includes('vehicle') || value.includes('auto') || value.includes('bike')) return 'vehicles-auto';
-  if (value.includes('build') || value.includes('material')) return 'building-materials';
-  if (value.includes('solar') || value.includes('generator') || value.includes('power')) return 'generator-solar';
-  if (value.includes('service') || value.includes('tutor') || value.includes('artisan')) return 'services-jobs';
+  if (!value) return 'hostel-items';
+
   if (
     [
-      'phones-tablets',
-      'computers',
+      'hostel-items',
+      'textbooks-past-questions',
+      'food',
+      'electronics',
       'fashion',
-      'shoes-bags',
-      'beauty-care',
-      'home-kitchen',
-      'furniture-appliances',
-      'food-groceries',
-      'vehicles-auto',
-      'building-materials',
-      'generator-solar',
-      'services-jobs',
-      'books-education',
-      'other-goods'
+      'gas-cooking'
     ].includes(value)
   ) {
     return value;
   }
-  return 'other-goods';
+
+  if (
+    value.includes('gas') ||
+    value.includes('cooking') ||
+    value.includes('kitchen') ||
+    value.includes('cook') ||
+    value.includes('burner') ||
+    value.includes('cylinder') ||
+    value.includes('kettle') ||
+    value.includes('pot') ||
+    value === 'home-kitchen'
+  ) {
+    return 'gas-cooking';
+  }
+
+  if (
+    value.includes('textbook') ||
+    value.includes('past question') ||
+    value.includes('handout') ||
+    value.includes('book') ||
+    value.includes('education') ||
+    value.includes('study') ||
+    value.includes('calculator') ||
+    value === 'books-education'
+  ) {
+    return 'textbooks-past-questions';
+  }
+
+  if (
+    value.includes('food') ||
+    value.includes('grocer') ||
+    value.includes('provision') ||
+    value.includes('snack') ||
+    value.includes('meal') ||
+    value.includes('drink') ||
+    value === 'food-groceries'
+  ) {
+    return 'food';
+  }
+
+  if (
+    value.includes('phone') ||
+    value.includes('tablet') ||
+    value.includes('gadget') ||
+    value.includes('computer') ||
+    value.includes('laptop') ||
+    value.includes('pc') ||
+    value.includes('electronic') ||
+    value.includes('charger') ||
+    value === 'phones-tablets' ||
+    value === 'computers'
+  ) {
+    return 'electronics';
+  }
+
+  if (
+    value.includes('fashion') ||
+    value.includes('cloth') ||
+    value.includes('wear') ||
+    value.includes('shirt') ||
+    value.includes('shoe') ||
+    value.includes('bag') ||
+    value.includes('watch') ||
+    value.includes('beauty') ||
+    value.includes('skin') ||
+    value.includes('hair') ||
+    value.includes('perfume') ||
+    value === 'shoes-bags' ||
+    value === 'beauty-care'
+  ) {
+    return 'fashion';
+  }
+
+  return 'hostel-items';
 }
 
 export function normalizeFirestoreProduct(docId: string, data: any): Product {
@@ -256,6 +310,12 @@ export async function getProductsFromFirestore(filters?: {
   categoryId?: string;
   sellerId?: string;
   searchQuery?: string;
+  condition?: string;
+  state?: string;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular';
   limitCount?: number;
 }): Promise<Product[]> {
   const path = 'products';
@@ -273,23 +333,48 @@ export async function getProductsFromFirestore(filters?: {
     });
 
     if (filters?.categoryId && filters.categoryId !== 'all') {
-      items = items.filter(p => p.categoryId === filters.categoryId);
+      const normalizedTarget = mapLegacyCategory(filters.categoryId);
+      items = items.filter(p => p.categoryId === normalizedTarget || p.categoryId === filters.categoryId);
+    }
+    if (filters?.condition && (filters.condition === 'new' || filters.condition === 'used')) {
+      items = items.filter(p => p.condition === filters.condition);
+    }
+    if (filters?.state && filters.state !== 'all') {
+      items = items.filter(p => p.state.toLowerCase() === filters.state!.toLowerCase());
+    }
+    if (filters?.city && filters.city !== 'all') {
+      items = items.filter(p => p.city.toLowerCase() === filters.city!.toLowerCase());
+    }
+    if (filters?.minPrice !== undefined && filters.minPrice > 0) {
+      items = items.filter(p => p.price >= filters.minPrice!);
+    }
+    if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
+      items = items.filter(p => p.price <= filters.maxPrice!);
     }
     if (filters?.sellerId) {
       items = items.filter(p => p.sellerId === filters.sellerId);
     }
     if (filters?.searchQuery && filters.searchQuery.trim().length > 0) {
-      const term = filters.searchQuery.toLowerCase();
+      const term = filters.searchQuery.toLowerCase().trim();
       items = items.filter(p =>
         p.title.toLowerCase().includes(term) ||
         p.description.toLowerCase().includes(term) ||
         p.shopName?.toLowerCase().includes(term) ||
+        p.sellerName?.toLowerCase().includes(term) ||
         p.city?.toLowerCase().includes(term) ||
         p.state?.toLowerCase().includes(term)
       );
     }
 
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (filters?.sort === 'price-asc') {
+      items.sort((a, b) => a.price - b.price);
+    } else if (filters?.sort === 'price-desc') {
+      items.sort((a, b) => b.price - a.price);
+    } else if (filters?.sort === 'popular') {
+      items.sort((a, b) => (b.views + b.whatsappClicks * 3) - (a.views + a.whatsappClicks * 3));
+    } else {
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
 
     if (filters?.limitCount) {
       items = items.slice(0, filters.limitCount);
@@ -403,13 +488,13 @@ export async function createProductDirectlyInFirestore(
     id,
     sellerId: sellerUser?.id || data.sellerId || auth.currentUser?.uid || 'campus-seller',
     sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'FUWUKARI Student',
-    shopName: data.shopName || `${sellerUser?.name || 'FU MARKET'}'s Store`,
+    shopName: data.shopName || `${sellerUser?.name || 'WukariMart'}'s Store`,
     whatsappNumber: data.whatsappNumber || sellerUser?.whatsappNumber || sellerUser?.phone || '',
     title: String(data.title || '').trim(),
     description: String(data.description || '').trim(),
     price,
     ...(originalPrice !== undefined ? { originalPrice } : {}),
-    categoryId: data.categoryId || 'phones-tablets',
+    categoryId: data.categoryId || 'hostel-items',
     condition: data.condition === 'used' ? 'used' : 'new',
     images: cleanedImages,
     imageUrl: cleanedImages[0],

@@ -36,7 +36,7 @@ app.use('/uploads', express.static(uploadsDir, { maxAge: '1d' }));
 // INITIALIZE FIRESTORE PRODUCTION DATABASE SYNC
 import { firestoreSync } from './server/firestore.js';
 
-console.log('Connecting NaijaMart to permanent production database (Google Cloud Firestore)...');
+console.log('Connecting WukariMart to permanent production database (Google Cloud Firestore)...');
 db.initFirestoreSync().catch(err => {
   console.error('Failed to initialize Firestore sync on startup:', err);
 });
@@ -66,7 +66,7 @@ app.use('/bike-riders-api', bikeRiderRoutes);
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    app: 'NaijaMart',
+    app: 'WukariMart',
     time: new Date().toISOString(),
     uptime: process.uptime(),
     cleanupStats: db.cleanupStats
@@ -86,7 +86,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   console.error('[Global Express API Error]:', err);
   res.status(err.status || 500).json({
     success: false,
-    error: err.message || 'Internal server error occurred on NaijaMart backend'
+    error: err.message || 'Internal server error occurred on WukariMart backend'
   });
 });
 

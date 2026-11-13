@@ -77,7 +77,7 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${item.shopName || item.sellerName}, I placed an order on FU MARKET${
+      `Hello ${item.shopName || item.sellerName}, I placed an order on WukariMart${
         orderId ? ` (Ref: ${orderId})` : ''
       }:\n- ${item.quantity}x ${item.title} (${formatNaira(item.price * item.quantity)})\nPickup/Delivery: ${deliveryLocation}\nPayment: Pay on Inspection`
     );
@@ -125,18 +125,18 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-2xl bg-[#121212] border border-[#333333] rounded-3xl shadow-2xl overflow-hidden my-4">
-        {/* Header */}
-        <div className="bg-[#1C1C1C] border-b border-[#333333] px-5 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#111111]">
+        {/* Green Header */}
+        <div className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] px-5 py-4 flex items-center justify-between text-white">
           <div className="flex items-center gap-2.5">
-            <ShoppingCart className="w-5 h-5 text-[#FFFFFF]" />
+            <ShoppingCart className="w-5 h-5 text-[#F2B90D]" />
             <div>
               <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wide">
-                {confirmedOrder ? 'Order Saved & Ready for Confirmation' : 'REVIEW ORDER BEFORE PAYMENT'}
+                {confirmedOrder ? 'Order Saved & Ready' : 'Review Cart & Order'}
               </h2>
-              <p className="text-[11px] text-[#BDBDBD]">
-                FU MARKET • Verify quantities, seller details, and delivery breakdown
+              <p className="text-[11px] text-white/90">
+                WukariMart • Verify quantities, seller details, and meetup point
               </p>
             </div>
           </div>
@@ -146,39 +146,39 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
               setConfirmedOrder(null);
               onClose();
             }}
-            className="w-8 h-8 rounded-full bg-[#121212] border border-[#333333] text-[#BDBDBD] hover:text-white flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-[#14532D] border border-white/25 text-white flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-5 max-h-[82vh] overflow-y-auto space-y-5">
+        <div className="p-5 max-h-[82vh] overflow-y-auto space-y-5 bg-white">
           {confirmedOrder ? (
             <div className="space-y-4">
-              <div className="bg-emerald-950/50 border border-emerald-700 rounded-2xl p-4 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-                <h3 className="text-base font-black text-white">
+              <div className="bg-[#F5F5F5] border-2 border-[#0B6B3A] rounded-2xl p-4 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-[#0B6B3A] mx-auto" />
+                <h3 className="text-base font-black text-[#111111]">
                   Order Recorded (Ref: {confirmedOrder.id})
                 </h3>
-                <p className="text-xs text-[#BDBDBD] leading-relaxed">
-                  Your order summary ({formatNaira(confirmedOrder.totalAmount)}) has been saved in Firestore. Confirm meetup and inspect your item(s) directly with each seller below before paying.
+                <p className="text-xs text-[#555555] leading-relaxed">
+                  Your order summary ({formatNaira(confirmedOrder.totalAmount)}) is saved. Message the seller on WhatsApp to confirm meetup and inspect before paying.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-xs font-black uppercase text-[#BDBDBD] tracking-wider">
+                <h4 className="text-xs font-black uppercase text-[#555555] tracking-wider">
                   Confirm Directly with Seller(s) on WhatsApp
                 </h4>
                 {confirmedOrder.items.map((item) => (
                   <div
                     key={item.productId}
-                    className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-3 flex items-center justify-between gap-3"
+                    className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-3 flex items-center justify-between gap-3"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">
+                      <p className="text-xs font-bold text-[#111111] truncate">
                         {item.quantity}x {item.title}
                       </p>
-                      <p className="text-[11px] text-[#BDBDBD]">
+                      <p className="text-[11px] text-[#555555]">
                         Seller: {item.shopName || item.sellerName} • {formatNaira(item.price * item.quantity)}
                       </p>
                     </div>
@@ -187,10 +187,10 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                         href={buildSellerWaLink(item, confirmedOrder.id)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-2 bg-[#25D366] hover:bg-[#20BA5C] text-black text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0"
+                        className="px-3 py-2 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0"
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Send Order</span>
+                        <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" />
+                        <span>WhatsApp</span>
                       </a>
                     )}
                   </div>
@@ -203,57 +203,56 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                   setConfirmedOrder(null);
                   onClose();
                 }}
-                className="w-full py-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs sm:text-sm font-black rounded-xl"
+                className="w-full py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs sm:text-sm font-black rounded-xl"
               >
                 Done
               </button>
             </div>
           ) : items.length === 0 ? (
             <div className="py-10 text-center space-y-3">
-              <ShoppingCart className="w-12 h-12 text-[#333333] mx-auto" />
-              <h3 className="text-sm font-black text-white">Your FU MARKET cart is empty</h3>
-              <p className="text-xs text-[#BDBDBD]">
-                Add products from the Student Marketplace to review your order before payment.
+              <ShoppingCart className="w-12 h-12 text-[#0B6B3A] mx-auto" />
+              <h3 className="text-sm font-black text-[#111111]">Your WukariMart cart is empty</h3>
+              <p className="text-xs text-[#555555]">
+                Add items from the marketplace to review your order before meetup.
               </p>
             </div>
           ) : (
             <form onSubmit={handleConfirmOrder} className="space-y-5">
               {error && (
-                <div className="p-3 bg-red-950/60 border border-red-700 text-red-200 text-xs rounded-xl flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+                <div className="p-3 bg-[#FFF8DB] border-2 border-[#111111] text-[#111111] text-xs rounded-xl flex items-start gap-2 font-semibold">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#111111]" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Items List */}
               <div className="space-y-2.5">
-                <h3 className="text-xs font-black uppercase text-[#BDBDBD] tracking-wider">
+                <h3 className="text-xs font-black uppercase text-[#555555] tracking-wider">
                   Items in Your Order ({items.length})
                 </h3>
                 {items.map((item) => (
                   <div
                     key={item.productId}
-                    className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-3 flex items-center gap-3"
+                    className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-3 flex items-center gap-3"
                   >
-                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#333333] shrink-0">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-white">
                       <ProductImage src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs sm:text-sm font-bold text-white truncate">{item.title}</h4>
-                      <p className="text-[11px] text-[#BDBDBD] truncate">
+                      <h4 className="text-xs sm:text-sm font-bold text-[#111111] truncate">{item.title}</h4>
+                      <p className="text-[11px] text-[#555555] truncate">
                         Seller: {item.shopName || item.sellerName}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-black text-[#FFFFFF]">
+                        <span className="text-xs font-black px-2 py-0.5 rounded bg-[#0B6B3A] text-[#F2B90D]">
                           {formatNaira(item.price)}
                         </span>
-                        <span className="text-[11px] text-[#BDBDBD]">
-                          • Line total: <strong className="text-white">{formatNaira(item.price * item.quantity)}</strong>
+                        <span className="text-[11px] text-[#555555]">
+                          • Line: <strong className="text-[#111111]">{formatNaira(item.price * item.quantity)}</strong>
                         </span>
                       </div>
                     </div>
 
-                    {/* Quantity controls */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
@@ -262,11 +261,11 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                             ? onUpdateQuantity(item.productId, item.quantity - 1)
                             : onRemoveItem(item.productId)
                         }
-                        className="w-7 h-7 rounded-lg bg-[#121212] border border-[#333333] text-white flex items-center justify-center hover:border-[#FFFFFF]"
+                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E7EB] text-[#111111] flex items-center justify-center hover:border-[#0B6B3A]"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-6 text-center text-xs font-black text-white">{item.quantity}</span>
+                      <span className="w-6 text-center text-xs font-black text-[#111111]">{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -275,14 +274,14 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                             Math.min(item.maxQuantity || 20, item.quantity + 1)
                           )
                         }
-                        className="w-7 h-7 rounded-lg bg-[#121212] border border-[#333333] text-white flex items-center justify-center hover:border-[#FFFFFF]"
+                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E7EB] text-[#111111] flex items-center justify-center hover:border-[#0B6B3A]"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => onRemoveItem(item.productId)}
-                        className="w-7 h-7 rounded-lg bg-red-950/60 border border-red-800 text-red-300 flex items-center justify-center hover:bg-red-900"
+                        className="w-7 h-7 rounded-lg bg-[#111111] text-white flex items-center justify-center hover:bg-[#14532D]"
                         title="Remove"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -293,43 +292,43 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
               </div>
 
               {/* Buyer & Delivery Details */}
-              <div className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-4 space-y-3">
-                <h3 className="text-xs font-black uppercase text-[#BDBDBD] tracking-wider flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#FFFFFF]" />
+              <div className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-black uppercase text-[#0B6B3A] tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#0B6B3A]" />
                   <span>Buyer &amp; Campus Meetup Details</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-[#BDBDBD] mb-1">Your Name *</label>
+                    <label className="block text-[11px] font-bold text-[#333333] mb-1">Your Name *</label>
                     <input
                       type="text"
                       required
                       value={buyerName}
                       onChange={(e) => setBuyerName(e.target.value)}
                       placeholder="Student full name"
-                      className="w-full p-2.5 bg-[#121212] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-xs text-white outline-none"
+                      className="w-full p-2.5 bg-white border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-xs text-[#111111] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-[#BDBDBD] mb-1">Phone / WhatsApp *</label>
+                    <label className="block text-[11px] font-bold text-[#333333] mb-1">Phone / WhatsApp *</label>
                     <input
                       type="tel"
                       required
                       value={buyerPhone}
                       onChange={(e) => setBuyerPhone(e.target.value)}
                       placeholder="080..."
-                      className="w-full p-2.5 bg-[#121212] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-xs text-white outline-none"
+                      className="w-full p-2.5 bg-white border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-xs text-[#111111] outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#BDBDBD] mb-1">Delivery / Meetup Point</label>
+                  <label className="block text-[11px] font-bold text-[#333333] mb-1">Delivery / Meetup Point</label>
                   <select
                     value={deliveryLocation}
                     onChange={(e) => setDeliveryLocation(e.target.value)}
-                    className="w-full p-2.5 bg-[#121212] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-white border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-xs text-[#111111] outline-none"
                   >
                     {CAMPUS_DELIVERY_POINTS.map((pt) => (
                       <option key={pt} value={pt}>
@@ -340,21 +339,21 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#BDBDBD] mb-1">Notes for Seller (Optional)</label>
+                  <label className="block text-[11px] font-bold text-[#333333] mb-1">Notes for Seller (Optional)</label>
                   <input
                     type="text"
                     value={deliveryNotes}
                     onChange={(e) => setDeliveryNotes(e.target.value)}
                     placeholder="Preferred time or hostel block..."
-                    className="w-full p-2.5 bg-[#121212] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-white border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-xs text-[#111111] outline-none"
                   />
                 </div>
               </div>
 
-              {/* Payment Method & Gateway Notice */}
-              <div className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-4 space-y-3">
-                <h3 className="text-xs font-black uppercase text-[#BDBDBD] tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#FFFFFF]" />
+              {/* Payment Verification */}
+              <div className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-black uppercase text-[#0B6B3A] tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#0B6B3A]" />
                   <span>Payment Verification Method</span>
                 </h3>
 
@@ -364,12 +363,12 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                     onClick={() => setPaymentMethod('pay_on_inspection')}
                     className={`p-3 rounded-xl border text-left transition ${
                       paymentMethod === 'pay_on_inspection'
-                        ? 'bg-[#121212] border-[#FFFFFF] text-white'
-                        : 'bg-[#121212]/50 border-[#333333] text-[#BDBDBD]'
+                        ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
+                        : 'bg-white border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
                     <div className="text-xs font-black">Pay on Campus Inspection</div>
-                    <div className="text-[10px] text-[#BDBDBD] mt-0.5">
+                    <div className={`text-[10px] mt-0.5 ${paymentMethod === 'pay_on_inspection' ? 'text-[#F2B90D]' : 'text-[#555555]'}`}>
                       Inspect item in person at FUWUKARI before paying
                     </div>
                   </button>
@@ -379,40 +378,42 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                     onClick={() => setPaymentMethod('whatsapp_arrangement')}
                     className={`p-3 rounded-xl border text-left transition ${
                       paymentMethod === 'whatsapp_arrangement'
-                        ? 'bg-[#121212] border-[#FFFFFF] text-white'
-                        : 'bg-[#121212]/50 border-[#333333] text-[#BDBDBD]'
+                        ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
+                        : 'bg-white border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
                     <div className="text-xs font-black">WhatsApp Direct Confirmation</div>
-                    <div className="text-[10px] text-[#BDBDBD] mt-0.5">
+                    <div className={`text-[10px] mt-0.5 ${paymentMethod === 'whatsapp_arrangement' ? 'text-[#F2B90D]' : 'text-[#555555]'}`}>
                       Coordinate transfer &amp; meetup with seller
                     </div>
                   </button>
                 </div>
 
-                <div className="p-2.5 bg-[#121212] border border-[#333333] rounded-xl flex items-start gap-2 text-[11px] text-[#BDBDBD]">
-                  <Info className="w-4 h-4 text-[#FFFFFF] shrink-0 mt-0.5" />
+                <div className="p-2.5 bg-white border border-[#E5E7EB] rounded-xl flex items-start gap-2 text-[11px] text-[#555555]">
+                  <Info className="w-4 h-4 text-[#0B6B3A] shrink-0 mt-0.5" />
                   <span>
-                    Online card payment gateway (Paystack/Flutterwave) is not yet enabled. To protect students from scams, confirm your order here and pay only after physical inspection.
+                    To protect students from scams, confirm your order here and pay only after physical inspection.
                   </span>
                 </div>
               </div>
 
               {/* Price Breakdown */}
-              <div className="bg-[#1C1C1C] border border-[#333333] rounded-2xl p-4 space-y-2 text-xs">
-                <div className="flex justify-between text-[#BDBDBD]">
+              <div className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-4 space-y-2 text-xs">
+                <div className="flex justify-between text-[#555555]">
                   <span>Items Subtotal</span>
-                  <span className="font-bold text-white">{formatNaira(subtotal)}</span>
+                  <span className="font-bold text-[#111111]">{formatNaira(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-[#BDBDBD]">
+                <div className="flex justify-between text-[#555555]">
                   <span>Estimated Campus Delivery / Rider Fee</span>
-                  <span className="font-bold text-white">
+                  <span className="font-bold text-[#111111]">
                     {deliveryFee === 0 ? '₦0 (Campus Meetup)' : formatNaira(deliveryFee)}
                   </span>
                 </div>
-                <div className="border-t border-[#333333] pt-2 flex justify-between text-sm font-black text-white">
+                <div className="border-t border-[#E5E7EB] pt-2 flex justify-between text-sm font-black text-[#111111]">
                   <span>Final Total</span>
-                  <span className="text-[#FFFFFF]">{formatNaira(totalAmount)}</span>
+                  <span className="px-2.5 py-0.5 rounded bg-[#0B6B3A] text-[#F2B90D]">
+                    {formatNaira(totalAmount)}
+                  </span>
                 </div>
               </div>
 
@@ -420,14 +421,14 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 text-xs font-bold text-[#BDBDBD] hover:text-white rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-[#555555] hover:text-[#111111] rounded-xl"
                 >
                   Continue Shopping
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs sm:text-sm font-black rounded-xl disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs sm:text-sm font-black rounded-xl disabled:opacity-50 flex items-center gap-2"
                 >
                   {submitting ? (
                     <>
@@ -436,7 +437,7 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-4 h-4 text-[#0B6B3A]" />
                       <span>Confirm &amp; Save Order</span>
                     </>
                   )}

@@ -48,14 +48,12 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Form states
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [area, setArea] = useState(WUKARI_AREAS[0]);
   const [isAvailableNow, setIsAvailableNow] = useState(true);
 
-  // Photo Upload states with real progress, Cancel & Retry
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
@@ -82,7 +80,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
   };
 
   useEffect(() => {
-    document.title = 'Wukari Okada Rider Directory | FU MARKET';
+    document.title = 'Wukari Okada Rider Directory | WukariMart';
     loadRiders();
   }, [selectedArea]);
 
@@ -208,7 +206,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
       setRiders((prev) => [newRider.rider, ...prev]);
       setShowRegisterModal(false);
-      showToast(`Welcome ${fullName}! You are now listed in the FU MARKET Bike Directory.`);
+      showToast(`Welcome ${fullName}! You are now listed in the WukariMart Bike Directory.`);
 
       setFullName('');
       setPhoneNumber('');
@@ -226,7 +224,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const message = encodeURIComponent(
-      `Hello, I found your contact on FU MARKET and need an Okada ride around ${riderArea}. Are you available?`
+      `Hello, I found your contact on WukariMart and need an Okada ride around ${riderArea}. Are you available?`
     );
     return `https://wa.me/${cleaned}?text=${message}`;
   };
@@ -242,28 +240,28 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
   });
 
   return (
-    <div className="min-h-screen bg-[#000000] text-[#FFFFFF] flex flex-col font-sans pb-24 sm:pb-8">
+    <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col font-sans pb-24 sm:pb-8">
       {notification && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-[#1C1C1C] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border border-[#FFFFFF]">
-          <CheckCircle2 className="w-4 h-4 text-[#FFFFFF] shrink-0" />
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-[#0B6B3A] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border border-[#F2B90D]">
+          <CheckCircle2 className="w-4 h-4 text-[#F2B90D] shrink-0" />
           <span>{notification}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="bg-[#121212] border-b border-[#333333] sticky top-0 z-30">
+      <div className="bg-[#0B6B3A] border-b border-[#14532D] sticky top-0 z-30 text-white">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={onBackToMarketplace}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#BDBDBD] hover:text-white bg-[#1C1C1C] border border-[#333333] rounded-xl transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#14532D] hover:bg-[#F2B90D] hover:text-[#111111] border border-white/20 rounded-xl transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to FU MARKET</span>
+              <span className="hidden sm:inline">Back to WukariMart</span>
             </button>
             <div className="flex items-center gap-2">
               <span className="text-xl">🏍️</span>
-              <h1 className="text-sm sm:text-base font-black text-white tracking-tight">
+              <h1 className="text-sm sm:text-base font-black text-[#F2B90D] tracking-tight">
                 Wukari Okada Directory
               </h1>
             </div>
@@ -271,7 +269,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
           <button
             onClick={() => setShowRegisterModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs sm:text-sm rounded-xl transition active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs sm:text-sm rounded-xl transition active:scale-95 shadow-sm"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Register as Bike Man</span>
@@ -280,33 +278,33 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
       </div>
 
       {/* Hero Header */}
-      <div className="bg-[#121212] border-b border-[#333333] py-8 px-4">
+      <div className="bg-[#14532D] text-white border-b border-[#0B6B3A] py-8 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C1C1C] border border-[#333333] text-[#FFFFFF] text-xs font-black uppercase tracking-wider mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0B6B3A] border border-[#F2B90D]/50 text-[#F2B90D] text-xs font-black uppercase tracking-wider mb-3">
               <Radio className="w-3 h-3 animate-ping" />
               <span>Fast Okada in Wukari Town &amp; FUWUKARI</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-[#F2B90D]">
               Call Verified Bike Riders in Wukari
             </h2>
-            <p className="text-xs sm:text-sm text-[#BDBDBD] mt-2 leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/90 mt-2 leading-relaxed">
               Quick campus rides between FUWUKARI Main Gate, New Site, Behind LT, Wukari Market, and Hospital Road. Call riders directly with zero middleman fees.
             </p>
           </div>
 
-          <div className="bg-[#1C1C1C] border border-[#333333] p-4 rounded-2xl flex flex-col gap-2 shrink-0">
+          <div className="bg-[#0B6B3A] border border-white/20 p-4 rounded-2xl flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-2 text-xs font-bold text-white">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-[#F2B90D]" />
               <span>Direct Rider Contact • Verified Campus Zones</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#BDBDBD]">
-              <Clock className="w-4 h-4 text-[#FFFFFF]" />
+            <div className="flex items-center gap-2 text-xs text-white/90">
+              <Clock className="w-4 h-4 text-[#F2B90D]" />
               <span>{riders.length} Registered Okada Riders</span>
             </div>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="mt-1 w-full py-2 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs font-black rounded-xl transition"
+              className="mt-1 w-full py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
             >
               Are you a Bike Man? Join Now
             </button>
@@ -316,15 +314,15 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
-        <div className="bg-[#121212] rounded-2xl border border-[#333333] p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
           <div className="w-full md:max-w-md relative">
-            <Search className="w-4 h-4 text-[#BDBDBD] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#555555] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search rider by name, phone or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-xs sm:text-sm text-white placeholder-[#BDBDBD]/60 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs sm:text-sm text-[#111111] placeholder-[#6B7280] outline-none"
             />
           </div>
 
@@ -333,8 +331,8 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
               onClick={() => setSelectedArea('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition shrink-0 ${
                 selectedArea === 'all'
-                  ? 'bg-[#FFFFFF] text-black'
-                  : 'bg-[#1C1C1C] border border-[#333333] text-[#BDBDBD] hover:text-white'
+                  ? 'bg-[#0B6B3A] text-white'
+                  : 'bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] hover:border-[#0B6B3A]'
               }`}
             >
               All Wukari ({riders.length})
@@ -345,8 +343,8 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                 onClick={() => setSelectedArea(a)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition shrink-0 ${
                   selectedArea === a
-                    ? 'bg-[#FFFFFF] text-black'
-                    : 'bg-[#1C1C1C] border border-[#333333] text-[#BDBDBD] hover:text-white'
+                    ? 'bg-[#0B6B3A] text-white'
+                    : 'bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] hover:border-[#0B6B3A]'
                 }`}
               >
                 {a}
@@ -357,21 +355,21 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
         {loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-8 h-8 text-[#FFFFFF] animate-spin mx-auto mb-3" />
-            <p className="text-xs font-bold text-[#BDBDBD]">Loading Wukari Okada riders...</p>
+            <Loader2 className="w-8 h-8 text-[#0B6B3A] animate-spin mx-auto mb-3" />
+            <p className="text-xs font-bold text-[#555555]">Loading Wukari Okada riders...</p>
           </div>
         ) : filteredRiders.length === 0 ? (
-          <div className="bg-[#1C1C1C] rounded-3xl p-10 text-center border border-[#333333] max-w-lg mx-auto my-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#121212] border border-[#333333] text-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-lg mx-auto my-8 shadow-sm">
+            <div className="w-14 h-14 rounded-2xl bg-[#0B6B3A]/10 border border-[#0B6B3A]/20 text-2xl flex items-center justify-center mx-auto mb-4">
               🏍️
             </div>
-            <h3 className="text-base font-black text-white">No registered riders available yet.</h3>
-            <p className="text-xs text-[#BDBDBD] mt-2 mb-6 leading-relaxed">
+            <h3 className="text-base font-black text-[#111111]">No registered riders available yet.</h3>
+            <p className="text-xs text-[#555555] mt-2 mb-6 leading-relaxed">
               Okada riders operating around FUWUKARI and Wukari town can register with a real photograph so students can call directly.
             </p>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-6 py-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black text-xs sm:text-sm font-black rounded-xl"
+              className="px-6 py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs sm:text-sm font-black rounded-xl"
             >
               Register as Bike Man
             </button>
@@ -381,10 +379,10 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
             {filteredRiders.map((rider) => (
               <div
                 key={rider.id}
-                className="bg-[#1C1C1C] rounded-2xl overflow-hidden border border-[#333333] hover:border-[#FFFFFF]/70 transition flex flex-col justify-between"
+                className="bg-[#FFFFFF] rounded-2xl overflow-hidden border border-[#E5E7EB] hover:border-[#0B6B3A] transition flex flex-col justify-between shadow-xs hover:shadow-md"
               >
                 <div>
-                  <div className="relative aspect-[4/3] w-full bg-[#121212] overflow-hidden flex items-center justify-center border-b border-[#333333]">
+                  <div className="relative aspect-[4/3] w-full bg-[#F5F5F5] overflow-hidden flex items-center justify-center border-b border-[#E5E7EB]">
                     {rider.photoUrl ? (
                       <img
                         src={rider.photoUrl}
@@ -393,7 +391,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-[#BDBDBD] p-4 text-center">
+                      <div className="flex flex-col items-center justify-center text-[#555555] p-4 text-center">
                         <span className="text-4xl mb-1">🏍️</span>
                         <span className="text-[10px] font-bold">Wukari Okada Rider</span>
                       </div>
@@ -403,13 +401,13 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                       <span
                         className={`text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1.5 ${
                           rider.isAvailable
-                            ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-700'
-                            : 'bg-[#121212]/90 text-[#BDBDBD] border border-[#333333]'
+                            ? 'bg-[#0B6B3A] text-[#F2B90D]'
+                            : 'bg-[#111111]/85 text-white'
                         }`}
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            rider.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-[#BDBDBD]'
+                            rider.isAvailable ? 'bg-[#F2B90D] animate-pulse' : 'bg-white/60'
                           }`}
                         />
                         <span>{rider.isAvailable ? 'Available Now' : 'Offline'}</span>
@@ -418,30 +416,30 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                   </div>
 
                   <div className="p-4">
-                    <h3 className="font-black text-base text-white truncate">{rider.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-[#BDBDBD]">
-                      <MapPin className="w-3.5 h-3.5 text-[#FFFFFF] shrink-0" />
+                    <h3 className="font-black text-base text-[#111111] truncate">{rider.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-[#555555]">
+                      <MapPin className="w-3.5 h-3.5 text-[#0B6B3A] shrink-0" />
                       <span className="truncate">{rider.area}</span>
                     </div>
-                    <div className="mt-2 text-xs text-white font-mono">{rider.phoneNumber}</div>
+                    <div className="mt-2 text-xs text-[#111111] font-mono font-bold">{rider.phoneNumber}</div>
                   </div>
                 </div>
 
                 <div className="p-4 pt-0 grid grid-cols-2 gap-2">
                   <a
                     href={`tel:${rider.phoneNumber}`}
-                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#121212] hover:bg-[#333333] border border-[#333333] text-white rounded-xl text-xs font-black transition"
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] rounded-xl text-xs font-black transition"
                   >
-                    <Phone className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                    <Phone className="w-3.5 h-3.5" />
                     <span>CALL NOW</span>
                   </a>
                   <a
                     href={getCleanWaLink(rider.whatsappNumber || rider.phoneNumber, rider.area)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#25D366] hover:bg-[#20BD5A] text-black rounded-xl text-xs font-black transition"
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#0B6B3A] hover:bg-[#14532D] text-white rounded-xl text-xs font-black transition"
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
+                    <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" />
                     <span>WHATSAPP</span>
                   </a>
                 </div>
@@ -453,19 +451,19 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
       {/* Registration Modal */}
       {showRegisterModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="relative w-full max-w-lg bg-[#121212] border border-[#333333] rounded-3xl shadow-2xl overflow-hidden my-6">
-            <div className="bg-[#1C1C1C] border-b border-[#333333] px-6 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="relative w-full max-w-lg bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-6 text-[#111111]">
+            <div className="bg-[#0B6B3A] text-white border-b border-[#14532D] px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🏍️</span>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white">Register as Bike Man</h3>
-                  <p className="text-[11px] text-[#BDBDBD]">FU MARKET Okada Directory</p>
+                  <h3 className="text-base sm:text-lg font-black text-[#F2B90D]">Register as Bike Man</h3>
+                  <p className="text-[11px] text-white/85">WukariMart Okada Directory</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowRegisterModal(false)}
-                className="w-8 h-8 rounded-full bg-[#121212] border border-[#333333] text-white flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-[#14532D] text-white hover:bg-[#F2B90D] hover:text-[#111111] flex items-center justify-center transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -473,27 +471,27 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
             <form onSubmit={handleRegisterSubmit} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
               {formError && (
-                <div className="p-3 bg-red-950/60 border border-red-700 text-red-200 text-xs rounded-xl flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-start gap-2 font-semibold">
+                  <AlertCircle className="w-4 h-4 text-[#111111] shrink-0 mt-0.5" />
                   <span>{formError}</span>
                 </div>
               )}
 
               {/* Photo Upload with Immediate Thumbnail, Cancel & Retry */}
               <div>
-                <label className="block text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1.5">
-                  Rider Photograph <span className="font-normal">(JPG, JPEG, PNG, WebP)</span>
+                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-1.5">
+                  Rider Photograph <span className="font-normal text-[#555555]">(JPG, JPEG, PNG, WebP)</span>
                 </label>
 
-                <div className="p-3 bg-[#1C1C1C] border border-[#333333] rounded-2xl flex items-center gap-4">
+                <div className="p-3 bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-4">
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-24 h-24 rounded-xl border-2 border-dashed border-[#FFFFFF]/60 hover:border-[#FFFFFF] bg-[#121212] flex flex-col items-center justify-center cursor-pointer overflow-hidden shrink-0"
+                    className="w-24 h-24 rounded-xl border-2 border-dashed border-[#0B6B3A]/50 hover:border-[#0B6B3A] bg-[#FFFFFF] flex flex-col items-center justify-center cursor-pointer overflow-hidden shrink-0"
                   >
                     {photoPreview ? (
                       <img src={photoPreview} alt="Rider Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-center p-2 text-[#FFFFFF]">
+                      <div className="flex flex-col items-center justify-center text-center p-2 text-[#0B6B3A]">
                         <Upload className="w-5 h-5 mb-1" />
                         <span className="text-[10px] font-bold">Select Photo</span>
                       </div>
@@ -502,27 +500,27 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
                   <div className="flex-1 min-w-0 space-y-1.5 text-xs">
                     {!photoFile && (
-                      <p className="text-[#BDBDBD]">
+                      <p className="text-[#555555]">
                         Select a clear photo of yourself with your motorcycle for student recognition.
                       </p>
                     )}
 
                     {uploadStatus === 'uploading' && (
                       <div className="space-y-1.5">
-                        <div className="flex justify-between text-[11px] font-bold text-white">
+                        <div className="flex justify-between text-[11px] font-bold text-[#111111]">
                           <span>Uploading to Storage...</span>
                           <span>{uploadProgress}%</span>
                         </div>
-                        <div className="w-full bg-[#333333] h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-[#E5E7EB] h-2 rounded-full overflow-hidden">
                           <div
-                            className="bg-[#FFFFFF] h-full transition-all"
+                            className="bg-[#0B6B3A] h-full transition-all"
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
                         <button
                           type="button"
                           onClick={handleCancelPhotoUpload}
-                          className="text-[11px] font-bold text-red-400 hover:text-red-300"
+                          className="text-[11px] font-bold text-[#111111] underline"
                         >
                           Cancel Upload
                         </button>
@@ -531,24 +529,24 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
                     {uploadStatus === 'success' && (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-emerald-400 font-bold">
+                        <div className="flex items-center gap-1 text-[#0B6B3A] font-black">
                           <CheckCircle2 className="w-4 h-4" />
                           <span>Photo ready (100%)</span>
                         </div>
                         {uploadWarning && (
-                          <p className="text-[10px] text-white/90 leading-tight">{uploadWarning}</p>
+                          <p className="text-[10px] text-[#555555] leading-tight">{uploadWarning}</p>
                         )}
                       </div>
                     )}
 
                     {uploadStatus === 'error' && (
                       <div className="space-y-1.5">
-                        <p className="text-[11px] text-red-300">{uploadError}</p>
+                        <p className="text-[11px] font-semibold text-[#111111]">{uploadError}</p>
                         {photoFile && (
                           <button
                             type="button"
                             onClick={() => runRiderPhotoUpload(photoFile)}
-                            className="px-2.5 py-1 bg-[#FFFFFF] text-black rounded-lg text-[11px] font-black inline-flex items-center gap-1"
+                            className="px-2.5 py-1 bg-[#F2B90D] text-[#111111] rounded-lg text-[11px] font-black inline-flex items-center gap-1"
                           >
                             <RefreshCw className="w-3 h-3" />
                             <span>Retry Upload</span>
@@ -561,7 +559,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                       <button
                         type="button"
                         onClick={handleRemovePhoto}
-                        className="text-[11px] text-[#BDBDBD] hover:text-red-400 inline-flex items-center gap-1"
+                        className="text-[11px] text-[#555555] hover:text-[#111111] inline-flex items-center gap-1 font-semibold"
                       >
                         <Trash2 className="w-3 h-3" />
                         <span>Remove Photo</span>
@@ -580,8 +578,8 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1">
-                  Full Name <span className="text-[#FFFFFF]">*</span>
+                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-1">
+                  Full Name *
                 </label>
                 <input
                   type="text"
@@ -589,14 +587,14 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                   placeholder="e.g., Usman Danladi"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-white outline-none"
+                  className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-[#111111] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1">
-                    Phone Number (Calls) <span className="text-[#FFFFFF]">*</span>
+                  <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-1">
+                    Phone Number (Calls) *
                   </label>
                   <input
                     type="tel"
@@ -604,12 +602,12 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                     placeholder="e.g., 080..."
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full p-3 text-xs sm:text-sm bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-white outline-none"
+                    className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-[#111111] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-1">
                     WhatsApp Number
                   </label>
                   <input
@@ -617,19 +615,19 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                     placeholder="Same as phone if blank"
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
-                    className="w-full p-3 text-xs sm:text-sm bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-white outline-none"
+                    className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-[#111111] outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#BDBDBD] uppercase tracking-wider mb-1">
-                  Area you cover in Wukari <span className="text-[#FFFFFF]">*</span>
+                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-1">
+                  Area you cover in Wukari *
                 </label>
                 <select
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm bg-[#1C1C1C] border border-[#333333] focus:border-[#FFFFFF] rounded-xl text-white outline-none"
+                  className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-[#111111] outline-none"
                 >
                   {WUKARI_AREAS.map((a) => (
                     <option key={a} value={a}>
@@ -639,31 +637,31 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-[#1C1C1C] rounded-xl border border-[#333333]">
+              <div className="flex items-center gap-2 p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E7EB]">
                 <input
                   type="checkbox"
                   id="availToggle"
                   checked={isAvailableNow}
                   onChange={(e) => setIsAvailableNow(e.target.checked)}
-                  className="w-4 h-4 accent-[#FFFFFF]"
+                  className="w-4 h-4 accent-[#0B6B3A]"
                 />
-                <label htmlFor="availToggle" className="text-xs font-bold text-white cursor-pointer">
+                <label htmlFor="availToggle" className="text-xs font-bold text-[#111111] cursor-pointer">
                   I am available for passenger rides right now
                 </label>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#333333]">
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#E5E7EB]">
                 <button
                   type="button"
                   onClick={() => setShowRegisterModal(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-[#BDBDBD] hover:text-white rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-[#555555] hover:text-[#111111] rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || uploadStatus === 'uploading'}
-                  className="px-6 py-2.5 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs sm:text-sm rounded-xl disabled:opacity-50"
+                  className="px-6 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-black text-xs sm:text-sm rounded-xl disabled:opacity-50"
                 >
                   {submitting ? 'Registering...' : 'Join as Bike Man'}
                 </button>

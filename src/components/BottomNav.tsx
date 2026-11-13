@@ -61,7 +61,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#121212]/95 backdrop-blur-md border-t border-[#333333] shadow-2xl px-1 py-1.5 flex items-center justify-around sm:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0B6B3A] border-t-2 border-[#F2B90D] shadow-2xl px-1 py-1.5 flex items-center justify-around sm:hidden">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentView === item.id;
@@ -72,13 +72,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             type="button"
             onClick={() => onNavigate(item.id)}
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
-              isActive ? 'text-[#FFFFFF] font-black' : 'text-[#BDBDBD] hover:text-white font-semibold'
+              isActive ? 'text-[#F2B90D] font-black bg-[#14532D]' : 'text-white/85 hover:text-white font-semibold'
             }`}
           >
             <div className="relative">
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
               {item.badge && (
-                <span className="absolute -top-1.5 -right-2 bg-[#FFFFFF] text-black text-[9px] font-black px-1 rounded-full">
+                <span className="absolute -top-1.5 -right-2 bg-[#F2B90D] text-[#111111] text-[9px] font-black px-1 rounded-full">
                   {item.badge}
                 </span>
               )}

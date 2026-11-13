@@ -161,9 +161,20 @@ router.get('/', (req: Request, res: Response) => {
       );
     }
 
-    // Category filter
+    // Category filter (maps legacy categoryIds cleanly to the 6 WukariMart categories)
     if (category && typeof category === 'string' && category !== 'all') {
-      list = list.filter(p => p.categoryId.toLowerCase() === category.toLowerCase());
+      const targetCat = category.toLowerCase();
+      const mapServerCategory = (rawId: string): string => {
+        const v = String(rawId || '').toLowerCase().trim();
+        if (['hostel-items', 'textbooks-past-questions', 'food', 'electronics', 'fashion', 'gas-cooking'].includes(v)) return v;
+        if (v.includes('gas') || v.includes('kitchen') || v.includes('cook')) return 'gas-cooking';
+        if (v.includes('book') || v.includes('textbook') || v.includes('education')) return 'textbooks-past-questions';
+        if (v.includes('food') || v.includes('grocer')) return 'food';
+        if (v.includes('phone') || v.includes('computer') || v.includes('electronic')) return 'electronics';
+        if (v.includes('fashion') || v.includes('shoe') || v.includes('bag') || v.includes('beauty')) return 'fashion';
+        return 'hostel-items';
+      };
+      list = list.filter(p => mapServerCategory(p.categoryId) === targetCat || p.categoryId.toLowerCase() === targetCat);
     }
 
     // Condition filter
@@ -310,7 +321,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 
   const appOrigin = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const productLink = `${appOrigin}/#product-${product.id}`;
-  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on FU MARKET. Is it still available? Listing link: ${productLink}`;
+  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on WukariMart. Is it still available? Listing link: ${productLink}`;
 
   const link = formatWhatsAppLink(product.whatsappNumber, prefilledMessage);
 
@@ -518,7 +529,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       description: String(description).trim(),
       price: parsedPrice,
       ...(calculatedOriginalPrice !== undefined ? { originalPrice: calculatedOriginalPrice } : {}),
-      categoryId: String(categoryId || 'phones-tablets').trim(),
+      categoryId: String(categoryId || 'hostel-items').trim(),
       condition: condition === 'used' ? 'used' : 'new',
       images: finalImages,
       imageUrl: finalImages[0] || '',
@@ -543,7 +554,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
         userId: user.id,
         shopName: `${user.name}'s Enterprise`,
         shopSlug: user.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `store-${Date.now()}`,
-        description: `Student storefront on FU MARKET. Based in ${city}, ${state}.`,
+        description: `Student storefront on WukariMart. Based in ${city}, ${state}.`,
         whatsappNumber: sellerPhone,
         state: String(state).trim(),
         city: String(city).trim(),

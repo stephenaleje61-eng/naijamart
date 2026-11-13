@@ -3,20 +3,13 @@ import {
   Smartphone,
   Laptop,
   Shirt,
-  Briefcase,
-  Sparkles,
   Utensils,
-  Tv,
-  Apple,
-  Car,
-  HardHat,
-  Wheat,
-  Baby,
-  Dumbbell,
   BookOpen,
   Package,
   Grid,
-  Bike
+  Bike,
+  BedDouble,
+  Flame
 } from 'lucide-react';
 import { Category } from '../types.js';
 
@@ -29,21 +22,22 @@ interface CategoryBarProps {
 
 export const getCategoryIcon = (iconName: string) => {
   switch (iconName) {
-    case 'Smartphone': return <Smartphone className="w-4 h-4" />;
-    case 'Laptop': return <Laptop className="w-4 h-4" />;
-    case 'Shirt': return <Shirt className="w-4 h-4" />;
-    case 'Briefcase': return <Briefcase className="w-4 h-4" />;
-    case 'Sparkles': return <Sparkles className="w-4 h-4" />;
-    case 'Utensils': return <Utensils className="w-4 h-4" />;
-    case 'Tv': return <Tv className="w-4 h-4" />;
-    case 'Apple': return <Apple className="w-4 h-4" />;
-    case 'Car': return <Car className="w-4 h-4" />;
-    case 'HardHat': return <HardHat className="w-4 h-4" />;
-    case 'Wheat': return <Wheat className="w-4 h-4" />;
-    case 'Baby': return <Baby className="w-4 h-4" />;
-    case 'Dumbbell': return <Dumbbell className="w-4 h-4" />;
-    case 'BookOpen': return <BookOpen className="w-4 h-4" />;
-    default: return <Package className="w-4 h-4" />;
+    case 'BedDouble':
+      return <BedDouble className="w-4 h-4" />;
+    case 'BookOpen':
+      return <BookOpen className="w-4 h-4" />;
+    case 'Utensils':
+      return <Utensils className="w-4 h-4" />;
+    case 'Smartphone':
+      return <Smartphone className="w-4 h-4" />;
+    case 'Laptop':
+      return <Laptop className="w-4 h-4" />;
+    case 'Shirt':
+      return <Shirt className="w-4 h-4" />;
+    case 'Flame':
+      return <Flame className="w-4 h-4" />;
+    default:
+      return <Package className="w-4 h-4" />;
   }
 };
 
@@ -54,33 +48,21 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onOpenBikeRiders
 }) => {
   return (
-    <div className="bg-[#121212] border-b border-[#333333]">
+    <div className="bg-white border-b border-[#E5E7EB]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none scroll-smooth">
           <button
             type="button"
             onClick={() => onSelectCategory('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition shrink-0 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
               selectedCategory === 'all'
-                ? 'bg-[#FFFFFF] text-black font-black'
-                : 'bg-[#1C1C1C] text-[#BDBDBD] border border-[#333333] hover:text-white'
+                ? 'bg-[#0B6B3A] text-white font-black shadow-sm'
+                : 'bg-[#F5F5F5] text-[#111111] border border-[#E5E7EB] hover:border-[#0B6B3A]'
             }`}
           >
-            <Grid className="w-3.5 h-3.5" />
-            <span>All Categories</span>
+            <Grid className={`w-3.5 h-3.5 ${selectedCategory === 'all' ? 'text-[#F2B90D]' : 'text-[#0B6B3A]'}`} />
+            <span>All Items</span>
           </button>
-
-          {onOpenBikeRiders && (
-            <button
-              type="button"
-              onClick={onOpenBikeRiders}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition shrink-0 bg-[#1C1C1C] hover:border-[#FFFFFF] text-[#FFFFFF] border border-[#FFFFFF]/40"
-              title="Wukari Okada Directory"
-            >
-              <Bike className="w-3.5 h-3.5" />
-              <span>Wukari Bike Riders</span>
-            </button>
-          )}
 
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
@@ -89,20 +71,20 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => onSelectCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
                   isSelected
-                    ? 'bg-[#FFFFFF] text-black font-black'
-                    : 'bg-[#1C1C1C] text-[#BDBDBD] hover:text-white hover:border-[#FFFFFF]/60 border border-[#333333]'
+                    ? 'bg-[#0B6B3A] text-white font-black shadow-sm'
+                    : 'bg-[#F5F5F5] text-[#111111] hover:border-[#0B6B3A] border border-[#E5E7EB]'
                 }`}
               >
-                <span className={isSelected ? 'text-black' : 'text-[#FFFFFF]'}>
+                <span className={isSelected ? 'text-[#F2B90D]' : 'text-[#0B6B3A]'}>
                   {getCategoryIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {cat.productCount !== undefined && cat.productCount > 0 && (
                   <span
-                    className={`text-[10px] px-1.5 rounded-full font-mono ${
-                      isSelected ? 'bg-black/20 text-black' : 'bg-[#121212] text-[#BDBDBD]'
+                    className={`text-[10px] px-1.5 rounded-full font-mono font-black ${
+                      isSelected ? 'bg-[#F2B90D] text-[#111111]' : 'bg-white text-[#0B6B3A] border border-[#E5E7EB]'
                     }`}
                   >
                     {cat.productCount}
@@ -111,6 +93,18 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
               </button>
             );
           })}
+
+          {onOpenBikeRiders && (
+            <button
+              type="button"
+              onClick={onOpenBikeRiders}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111]"
+              title="Wukari Okada Directory"
+            >
+              <Bike className="w-3.5 h-3.5" />
+              <span>Okada Riders</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

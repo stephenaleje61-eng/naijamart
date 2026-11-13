@@ -3,7 +3,9 @@ import {
   Heart,
   MapPin,
   MessageCircle,
-  ShoppingCart
+  ShoppingCart,
+  Star,
+  User as UserIcon
 } from 'lucide-react';
 import { Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -34,7 +36,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const { isFavourite, toggleFavourite } = useAuth();
   const favourited = isFavourite(product.id);
 
-  // Genuine discount percentage only when seller specified a higher originalPrice
   const discountPercent =
     product.originalPrice && product.originalPrice > product.price
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -48,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello, I saw your product "${product.title}" (${formatNaira(product.price)}) on FU MARKET. Is it available?`
+      `Hello ${product.sellerName || product.shopName || ''}, I saw your "${product.title}" (${formatNaira(product.price)}) on WukariMart. Is it still available?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -66,27 +67,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const primaryImage = getProductDisplayImage(product.images, product.imageUrl);
   const allValidImages = getValidProductImages(product.images, product.imageUrl);
   const whatsappHref = buildWhatsAppHref();
+  const locationDisplay = product.city
+    ? product.city
+    : product.state || 'FUWUKARI Campus';
+  const sellerDisplay = product.sellerName || product.shopName || 'FUWUKARI Student';
 
   return (
     <div
       onClick={() => onOpenDetail(product)}
-      className="group bg-[#1C1C1C] rounded-2xl overflow-hidden border border-[#333333] hover:border-[#FFFFFF] shadow-lg transition-all duration-300 flex flex-col cursor-pointer"
+      className="group bg-white rounded-2xl overflow-hidden border border-[#E5E7EB] hover:border-[#0B6B3A] shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer"
     >
       {/* Product Image Container */}
-      <div className="relative aspect-square w-full bg-[#121212] overflow-hidden">
+      <div className="relative aspect-square w-full bg-[#F5F5F5] overflow-hidden">
         <ProductImage
           src={primaryImage}
           fallbackSrcs={allValidImages}
           alt={product.title}
           category={product.categoryId}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
 
-        {/* Top Left Badges */}
+        {/* Top Left Badges: Gold Discount + Condition */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
           {discountPercent && (
-            <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-md">
+            <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm flex items-center gap-0.5">
+              <Star className="w-2.5 h-2.5 fill-[#111111]" />
               -{discountPercent}%
             </span>
           )}
@@ -94,119 +100,134 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm ${
               product.condition === 'new'
-                ? 'bg-[#FFFFFF] text-black'
-                : 'bg-[#121212]/90 border border-[#333333] text-white'
+                ? 'bg-[#0B6B3A] text-[#F2B90D]'
+                : 'bg-white text-[#111111] border border-[#E5E7EB]'
             }`}
           >
             {product.condition === 'new' ? 'New' : 'Used'}
           </span>
         </div>
 
-        {/* Favourite Button */}
+        {/* Save / Favourite Button (Gold accent, zero red) */}
         <button
+          type="button"
           onClick={handleFavouriteClick}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 border border-[#333333] hover:border-[#FFFFFF] active:scale-95 flex items-center justify-center transition z-10"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/95 border border-[#E5E7EB] hover:border-[#0B6B3A] active:scale-95 flex items-center justify-center shadow-sm transition z-10"
           title={favourited ? 'Remove from Saved' : 'Save Item'}
         >
           <Heart
             className={`w-4 h-4 transition ${
-              favourited ? 'fill-red-500 text-red-500' : 'text-[#BDBDBD] hover:text-red-400'
+              favourited ? 'fill-[#F2B90D] text-[#F2B90D]' : 'text-[#555555] hover:text-[#0B6B3A]'
             }`}
           />
         </button>
       </div>
 
-      {/* Product Content Details */}
-      <div className="p-3.5 flex-1 flex flex-col justify-between gap-2.5">
+      {/* Product Details */}
+      <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between gap-2.5">
         <div>
-          <h3 className="text-xs sm:text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-[#FFFFFF] transition mb-1.5">
+          {/* Product Name in Black */}
+          <h3 className="text-xs sm:text-sm font-bold text-[#111111] line-clamp-2 leading-snug mb-2">
             {product.title}
           </h3>
 
-          {/* Price Row */}
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-base sm:text-lg font-black text-[#FFFFFF]">
+          {/* Price in Gold on Green Badge */}
+          <div className="flex flex-wrap items-center gap-2 mb-2.5">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#0B6B3A] text-[#F2B90D] text-sm sm:text-base font-black tracking-tight shadow-xs">
               {formatNaira(product.price)}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-xs text-[#BDBDBD] line-through">
+              <span className="text-xs text-[#666666] line-through font-medium">
                 {formatNaira(product.originalPrice)}
               </span>
             )}
           </div>
 
-          {/* Location & Seller Shop Name */}
-          <div className="flex items-center justify-between text-[11px] text-[#BDBDBD] pt-1.5 border-t border-[#333333]">
-            <div
-              className="flex items-center gap-1 truncate max-w-[130px]"
-              title={`${product.city}, ${product.state}`}
-            >
-              <MapPin className="w-3 h-3 text-[#FFFFFF] shrink-0" />
-              <span className="truncate">
-                {product.city}, {product.state}
-              </span>
+          {/* Location (e.g. Hostel A, 100L) & Seller Name */}
+          <div className="space-y-1 pt-2 border-t border-[#F5F5F5] text-[11px] text-[#444444]">
+            <div className="flex items-center gap-1 truncate" title={locationDisplay}>
+              <MapPin className="w-3 h-3 text-[#0B6B3A] shrink-0" />
+              <span className="truncate font-semibold text-[#111111]">{locationDisplay}</span>
             </div>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onOpenStorefront) onOpenStorefront(product.sellerId);
-              }}
-              className="text-[11px] font-medium text-[#BDBDBD] hover:text-[#FFFFFF] truncate max-w-[100px] text-right"
-              title={product.shopName}
-            >
-              {product.shopName}
-            </button>
-          </div>
-        </div>
-
-        {/* Actions: Add to Cart + Direct Chat / WhatsApp */}
-        <div className="space-y-1.5">
-          {onAddToCart && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(product);
-              }}
-              className="w-full py-2 px-3 bg-[#FFFFFF] hover:bg-[#E5E5E5] text-black font-black text-xs rounded-xl active:scale-95 transition flex items-center justify-center gap-1.5"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Add to Cart</span>
-            </button>
-          )}
-
-          <div className="flex items-center gap-1.5">
-            {onStartDirectChat && (
+            <div className="flex items-center justify-between gap-1">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onStartDirectChat({
-                    id: product.sellerId,
-                    name: product.shopName || product.sellerName
-                  });
+                  if (onOpenStorefront) onOpenStorefront(product.sellerId);
                 }}
-                className="flex-1 py-2 px-2.5 bg-[#121212] hover:bg-black border border-[#333333] hover:border-[#FFFFFF] text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1"
+                className="flex items-center gap-1 text-[11px] font-medium text-[#555555] hover:text-[#0B6B3A] truncate"
+                title={sellerDisplay}
               >
-                <MessageCircle className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                <span>In-App Chat</span>
+                <UserIcon className="w-3 h-3 text-[#0B6B3A] shrink-0" />
+                <span className="truncate">{sellerDisplay}</span>
               </button>
-            )}
-
-            {whatsappHref && (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={handleWhatsAppClick}
-                className="flex-1 py-2 px-2.5 bg-[#25D366] hover:bg-[#20BA5C] text-black font-black text-[11px] rounded-xl active:scale-95 transition flex items-center justify-center gap-1"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>WhatsApp</span>
-              </a>
-            )}
+            </div>
           </div>
+        </div>
+
+        {/* Actions: Chat on WhatsApp in Green + Buy / Cart in Gold */}
+        <div className="space-y-1.5 pt-1">
+          {whatsappHref ? (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleWhatsAppClick}
+              className="w-full py-2 px-3 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl active:scale-95 transition flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" />
+              <span>Chat on WhatsApp</span>
+            </a>
+          ) : onStartDirectChat ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartDirectChat({
+                  id: product.sellerId,
+                  name: sellerDisplay
+                });
+              }}
+              className="w-full py-2 px-3 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" />
+              <span>Message Seller</span>
+            </button>
+          ) : null}
+
+          {onAddToCart && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(product);
+                }}
+                className="flex-1 py-1.5 px-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-[11px] rounded-xl active:scale-95 transition flex items-center justify-center gap-1"
+              >
+                <ShoppingCart className="w-3 h-3" />
+                <span>Add to Cart</span>
+              </button>
+              {whatsappHref && onStartDirectChat && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartDirectChat({
+                      id: product.sellerId,
+                      name: sellerDisplay
+                    });
+                  }}
+                  className="py-1.5 px-2.5 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] border border-[#E5E7EB] font-bold text-[11px] rounded-xl transition"
+                  title="In-App Chat"
+                >
+                  Chat
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
