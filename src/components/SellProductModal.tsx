@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -25,10 +25,15 @@ import {
   getApiBaseUrl,
   setApiBaseUrl
 } from '../services/api.js';
+import { auth } from '../services/firebase.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { DEFAULT_CATEGORIES } from '../constants/categories.js';
 import { formatNaira } from './ProductCard.js';
-import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
+import {
+  uploadImageToFirebaseStorage,
+  isValidFirebaseDownloadUrl,
+  UploadStage
+} from '../services/imageStorage.js';
 import { isValidImageFormat } from '../utils/imagePersistence.js';
 import { ProductImage } from './ProductImage.js';
 
@@ -42,14 +47,28 @@ interface SellProductModalProps {
 
 export interface PhotoSlot {
   id: string;
+  fingerprint: string;
   file: File;
   previewUrl: string;
   progress: number;
-  status: 'compressing' | 'uploading' | 'success' | 'error';
+  status: 'compressing' | 'uploading' | 'retrying' | 'finalizing' | 'success' | 'error';
+  retryAttempt?: number;
+  maxRetries?: number;
   errorMessage?: string;
-  warningMessage?: string;
   downloadUrl?: string;
-  task?: any;
+}
+
+function getFileFingerprint(file: File): string {
+  return `${file.name.toLowerCase()}::${file.size}::${file.lastModified}`;
+}
+
+function isSlotActive(status: PhotoSlot['status']): boolean {
+  return (
+    status === 'compressing' ||
+    status === 'uploading' ||
+    status === 'retrying' ||
+    status === 'finalizing'
+  );
 }
 
 const CAMPUS_LOCATION_CHIPS = [
@@ -91,12 +110,76 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   const [quantity, setQuantity] = useState('1');
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([]);
-  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [createdProduct, setCreatedProduct] = useState<Product | null>(null);
 
+  // Per-slot isolated concurrency, cancellation, and cleanup tracking
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const uploadTasksRef = useRef<Map<string, any>>(new Map());
+  const inFlightSlotsRef = useRef<Set<string>>(new Set());
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
+  const submittingRef = useRef(false);
+
+  const hasActiveUploads = photoSlots.some((s) => isSlotActive(s.status));
+
+  const cleanupSlotHandles = (slotId: string) => {
+    const controller = abortControllersRef.current.get(slotId);
+    if (controller) {
+      try {
+        controller.abort();
+      } catch {
+        // ignore
+      }
+      abortControllersRef.current.delete(slotId);
+    }
+    const task = uploadTasksRef.current.get(slotId);
+    if (task && typeof task.cancel === 'function') {
+      try {
+        task.cancel();
+      } catch {
+        // ignore
+      }
+    }
+    uploadTasksRef.current.delete(slotId);
+    inFlightSlotsRef.current.delete(slotId);
+  };
+
+  const revokePreviewUrl = (url?: string) => {
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+      previewUrlsRef.current.delete(url);
+    }
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      for (const slotId of Array.from(abortControllersRef.current.keys())) {
+        cleanupSlotHandles(slotId);
+      }
+      for (const url of Array.from(previewUrlsRef.current)) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      previewUrlsRef.current.clear();
+    };
+  }, []);
+
   const handleResetForm = () => {
+    for (const slotId of Array.from(abortControllersRef.current.keys())) {
+      cleanupSlotHandles(slotId);
+    }
+    photoSlots.forEach((s) => revokePreviewUrl(s.previewUrl));
     setTitle('');
     setDescription('');
     setPrice('');
@@ -110,31 +193,87 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   };
 
   const uploadSingleSlot = async (slotId: string, file: File) => {
-    setPhotoSlots((prev) =>
-      prev.map((s) =>
-        s.id === slotId
-          ? { ...s, status: 'compressing', progress: 10, errorMessage: undefined, warningMessage: undefined }
-          : s
-      )
-    );
+    // Prevent duplicate concurrent uploads on the same slot
+    if (inFlightSlotsRef.current.has(slotId)) {
+      return;
+    }
+
+    inFlightSlotsRef.current.add(slotId);
+    const controller = new AbortController();
+    abortControllersRef.current.set(slotId, controller);
+
+    if (mountedRef.current) {
+      setPhotoSlots((prev) =>
+        prev.map((s) =>
+          s.id === slotId
+            ? {
+                ...s,
+                status: 'compressing',
+                progress: 0,
+                retryAttempt: undefined,
+                maxRetries: undefined,
+                errorMessage: undefined,
+                downloadUrl: undefined
+              }
+            : s
+        )
+      );
+    }
 
     try {
       const result = await uploadImageToFirebaseStorage(file, {
         folder: 'products',
-        ownerId: user?.id || 'seller',
-        timeoutMs: 30000,
-        onProgress: (pct) => {
+        ownerId: auth.currentUser?.uid || user?.id || 'seller',
+        timeoutMs: 25000,
+        maxRetries: 2,
+        signal: controller.signal,
+        allowPersistentFallback: false,
+        onStageChange: (stage: UploadStage, attempt?: number, maxRetries?: number) => {
+          if (!mountedRef.current || controller.signal.aborted) return;
           setPhotoSlots((prev) =>
-            prev.map((s) => (s.id === slotId ? { ...s, progress: pct, status: 'uploading' } : s))
+            prev.map((s) =>
+              s.id === slotId
+                ? {
+                    ...s,
+                    status: stage,
+                    retryAttempt: stage === 'retrying' ? attempt : undefined,
+                    maxRetries: stage === 'retrying' ? maxRetries : undefined
+                  }
+                : s
+            )
+          );
+        },
+        onProgress: (pct) => {
+          if (!mountedRef.current || controller.signal.aborted) return;
+          setPhotoSlots((prev) =>
+            prev.map((s) =>
+              s.id === slotId
+                ? {
+                    ...s,
+                    progress: Math.max(0, Math.min(100, pct))
+                  }
+                : s
+            )
           );
         },
         onTaskCreated: (task) => {
-          setPhotoSlots((prev) =>
-            prev.map((s) => (s.id === slotId ? { ...s, task } : s))
-          );
-        },
-        allowPersistentFallback: true
+          if (controller.signal.aborted) {
+            try {
+              task.cancel();
+            } catch {
+              // ignore
+            }
+            return;
+          }
+          uploadTasksRef.current.set(slotId, task);
+        }
       });
+
+      if (!result.isFirebaseStorage || !isValidFirebaseDownloadUrl(result.downloadUrl)) {
+        throw new Error('Firebase Storage did not return a confirmed download URL.');
+      }
+
+      if (!mountedRef.current || controller.signal.aborted) return;
 
       setPhotoSlots((prev) =>
         prev.map((s) =>
@@ -144,96 +283,157 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 status: 'success',
                 progress: 100,
                 downloadUrl: result.downloadUrl,
-                previewUrl: result.previewUrl || s.previewUrl,
-                warningMessage: result.warning,
-                task: undefined
+                retryAttempt: undefined,
+                maxRetries: undefined,
+                errorMessage: undefined
               }
             : s
         )
       );
     } catch (err: any) {
+      if (!mountedRef.current) return;
+      const errMsg =
+        controller.signal.aborted || String(err?.message || '').toLowerCase().includes('cancelled')
+          ? 'Upload cancelled.'
+          : err?.message || 'Upload failed. Please check your internet and click Retry.';
+
       setPhotoSlots((prev) =>
         prev.map((s) =>
           s.id === slotId
             ? {
                 ...s,
                 status: 'error',
-                errorMessage: err.message || 'Upload failed. Please check internet or enable Storage.',
-                task: undefined
+                progress: 0,
+                downloadUrl: undefined,
+                retryAttempt: undefined,
+                maxRetries: undefined,
+                errorMessage: errMsg
               }
             : s
         )
       );
+    } finally {
+      abortControllersRef.current.delete(slotId);
+      uploadTasksRef.current.delete(slotId);
+      inFlightSlotsRef.current.delete(slotId);
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setErrorMessage('');
     const incoming = Array.from(files);
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
-    if (photoSlots.length + incoming.length > 6) {
-      setErrorMessage(`You can upload a maximum of 6 photographs. You currently have ${photoSlots.length}.`);
+    const remainingCapacity = 6 - photoSlots.length;
+    if (remainingCapacity <= 0) {
+      setErrorMessage('Maximum of 6 photographs reached. Remove a photo to add another.');
       return;
     }
 
+    const existingFingerprints = new Set(
+      photoSlots.filter((s) => s.status !== 'error').map((s) => s.fingerprint)
+    );
+    const batchFingerprints = new Set<string>();
+    const acceptedFiles: { file: File; fingerprint: string }[] = [];
+    let skippedDuplicates = 0;
+    let invalidFormatCount = 0;
+
     for (const file of incoming) {
       if (!isValidImageFormat(file)) {
-        setErrorMessage('Only JPG, JPEG, PNG, and WebP images are allowed.');
-        return;
+        invalidFormatCount++;
+        continue;
       }
+      const fp = getFileFingerprint(file);
+      if (existingFingerprints.has(fp) || batchFingerprints.has(fp)) {
+        skippedDuplicates++;
+        continue;
+      }
+      batchFingerprints.add(fp);
+      acceptedFiles.push({ file, fingerprint: fp });
     }
 
-    const newSlots: PhotoSlot[] = incoming.map((file) => ({
-      id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      file,
-      previewUrl: URL.createObjectURL(file),
-      progress: 0,
-      status: 'compressing'
-    }));
+    if (invalidFormatCount > 0 && acceptedFiles.length === 0) {
+      setErrorMessage('Only JPG, JPEG, PNG, and WebP images are allowed.');
+      return;
+    }
+
+    if (acceptedFiles.length > remainingCapacity) {
+      setErrorMessage(
+        `You can upload a maximum of 6 photographs. You can add ${remainingCapacity} more.`
+      );
+      return;
+    }
+
+    if (acceptedFiles.length === 0) {
+      if (skippedDuplicates > 0) {
+        setErrorMessage('Selected photo is already in your upload list.');
+      }
+      return;
+    }
+
+    const notices: string[] = [];
+    if (skippedDuplicates > 0) {
+      notices.push(`${skippedDuplicates} duplicate photo(s) skipped.`);
+    }
+    if (invalidFormatCount > 0) {
+      notices.push(`${invalidFormatCount} unsupported file(s) skipped (JPG, PNG, WebP only).`);
+    }
+    if (notices.length > 0) {
+      setErrorMessage(notices.join(' '));
+    }
+
+    const newSlots: PhotoSlot[] = acceptedFiles.map(({ file, fingerprint }) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+      return {
+        id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        fingerprint,
+        file,
+        previewUrl,
+        progress: 0,
+        status: 'compressing'
+      };
+    });
 
     setPhotoSlots((prev) => [...prev, ...newSlots]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
 
-    setIsProcessingQueue(true);
-    for (const slot of newSlots) {
-      await uploadSingleSlot(slot.id, slot.file);
-    }
-    setIsProcessingQueue(false);
+    // Upload all newly selected images independently & concurrently
+    void Promise.allSettled(newSlots.map((slot) => uploadSingleSlot(slot.id, slot.file)));
   };
 
   const handleCancelUpload = (slotId: string) => {
-    const slot = photoSlots.find((s) => s.id === slotId);
-    if (slot?.task && typeof slot.task.cancel === 'function') {
-      try {
-        slot.task.cancel();
-      } catch {}
-    }
+    cleanupSlotHandles(slotId);
     setPhotoSlots((prev) =>
       prev.map((s) =>
         s.id === slotId
-          ? { ...s, status: 'error', errorMessage: 'Upload cancelled.', task: undefined }
+          ? {
+              ...s,
+              status: 'error',
+              progress: 0,
+              downloadUrl: undefined,
+              retryAttempt: undefined,
+              maxRetries: undefined,
+              errorMessage: 'Upload cancelled.'
+            }
           : s
       )
     );
   };
 
-  const handleRetryUpload = async (slotId: string) => {
+  const handleRetryUpload = (slotId: string) => {
     const slot = photoSlots.find((s) => s.id === slotId);
-    if (!slot) return;
-    await uploadSingleSlot(slot.id, slot.file);
+    if (!slot || inFlightSlotsRef.current.has(slotId) || slot.status === 'success') return;
+    void uploadSingleSlot(slot.id, slot.file);
   };
 
   const handleRemoveSlot = (slotId: string) => {
+    cleanupSlotHandles(slotId);
     setPhotoSlots((prev) => {
       const target = prev.find((s) => s.id === slotId);
-      if (target?.task && typeof target.task.cancel === 'function') {
-        try {
-          target.task.cancel();
-        } catch {}
-      }
+      if (target) revokePreviewUrl(target.previewUrl);
       return prev.filter((s) => s.id !== slotId);
     });
   };
@@ -245,6 +445,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+
     if (!user) {
       setErrorMessage('Please login first to post an item on FU MARKET.');
       onRequireAuth();
@@ -258,8 +460,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
       return;
     }
 
-    if (photoSlots.some((s) => s.status === 'compressing' || s.status === 'uploading') || isProcessingQueue) {
-      setErrorMessage('Photographs are currently uploading. Please wait for upload to complete before publishing.');
+    if (photoSlots.some((s) => isSlotActive(s.status))) {
+      setErrorMessage('Photographs are currently uploading. Please wait for all uploads to finish before publishing.');
       return;
     }
 
@@ -268,12 +470,16 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
       return;
     }
 
-    const successfulUrls = photoSlots
-      .filter((s) => s.status === 'success' && s.downloadUrl && s.downloadUrl.trim().length > 0)
-      .map((s) => s.downloadUrl!);
+    const successfulUrls = Array.from(
+      new Set(
+        photoSlots
+          .filter((s) => s.status === 'success' && isValidFirebaseDownloadUrl(s.downloadUrl))
+          .map((s) => s.downloadUrl!.trim())
+      )
+    );
 
     if (successfulUrls.length === 0) {
-      setErrorMessage('Please upload at least 1 genuine photograph of your product before publishing.');
+      setErrorMessage('Please upload at least 1 product photograph to Firebase Storage before publishing.');
       return;
     }
 
@@ -293,9 +499,11 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
 
     try {
+      const effectiveSellerId = user.id || auth.currentUser?.uid || 'campus-seller';
       const productPayload = {
         title: title.trim(),
         price: numericPrice,
@@ -311,7 +519,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         images: successfulUrls,
         imageUrl: successfulUrls[0],
-        sellerId: user.id,
+        sellerId: effectiveSellerId,
         sellerName: user.name,
         shopName: sellerProfile?.shopName || `${user.name}'s Store`
       };
@@ -326,6 +534,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to publish listing. Please check backend connection.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -533,26 +742,27 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     </div>
 
                     <div className="absolute inset-x-0 bottom-0 bg-[#111111]/90 p-2 text-white">
-                      {slot.status === 'success' && (
+                      {slot.status === 'success' && slot.downloadUrl && (
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1 text-[10px] font-bold text-[#F2B90D]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>Uploaded (100%)</span>
                           </div>
-                          {slot.warningMessage && (
-                            <p className="text-[9px] text-white/85 line-clamp-2 leading-tight">
-                              {slot.warningMessage}
-                            </p>
-                          )}
                         </div>
                       )}
 
-                      {(slot.status === 'compressing' || slot.status === 'uploading') && (
+                      {isSlotActive(slot.status) && (
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span className="flex items-center gap-1">
                               <Loader2 className="w-3 h-3 animate-spin text-[#F2B90D]" />
-                              {slot.status === 'compressing' ? 'Optimizing' : 'Uploading'}
+                              {slot.status === 'compressing'
+                                ? 'Optimizing'
+                                : slot.status === 'retrying'
+                                ? `Retrying (${slot.retryAttempt || 1}/${slot.maxRetries || 2})`
+                                : slot.status === 'finalizing'
+                                ? 'Confirming'
+                                : 'Uploading'}
                             </span>
                             <span>{slot.progress}%</span>
                           </div>
@@ -574,7 +784,10 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
                       {slot.status === 'error' && (
                         <div className="space-y-1">
-                          <div className="text-[10px] text-[#F2B90D] font-semibold line-clamp-2 leading-tight">
+                          <div
+                            className="text-[10px] text-[#F2B90D] font-semibold line-clamp-2 leading-tight"
+                            title={slot.errorMessage || 'Upload failed'}
+                          >
                             {slot.errorMessage || 'Upload failed'}
                           </div>
                           <button
@@ -595,11 +808,10 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isProcessingQueue}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-[#0B6B3A]/50 hover:border-[#0B6B3A] bg-[#F5F5F5] transition flex flex-col items-center justify-center p-3 text-center text-xs font-bold text-[#0B6B3A] cursor-pointer disabled:opacity-50"
+                    className="aspect-square rounded-2xl border-2 border-dashed border-[#0B6B3A]/50 hover:border-[#0B6B3A] bg-[#F5F5F5] transition flex flex-col items-center justify-center p-3 text-center text-xs font-bold text-[#0B6B3A] cursor-pointer"
                   >
                     <Upload className="w-6 h-6 mb-1 text-[#0B6B3A]" />
-                    <span className="font-black">{isProcessingQueue ? 'Uploading...' : 'Add Photo'}</span>
+                    <span className="font-black">Add Photo</span>
                     <span className="text-[9px] text-[#555555] font-normal mt-0.5">JPG, PNG, WebP</span>
                   </button>
                 )}
@@ -836,18 +1048,14 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={
-                  submitting ||
-                  isProcessingQueue ||
-                  photoSlots.some((s) => s.status === 'compressing' || s.status === 'uploading')
-                }
+                disabled={submitting || hasActiveUploads}
                 className="px-6 py-3 font-black text-xs sm:text-sm rounded-xl bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] flex items-center gap-2 shadow disabled:opacity-50 transition"
               >
                 <CheckCircle2 className="w-4 h-4 text-[#0B6B3A]" />
                 <span>
                   {submitting
                     ? 'Publishing...'
-                    : isProcessingQueue
+                    : hasActiveUploads
                     ? 'Uploading Photos...'
                     : 'Publish Item for FREE'}
                 </span>

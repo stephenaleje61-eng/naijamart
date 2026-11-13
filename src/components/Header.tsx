@@ -18,6 +18,7 @@ import { Category } from '../types.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { usePWAInstall } from '../hooks/usePWAInstall.js';
 import { AppView } from './BottomNav.js';
+import { SafetyTickerBanner } from './SafetyTickerBanner.js';
 
 interface HeaderProps {
   categories: Category[];
@@ -106,6 +107,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-[#0B6B3A] text-white shadow-md">
+      {/* Continuously Scrolling Payment Safety Notice */}
+      <SafetyTickerBanner />
+
       {/* Top FUWUKARI Strip */}
       <div className="bg-[#14532D] border-b border-white/15 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">

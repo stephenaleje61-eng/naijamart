@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   getDocFromServer,
@@ -51,9 +52,17 @@ import {
 
 // 1. Initialize Firebase App and Services
 export const app = getApps().length > 0 ? getApp() : initializeApp(activeFirebaseConfig);
-export const db = (activeFirebaseConfig as any).firestoreDatabaseId
-  ? getFirestore(app, (activeFirebaseConfig as any).firestoreDatabaseId)
-  : getFirestore(app);
+const configuredDbId = (activeFirebaseConfig as any).firestoreDatabaseId || undefined;
+function initFirestoreClient() {
+  try {
+    return configuredDbId
+      ? initializeFirestore(app, { experimentalForceLongPolling: true }, configuredDbId)
+      : initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch {
+    return configuredDbId ? getFirestore(app, configuredDbId) : getFirestore(app);
+  }
+}
+export const db = initFirestoreClient();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -297,6 +306,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 // 3. Test Connection on App Boot
 export async function testConnection(): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return false;
+  }
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log('[Firebase Firestore] Permanent Production Database Connected Successfully.');

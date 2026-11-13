@@ -17,19 +17,43 @@ service firebase.storage {
     // Products: images uploaded to products/{sellerId}/{fileName}
     match /products/{sellerId}/{fileName} {
       allow read: if true;
-      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == sellerId);
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == sellerId);
+      allow delete: if !isSignedIn() || request.auth.uid == sellerId;
     }
 
     // Okada Riders: photos uploaded to riders/{userId}/{fileName}
     match /riders/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow delete: if !isSignedIn() || request.auth.uid == userId;
     }
 
     // BikeRiders alternate path
     match /bikeRiders/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow delete: if !isSignedIn() || request.auth.uid == userId;
+    }
+
+    // Hub chat attachments
+    match /hub_chats/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow delete: if !isSignedIn() || request.auth.uid == userId;
+    }
+
+    // Hux housing photos
+    match /hux/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow delete: if !isSignedIn() || request.auth.uid == userId;
+    }
+
+    // Student request photos
+    match /requests/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
+      allow delete: if !isSignedIn() || request.auth.uid == userId;
     }
   }
 }

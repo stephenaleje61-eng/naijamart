@@ -46,3 +46,25 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes fu-safety-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.fu-marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: fu-safety-marquee 32s linear infinite;
+}
+
+.fu-marquee-container:hover .fu-marquee-track,
+.fu-marquee-container:focus-within .fu-marquee-track {
+  animation-play-state: paused;
+}
+

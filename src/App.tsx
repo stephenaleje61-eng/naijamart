@@ -49,6 +49,7 @@ import { WhatStudentsNeedPage } from './components/WhatStudentsNeedPage.js';
 import { CartOrderReviewModal } from './components/CartOrderReviewModal.js';
 import { BottomNav, AppView } from './components/BottomNav.js';
 import { OfflineIndicator } from './components/OfflineIndicator.js';
+import { WelcomeNotice } from './components/WelcomeNotice.js';
 import { usePWAInstall } from './hooks/usePWAInstall.js';
 import {
   subscribeToFriendRequests,
@@ -115,6 +116,9 @@ function MainMarketplace() {
 
   // PWA guidance banner toggle
   const [showPWAInstructions, setShowPWAInstructions] = useState(false);
+
+  // Welcome notice shown on open (non-blocking and dismissible)
+  const [showWelcomeNotice, setShowWelcomeNotice] = useState(true);
 
   useEffect(() => {
     try {
@@ -424,6 +428,10 @@ function MainMarketplace() {
         onTriggerPWAHelp={handleTriggerPWAHelp}
         activeView={currentView}
       />
+
+      {showWelcomeNotice && (
+        <WelcomeNotice onDismiss={() => setShowWelcomeNotice(false)} />
+      )}
 
       {currentView === 'requests' ? (
         <WhatStudentsNeedPage

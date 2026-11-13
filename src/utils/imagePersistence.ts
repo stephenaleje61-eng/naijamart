@@ -16,6 +16,16 @@ export interface CompressedImageResult {
   height: number;
 }
 
+export interface CompressImageOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  includeDataUrl?: boolean;
+}
+
+const MAX_RAW_FILE_BYTES = 25 * 1024 * 1024; // 25MB raw mobile camera limit
+const MAX_COMPRESSED_BYTES = 3 * 1024 * 1024; // 3MB strict upload limit
+const TARGET_COMPRESSED_BYTES = 800 * 1024; // 800KB target for fast campus uploads
+
 /**
  * Validates if the selected file is an allowed image format (JPG, PNG, WebP)
  */
@@ -27,106 +37,189 @@ export function isValidImageFormat(file: File): boolean {
   return validMimes.includes(file.type.toLowerCase()) || (!!ext && validExts.includes(ext));
 }
 
-/**
- * Compresses an image in the browser before upload to Firebase Storage.
- */
-export async function compressImageBeforeUpload(file: File): Promise<CompressedImageResult> {
-  if (!isValidImageFormat(file)) {
-    throw new Error('Only JPG, PNG, and WebP images are allowed.');
-  }
-
+function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read image file.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Failed to parse image for compression.'));
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+    reader.onerror = () => reject(new Error('Failed to encode image preview.'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(blob);
+  });
+}
 
-        // If file size > 1MB, resize to max width 1024px
-        const isOver1MB = file.size > 1024 * 1024;
-        const maxDimension = isOver1MB ? 1024 : 1280;
+/**
+ * Compresses an image in the browser before upload to Firebase Storage.
+ * Uses ObjectURL decoding with timeout and AbortSignal cancellation so it never hangs.
+ */
+export async function compressImageBeforeUpload(
+  file: File,
+  options: CompressImageOptions = {}
+): Promise<CompressedImageResult> {
+  const { signal, timeoutMs = 15000, includeDataUrl = true } = options;
 
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
+  if (signal?.aborted) {
+    throw new Error('Upload cancelled.');
+  }
+
+  if (!isValidImageFormat(file)) {
+    throw new Error('Only JPG, JPEG, PNG, and WebP images are allowed.');
+  }
+
+  if (file.size <= 0) {
+    throw new Error('Selected image file is empty or corrupted.');
+  }
+
+  if (file.size > MAX_RAW_FILE_BYTES) {
+    throw new Error('Photo file is too large (max 25MB). Please choose a smaller image.');
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    return await new Promise<CompressedImageResult>((resolve, reject) => {
+      let settled = false;
+
+      const cleanupListeners = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (signal && onAbort) {
+          signal.removeEventListener('abort', onAbort);
         }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Could not initialize canvas context for compression.'));
-          return;
-        }
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Target initial quality: 0.7 if > 1MB, otherwise 0.8
-        let quality = isOver1MB ? 0.7 : 0.8;
-
-        const toBlobCallback = (blob: Blob | null) => {
-          if (!blob) {
-            reject(new Error('Canvas image compression failed.'));
-            return;
-          }
-
-          // If blob is still larger than 800KB and quality can be reduced, reduce quality
-          if (blob.size > 800 * 1024 && quality > 0.5) {
-            quality = Math.max(0.5, quality - 0.15);
-            canvas.toBlob(toBlobCallback, 'image/jpeg', quality);
-            return;
-          }
-
-          // Strict limit: If still > 3MB after compress, show exact requested error
-          if (blob.size > 3 * 1024 * 1024) {
-            reject(new Error('Photo too large, please use smaller photo or screenshot'));
-            return;
-          }
-
-          const cleanBaseName = file.name
-            .replace(/\.[^/.]+$/, '')
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .substring(0, 40);
-          const compressedFileName = `${cleanBaseName || 'photo'}.jpg`;
-
-          const compressedFile = new File([blob], compressedFileName, {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-
-          // Also obtain dataUrl for instantaneous thumbnail preview
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-          resolve({
-            blob,
-            file: compressedFile,
-            dataUrl,
-            size: blob.size,
-            width,
-            height
-          });
-        };
-
-        canvas.toBlob(toBlobCallback, 'image/jpeg', quality);
       };
 
-      img.src = reader.result as string;
-    };
+      const fail = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        reject(err);
+      };
 
-    reader.readAsDataURL(file);
-  });
+      const onAbort = () => {
+        fail(new Error('Upload cancelled.'));
+      };
+
+      if (signal) {
+        if (signal.aborted) {
+          fail(new Error('Upload cancelled.'));
+          return;
+        }
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      const timeoutId = setTimeout(() => {
+        fail(new Error('Image optimization timed out. Please try another photo.'));
+      }, timeoutMs);
+
+      const img = new Image();
+      img.onerror = () => {
+        fail(new Error('Failed to read image. The file may be corrupted or unsupported.'));
+      };
+
+      img.onload = () => {
+        if (settled) return;
+
+        try {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+
+          if (!width || !height) {
+            fail(new Error('Invalid image dimensions.'));
+            return;
+          }
+
+          // Resize images > 1MB to max 1024px, others to max 1280px
+          const isOver1MB = file.size > 1024 * 1024;
+          const maxDimension = isOver1MB ? 1024 : 1280;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.max(1, Math.round((height * maxDimension) / width));
+              width = maxDimension;
+            } else {
+              width = Math.max(1, Math.round((width * maxDimension) / height));
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            fail(new Error('Could not initialize browser canvas for image optimization.'));
+            return;
+          }
+
+          // White background prevents transparent PNGs turning black when converted to JPEG
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let quality = isOver1MB ? 0.72 : 0.82;
+
+          const finishWithBlob = async (blob: Blob | null) => {
+            if (settled) return;
+            if (!blob) {
+              fail(new Error('Image compression failed in browser.'));
+              return;
+            }
+
+            if (blob.size > TARGET_COMPRESSED_BYTES && quality > 0.5) {
+              quality = Math.max(0.45, Number((quality - 0.15).toFixed(2)));
+              canvas.toBlob(finishWithBlob, 'image/jpeg', quality);
+              return;
+            }
+
+            if (blob.size > MAX_COMPRESSED_BYTES) {
+              fail(new Error('Photo is still over 3MB after compression. Please use a smaller photo.'));
+              return;
+            }
+
+            const cleanBaseName = file.name
+              .replace(/\.[^/.]+$/, '')
+              .replace(/[^a-zA-Z0-9_-]/g, '_')
+              .substring(0, 40);
+            const compressedFileName = `${cleanBaseName || 'photo'}.jpg`;
+
+            const compressedFile = new File([blob], compressedFileName, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+
+            let dataUrl = '';
+            if (includeDataUrl) {
+              try {
+                dataUrl = await blobToDataUrl(blob);
+              } catch {
+                dataUrl = '';
+              }
+            }
+
+            if (settled) return;
+            settled = true;
+            cleanupListeners();
+            resolve({
+              blob,
+              file: compressedFile,
+              dataUrl,
+              size: blob.size,
+              width,
+              height
+            });
+          };
+
+          canvas.toBlob(finishWithBlob, 'image/jpeg', quality);
+        } catch (err: any) {
+          fail(new Error(err?.message || 'Image optimization failed.'));
+        }
+      };
+
+      img.src = objectUrl;
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 /**
@@ -134,10 +227,10 @@ export async function compressImageBeforeUpload(file: File): Promise<CompressedI
  */
 export async function fileToPersistentDataUrl(
   file: File,
-  maxWidth = 1024,
-  maxHeight = 1024,
-  quality = 0.7
+  _maxWidth = 1024,
+  _maxHeight = 1024,
+  _quality = 0.7
 ): Promise<string> {
-  const result = await compressImageBeforeUpload(file);
+  const result = await compressImageBeforeUpload(file, { includeDataUrl: true });
   return result.dataUrl;
 }
