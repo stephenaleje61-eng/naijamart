@@ -141,7 +141,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
           {renderCategoryIcon()}
         </div>
         <span className="text-[11px] font-bold text-[#111111] line-clamp-1 max-w-[90%] px-1">
-          {alt || 'WukariMart Item'}
+          {alt || 'FU MARKET Item'}
         </span>
         <span className="text-[10px] text-[#555555] mt-0.5 flex items-center gap-1 font-medium">
           <ImageOff className="w-3 h-3 text-[#555555]" />

@@ -23,7 +23,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-base text-white">WukariMart — FUWUKARI Safe Trading Guidelines</h3>
+              <h3 className="font-black text-base text-white">FU MARKET — FUWUKARI Safe Trading Guidelines</h3>
               <p className="text-[11px] text-white/90">Campus Buyer, Accommodation &amp; Delivery Safety Charter</p>
             </div>
           </div>
@@ -69,7 +69,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
                   Important FUWUKARI Marketplace Notice
                 </h4>
                 <p className="text-[#333333]">
-                  WukariMart connects students, sellers, agents, and campus Okada riders directly in Wukari.{' '}
+                  FU MARKET connects students, sellers, agents, and campus Okada riders directly in Wukari.{' '}
                   <strong className="text-[#0B6B3A]">Always inspect products and lodges physically before paying any money.</strong>
                 </p>
               </div>
@@ -118,7 +118,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
             <div className="space-y-3">
               <h4 className="font-black text-sm text-[#111111] flex items-center gap-1.5">
                 <Ban className="w-4 h-4 text-[#0B6B3A]" />
-                Prohibited Items on WukariMart
+                Prohibited Items on FU MARKET
               </h4>
               <p>The following items and posts are strictly banned across FUWUKARI campus:</p>
               <ul className="list-disc pl-5 space-y-1.5 text-[#333333]">
@@ -137,7 +137,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
 
           {activeTab === 'terms' && (
             <div className="space-y-3 text-xs">
-              <h4 className="font-black text-sm text-[#111111]">WukariMart Terms of Use</h4>
+              <h4 className="font-black text-sm text-[#111111]">FU MARKET Terms of Use</h4>
               <p>
                 1. <strong className="text-[#111111]">Genuine Listings Only:</strong> Every product, student request, accommodation listing, and Okada rider entry must come from a real user with accurate contact details and genuine photos.
               </p>
@@ -154,7 +154,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
             <div className="space-y-3 text-xs">
               <h4 className="font-black text-sm text-[#111111]">Privacy Policy</h4>
               <p>
-                WukariMart stores only the details needed for your campus marketplace profile and listings: display name, matriculation number (where applicable), email/phone, WhatsApp contact, and uploaded item photos.
+                FU MARKET stores only the details needed for your campus marketplace profile and listings: display name, matriculation number (where applicable), email/phone, WhatsApp contact, and uploaded item photos.
               </p>
               <p>
                 Contact details attached to public listings are displayed so genuine FUWUKARI buyers, students, or agents can reach you. We never sell student information to advertisers.

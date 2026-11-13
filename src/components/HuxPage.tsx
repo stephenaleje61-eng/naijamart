@@ -152,7 +152,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
   useEffect(() => {
-    document.title = 'Wukari Agent — Campus Housing | WukariMart';
+    document.title = 'Wukari Agent — Campus Housing | FU MARKET';
   }, []);
 
   useEffect(() => {
@@ -438,7 +438,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           isAgent: formIsAgent,
           agentName: formIsAgent ? (formAgentName.trim() || student.name) : undefined
         });
-        showToast('Accommodation listing updated on WukariMart!');
+        showToast('Accommodation listing updated on FU MARKET!');
       } else {
         await createHuxListing({
           category: formCategory,
@@ -527,7 +527,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello, I saw "${hux.title}" at ${hux.location} on WukariMart (Wukari Agent). Is it still available for inspection?`
+      `Hello, I saw "${hux.title}" at ${hux.location} on FU MARKET (Wukari Agent). Is it still available for inspection?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -571,7 +571,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] rounded-xl text-xs font-bold text-white transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to WukariMart</span>
+            <span className="hidden sm:inline">Back to FU MARKET</span>
           </button>
           <div>
             <div className="flex items-center gap-2">
@@ -1536,7 +1536,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           setFormWhatsapp(loggedStudent.whatsappNumber || loggedStudent.phone || '');
         }}
         initialData={student}
-        title="Wukari Agent Profile — WukariMart"
+        title="Wukari Agent Profile — FU MARKET"
         subtitle="Enter your name and matric number / agent ID to post and manage campus accommodation."
       />
     </div>

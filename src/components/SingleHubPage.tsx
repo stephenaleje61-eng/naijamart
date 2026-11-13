@@ -61,7 +61,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = 'Single Hub — FUWUKARI Group Chat | WukariMart';
+    document.title = 'Single Hub — FUWUKARI Group Chat | FU MARKET';
   }, []);
 
   useEffect(() => {
@@ -224,7 +224,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           <button
             onClick={onBackToHome}
             className="p-2 rounded-xl bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white transition"
-            title="Back to WukariMart"
+            title="Back to FU MARKET"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -570,7 +570,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="FUWUKARI Campus ID — WukariMart"
+        title="FUWUKARI Campus ID — FU MARKET"
         subtitle="Set your name and matric number to join Single Hub, send friend requests, and chat 1-on-1."
       />
     </div>

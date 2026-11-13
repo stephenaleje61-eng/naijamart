@@ -150,7 +150,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const buildShareHref = (prod: Product) => {
     const origin = window.location.origin;
     const text = encodeURIComponent(
-      `Check out "${prod.title}" (${formatNaira(prod.price)}) on WukariMart: ${origin}/#product-${prod.id}`
+      `Check out "${prod.title}" (${formatNaira(prod.price)}) on FU MARKET: ${origin}/#product-${prod.id}`
     );
     return `https://wa.me/?text=${text}`;
   };
@@ -167,7 +167,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-black text-white">
-                  {sellerProfile?.shopName || 'WukariMart Seller Hub'}
+                  {sellerProfile?.shopName || 'FU MARKET Seller Hub'}
                 </h2>
                 {sellerProfile?.isVerified && (
                   <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -302,7 +302,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   <Store className="w-10 h-10 text-[#0B6B3A] mx-auto mb-2" />
                   <h4 className="font-black text-[#111111] text-sm">No Listings Yet</h4>
                   <p className="text-xs text-[#555555] max-w-sm mx-auto mt-1 mb-4">
-                    Upload your products with genuine photos and reach FUWUKARI students directly on WukariMart.
+                    Upload your products with genuine photos and reach FUWUKARI students directly on FU MARKET.
                   </p>
                   <button
                     onClick={onOpenSellModal}

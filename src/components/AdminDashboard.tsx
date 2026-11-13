@@ -272,7 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-black tracking-tight text-[#F2B90D]">
-                  WukariMart Moderation Desk
+                  FU MARKET Moderation Desk
                 </h2>
                 <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full">
                   ADMIN

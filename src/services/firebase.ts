@@ -488,7 +488,7 @@ export async function createProductDirectlyInFirestore(
     id,
     sellerId: sellerUser?.id || data.sellerId || auth.currentUser?.uid || 'campus-seller',
     sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'FUWUKARI Student',
-    shopName: data.shopName || `${sellerUser?.name || 'WukariMart'}'s Store`,
+    shopName: data.shopName || `${sellerUser?.name || 'FU MARKET'}'s Store`,
     whatsappNumber: data.whatsappNumber || sellerUser?.whatsappNumber || sellerUser?.phone || '',
     title: String(data.title || '').trim(),
     description: String(data.description || '').trim(),

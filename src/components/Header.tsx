@@ -133,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="text-[#F2B90D] hover:text-[#FFC107] font-bold flex items-center gap-1 transition"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{isIOS ? 'Install on iPhone' : 'Get WukariMart App'}</span>
+                <span>{isIOS ? 'Install on iPhone' : 'Get FU MARKET App'}</span>
               </button>
             )}
           </div>
@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Navigation Row */}
       <div className="max-w-7xl mx-auto px-4 py-3 space-y-2.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* WukariMart Logo in Gold */}
+          {/* FU MARKET Logo in Gold */}
           <a
             href="/"
             onClick={(e) => {
@@ -154,11 +154,11 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2.5 shrink-0 group"
           >
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F2B90D] flex items-center justify-center shadow group-hover:scale-105 transition">
-              <span className="text-[#111111] font-black text-base sm:text-lg tracking-tighter">WM</span>
+              <span className="text-[#111111] font-black text-base sm:text-lg tracking-tighter">FU</span>
             </div>
             <div className="flex flex-col">
               <span className="font-display font-black text-lg sm:text-2xl tracking-tight text-[#F2B90D] leading-none">
-                WukariMart
+                FU MARKET
               </span>
               <span className="text-[10px] font-semibold text-white/90 hidden sm:block mt-0.5">
                 FUWUKARI Student Marketplace

@@ -14,8 +14,8 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: '/',
-          name: 'WukariMart — FUWUKARI Student Marketplace',
-          short_name: 'WukariMart',
+          name: 'FU MARKET — FUWUKARI Student Marketplace',
+          short_name: 'FU MARKET',
           description: 'Buy and sell sharp sharp inside FUWUKARI. Hostel items, textbooks, food, electronics, fashion, and gas & cooking essentials.',
           theme_color: '#0B6B3A',
           background_color: '#F5F5F5',

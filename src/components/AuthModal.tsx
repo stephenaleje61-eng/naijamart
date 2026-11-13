@@ -180,14 +180,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#F2B90D] flex items-center justify-center font-black text-[#111111] text-sm shadow-sm">
-              WM
+              FU
             </div>
             <div>
               <h3 className="font-black text-base leading-tight text-white">
                 {mode === 'login'
-                  ? 'Login to WukariMart'
+                  ? 'Login to FU MARKET'
                   : mode === 'register'
-                  ? 'Join WukariMart'
+                  ? 'Join FU MARKET'
                   : 'Password Recovery'}
               </h3>
               <p className="text-[11px] text-white/90">
@@ -350,7 +350,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
-                    Buy on WukariMart
+                    Buy on FU MARKET
                   </button>
                   <button
                     type="button"
@@ -361,7 +361,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
-                    Sell on WukariMart
+                    Sell on FU MARKET
                   </button>
                 </div>
               </div>

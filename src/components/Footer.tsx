@@ -66,7 +66,7 @@ export const Footer: React.FC<FooterProps> = ({
             <div>
               <h4 className="font-bold text-sm text-white">Sharp Sharp WhatsApp Deal</h4>
               <p className="text-white/80 text-xs mt-0.5">
-                Tap &ldquo;Chat on WhatsApp&rdquo; or message sellers directly inside WukariMart.
+                Tap &ldquo;Chat on WhatsApp&rdquo; or message sellers directly inside FU MARKET.
               </p>
             </div>
           </div>
@@ -88,10 +88,10 @@ export const Footer: React.FC<FooterProps> = ({
               <Download className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-sm text-white">WukariMart App (PWA)</h4>
+              <h4 className="font-bold text-sm text-white">FU MARKET App (PWA)</h4>
               <p className="text-white/80 text-xs mt-0.5 mb-2">
                 {isInstalled
-                  ? 'WukariMart app is installed on your device.'
+                  ? 'FU MARKET app is installed on your device.'
                   : isIOS
                   ? 'Add to Home Screen from Safari for one-tap campus access.'
                   : 'Lightweight app built for fast loading on low campus data.'}
@@ -102,29 +102,29 @@ export const Footer: React.FC<FooterProps> = ({
                   onClick={handleInstall}
                   className="px-3 py-1 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black rounded-lg text-[11px] transition"
                 >
-                  Install WukariMart
+                  Install FU MARKET
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Middle Columns: About WukariMart, Categories, Portals, Contact */}
+        {/* Middle Columns: About FU MARKET, Categories, Portals, Contact */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-5 gap-8 py-8 border-b border-white/15">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-[#F2B90D] flex items-center justify-center font-black text-[#111111] text-sm">
-                WM
+                FU
               </div>
               <span className="font-display font-black text-xl tracking-tight text-[#F2B90D]">
-                WukariMart
+                FU MARKET
               </span>
             </div>
             <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-1">
-              About WukariMart
+              About FU MARKET
             </h5>
             <p className="text-white/85 text-xs leading-relaxed max-w-sm mb-3">
-              WukariMart is the dedicated student marketplace for Federal University Wukari (FUWUKARI). Buy and sell hostel items, textbooks &amp; past questions, food, electronics, fashion, and gas &amp; cooking gear safely within campus.
+              FU MARKET is the dedicated student marketplace for Federal University Wukari (FUWUKARI). Buy and sell hostel items, textbooks &amp; past questions, food, electronics, fashion, and gas &amp; cooking gear safely within campus.
             </p>
             <div className="text-[11px] text-white/80 space-y-1">
               <p className="flex items-center gap-1.5">
@@ -232,7 +232,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom Copyright + Made for FUWUKARI Students */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/90">
           <p className="font-semibold">
-            © {new Date().getFullYear()} WukariMart — Federal University Wukari.
+            © {new Date().getFullYear()} FU MARKET — Federal University Wukari.
           </p>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0B6B3A] border border-[#F2B90D]/50 text-[#F2B90D] font-black">
             Made for FUWUKARI Students

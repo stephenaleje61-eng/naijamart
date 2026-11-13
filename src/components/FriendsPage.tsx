@@ -106,7 +106,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    document.title = 'Student Messaging & Friends | WukariMart';
+    document.title = 'Student Messaging & Friends | FU MARKET';
   }, []);
 
   useEffect(() => {
@@ -419,7 +419,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             <button
               onClick={onBackToHome}
               className="p-2 rounded-xl bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white transition"
-              title="Back to WukariMart"
+              title="Back to FU MARKET"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -511,7 +511,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                   Send a real message about products, campus requests, or accommodation.
                 </p>
                 <button
-                  onClick={() => setChatInputText('Hello, I am reaching out from WukariMart!')}
+                  onClick={() => setChatInputText('Hello, I am reaching out from FU MARKET!')}
                   className="px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl shadow-sm"
                 >
                   Say Hello
@@ -975,7 +975,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                       <GraduationCap className="w-12 h-12 text-[#0B6B3A] mx-auto mb-2" />
                       <h4 className="text-sm font-bold text-[#111111]">No other registered students found yet</h4>
                       <p className="text-xs text-[#555555] mt-1">
-                        Invite fellow FUWUKARI students to sign in on WukariMart.
+                        Invite fellow FUWUKARI students to sign in on FU MARKET.
                       </p>
                     </div>
                   ) : (
@@ -1079,7 +1079,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="Connect on WukariMart"
+        title="Connect on FU MARKET"
         subtitle="Set your name and matric number to message sellers, agents, and fellow FUWUKARI students."
       />
     </div>

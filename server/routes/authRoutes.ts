@@ -67,7 +67,7 @@ router.post('/register', async (req, res) => {
         userId: newUser.id,
         shopName: formattedShopName,
         shopSlug: `${shopSlug}-${Date.now().toString().slice(-4)}`,
-        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on WukariMart. Chat with us for fast campus delivery!`,
+        description: shopDescription?.trim() || `Welcome to ${formattedShopName} on FU MARKET. Chat with us for fast campus delivery!`,
         whatsappNumber: newUser.whatsappNumber || newUser.phone || '',
         state: newUser.state || 'Taraba',
         city: newUser.city || 'Wukari',
@@ -248,7 +248,7 @@ router.post('/forgot-password', (req, res) => {
   if (!user) {
     return res.json({
       success: true,
-      message: 'If this email is registered on WukariMart, instructions have been prepared.'
+      message: 'If this email is registered on FU MARKET, instructions have been prepared.'
     });
   }
 

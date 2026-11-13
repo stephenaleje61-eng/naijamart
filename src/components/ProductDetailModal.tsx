@@ -73,7 +73,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${product.sellerName || product.shopName}, I found your item "${product.title}" (${formatNaira(product.price)}) on WukariMart. Is it still available?`
+      `Hello ${product.sellerName || product.shopName}, I found your item "${product.title}" (${formatNaira(product.price)}) on FU MARKET. Is it still available?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -382,7 +382,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-xl border border-[#E5E7EB] text-[#111111]">
               <h3 className="text-base font-black text-[#111111] mb-2 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-[#F2B90D]" />
-                Report Listing on WukariMart
+                Report Listing on FU MARKET
               </h3>
               <p className="text-xs text-[#555555] mb-4">
                 Help keep the FUWUKARI student marketplace safe from scams or misleading items.
@@ -398,7 +398,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {reportSuccess ? (
                 <div className="p-4 bg-[#F5F5F5] border border-[#0B6B3A] text-[#0B6B3A] rounded-xl text-xs font-bold flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  Thank you! Your report has been submitted to WukariMart moderators.
+                  Thank you! Your report has been submitted to FU MARKET moderators.
                 </div>
               ) : (
                 <form onSubmit={handleReportSubmit} className="space-y-3">

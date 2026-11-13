@@ -246,7 +246,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      setErrorMessage('Please login first to post an item on WukariMart.');
+      setErrorMessage('Please login first to post an item on FU MARKET.');
       onRequireAuth();
       return;
     }
@@ -334,7 +334,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         <div className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="font-display text-lg sm:text-xl font-black text-white">
-              Post Item for FREE on <span className="text-[#F2B90D]">WukariMart</span>
+              Post Item for FREE on <span className="text-[#F2B90D]">FU MARKET</span>
             </h2>
             <p className="text-xs text-white/90">
               FUWUKARI Student Marketplace • Genuine photos &amp; direct WhatsApp chat
@@ -392,7 +392,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             <div>
               <span className="text-[11px] font-black tracking-widest uppercase text-[#0B6B3A] bg-[#F5F5F5] border border-[#0B6B3A]/30 px-3 py-1 rounded-full">
-                Saved Permanently on WukariMart
+                Saved Permanently on FU MARKET
               </span>
               <h3 className="text-2xl font-black text-[#111111] mt-3">Product posted successfully!</h3>
               <p className="text-xs sm:text-sm text-[#555555] max-w-md mx-auto mt-1">
@@ -438,7 +438,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               <div className="p-4 bg-[#F5F5F5] border border-[#0B6B3A]/40 rounded-2xl text-left max-w-lg mx-auto text-xs text-[#14532D] space-y-1">
                 <div className="font-black flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
-                  <span>Live on WukariMart</span>
+                  <span>Live on FU MARKET</span>
                 </div>
                 <p>Your product is active and visible across the FUWUKARI student marketplace.</p>
               </div>

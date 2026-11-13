@@ -49,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${product.sellerName || product.shopName || ''}, I saw your "${product.title}" (${formatNaira(product.price)}) on WukariMart. Is it still available?`
+      `Hello ${product.sellerName || product.shopName || ''}, I saw your "${product.title}" (${formatNaira(product.price)}) on FU MARKET. Is it still available?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };

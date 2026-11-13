@@ -80,7 +80,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
   };
 
   useEffect(() => {
-    document.title = 'Wukari Okada Rider Directory | WukariMart';
+    document.title = 'Wukari Okada Rider Directory | FU MARKET';
     loadRiders();
   }, [selectedArea]);
 
@@ -206,7 +206,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
 
       setRiders((prev) => [newRider.rider, ...prev]);
       setShowRegisterModal(false);
-      showToast(`Welcome ${fullName}! You are now listed in the WukariMart Bike Directory.`);
+      showToast(`Welcome ${fullName}! You are now listed in the FU MARKET Bike Directory.`);
 
       setFullName('');
       setPhoneNumber('');
@@ -224,7 +224,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const message = encodeURIComponent(
-      `Hello, I found your contact on WukariMart and need an Okada ride around ${riderArea}. Are you available?`
+      `Hello, I found your contact on FU MARKET and need an Okada ride around ${riderArea}. Are you available?`
     );
     return `https://wa.me/${cleaned}?text=${message}`;
   };
@@ -257,7 +257,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#14532D] hover:bg-[#F2B90D] hover:text-[#111111] border border-white/20 rounded-xl transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to WukariMart</span>
+              <span className="hidden sm:inline">Back to FU MARKET</span>
             </button>
             <div className="flex items-center gap-2">
               <span className="text-xl">🏍️</span>
@@ -458,7 +458,7 @@ export const BikeRidersPage: React.FC<BikeRidersPageProps> = ({ onBackToMarketpl
                 <span className="text-2xl">🏍️</span>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-[#F2B90D]">Register as Bike Man</h3>
-                  <p className="text-[11px] text-white/85">WukariMart Okada Directory</p>
+                  <p className="text-[11px] text-white/85">FU MARKET Okada Directory</p>
                 </div>
               </div>
               <button

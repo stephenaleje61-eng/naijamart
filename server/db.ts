@@ -184,7 +184,7 @@ class Database {
   private ensureInitialData() {
     let modified = false;
 
-    // Check categories — always keep synchronized with the 6 core WukariMart categories
+    // Check categories — always keep synchronized with the 6 core FU MARKET categories
     const expectedIds = DEFAULT_CATEGORIES.map(c => c.id).join(',');
     const currentIds = (this.data.categories || []).map(c => c.id).join(',');
     if (currentIds !== expectedIds) {
@@ -199,7 +199,7 @@ class Database {
       const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
       const adminUser: User = {
         id: 'admin-001',
-        name: 'WukariMart Moderation Desk',
+        name: 'FU MARKET Moderation Desk',
         email: 'admin@fumarket.ng',
         passwordHash: adminPasswordHash,
         role: 'admin',

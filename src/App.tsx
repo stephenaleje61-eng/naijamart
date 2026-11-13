@@ -271,7 +271,7 @@ function MainMarketplace() {
     setViewingFavouritesOnly(false);
 
     await Promise.all([loadCatalogProducts(1), loadCategories()]);
-    showToast('Product published on WukariMart!');
+    showToast('Product published on FU MARKET!');
 
     setTimeout(() => {
       if (productCatalogRef.current) {
@@ -475,7 +475,7 @@ function MainMarketplace() {
 
           {/* Main Marketplace Content */}
           <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-8">
-            {/* Quick Category Tiles (6 WukariMart Categories) */}
+            {/* Quick Category Tiles (6 FU MARKET Categories) */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-base sm:text-lg font-black text-[#111111] flex items-center gap-2">
@@ -534,7 +534,7 @@ function MainMarketplace() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#0B6B3A] text-[#F2B90D]">
-                      WukariMart Live Feed
+                      FU MARKET Live Feed
                     </span>
                     <div className="flex items-center gap-2 mt-1">
                       <h2 className="font-display text-lg sm:text-xl font-black text-[#111111]">
@@ -691,7 +691,7 @@ function MainMarketplace() {
                 <div className="py-16 text-center bg-white rounded-3xl border border-[#E5E7EB]">
                   <div className="w-10 h-10 border-4 border-[#0B6B3A] border-t-[#F2B90D] rounded-full animate-spin mx-auto mb-3" />
                   <p className="text-xs font-bold text-[#555555]">
-                    Loading genuine WukariMart listings...
+                    Loading genuine FU MARKET listings...
                   </p>
                 </div>
               ) : displayedProducts.length === 0 ? (
@@ -947,13 +947,13 @@ function MainMarketplace() {
                 <div className="space-y-1.5">
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#0B6B3A] bg-[#F5F5F5] border border-[#0B6B3A]/25 px-3 py-1 rounded-full">
                     <Smartphone className="w-3.5 h-3.5" />
-                    <span>WukariMart App</span>
+                    <span>FU MARKET App</span>
                   </span>
                   <h3 className="font-black text-base text-[#111111]">
-                    Install WukariMart on Phone or Laptop
+                    Install FU MARKET on Phone or Laptop
                   </h3>
                   <p className="text-xs text-[#555555] leading-relaxed">
-                    Add WukariMart to your home screen for fast loading on low campus data.
+                    Add FU MARKET to your home screen for fast loading on low campus data.
                   </p>
 
                   {(showPWAInstructions || (isIOS && !isInstalled)) && (
@@ -968,7 +968,7 @@ function MainMarketplace() {
                         ) : (
                           <span>
                             In Chrome/Edge: click <strong className="text-[#111111]">Install</strong> in the address bar or browser menu →{' '}
-                            <strong className="text-[#111111]">Install WukariMart</strong>.
+                            <strong className="text-[#111111]">Install FU MARKET</strong>.
                           </span>
                         )}
                       </div>
@@ -989,7 +989,7 @@ function MainMarketplace() {
                       className="px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-black text-xs rounded-xl active:scale-95 transition flex items-center gap-2"
                     >
                       <Download className="w-4 h-4 text-[#F2B90D]" />
-                      <span>Install WukariMart App</span>
+                      <span>Install FU MARKET App</span>
                     </button>
                   ) : (
                     <button
@@ -1063,7 +1063,7 @@ function MainMarketplace() {
           defaultRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
           onSuccess={() => {
-            showToast('Welcome to WukariMart!');
+            showToast('Welcome to FU MARKET!');
             loadCatalogProducts(1);
           }}
         />

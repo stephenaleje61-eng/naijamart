@@ -38,7 +38,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   };
 
   return (
-    <section aria-label="WukariMart Hero" className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white">
+    <section aria-label="FU MARKET Hero" className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white">
       <div className="max-w-7xl mx-auto px-4 py-7 sm:py-10 flex flex-col lg:flex-row items-center justify-between gap-7">
         {/* Left Column: Headline & Hero Search */}
         <div className="max-w-2xl w-full text-center lg:text-left">

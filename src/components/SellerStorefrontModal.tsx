@@ -71,7 +71,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const shopName = seller?.shopName || 'Store';
     const msg = encodeURIComponent(
-      `Hello ${shopName}, I found your storefront on WukariMart (FUWUKARI). I would like to make an enquiry.`
+      `Hello ${shopName}, I found your storefront on FU MARKET (FUWUKARI). I would like to make an enquiry.`
     );
     return `https://wa.me/${cleaned}?text=${msg}`;
   };
@@ -199,7 +199,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                 <Package className="w-4 h-4 text-[#0B6B3A]" />
                 All Products from {seller?.shopName || 'Seller'} ({products.length})
               </h3>
-              <span className="text-xs text-[#0B6B3A] font-bold">WukariMart • Campus Store</span>
+              <span className="text-xs text-[#0B6B3A] font-bold">FU MARKET • Campus Store</span>
             </div>
 
             {loading ? (

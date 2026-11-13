@@ -161,7 +161,7 @@ router.get('/', (req: Request, res: Response) => {
       );
     }
 
-    // Category filter (maps legacy categoryIds cleanly to the 6 WukariMart categories)
+    // Category filter (maps legacy categoryIds cleanly to the 6 FU MARKET categories)
     if (category && typeof category === 'string' && category !== 'all') {
       const targetCat = category.toLowerCase();
       const mapServerCategory = (rawId: string): string => {
@@ -321,7 +321,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 
   const appOrigin = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const productLink = `${appOrigin}/#product-${product.id}`;
-  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on WukariMart. Is it still available? Listing link: ${productLink}`;
+  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on FU MARKET. Is it still available? Listing link: ${productLink}`;
 
   const link = formatWhatsAppLink(product.whatsappNumber, prefilledMessage);
 
@@ -554,7 +554,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
         userId: user.id,
         shopName: `${user.name}'s Enterprise`,
         shopSlug: user.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `store-${Date.now()}`,
-        description: `Student storefront on WukariMart. Based in ${city}, ${state}.`,
+        description: `Student storefront on FU MARKET. Based in ${city}, ${state}.`,
         whatsappNumber: sellerPhone,
         state: String(state).trim(),
         city: String(city).trim(),

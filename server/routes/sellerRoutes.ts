@@ -23,14 +23,14 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
       u => u.id === identifier || u.email?.toLowerCase() === identifier.toLowerCase()
     );
     if (sellerUser) {
-      const shopName = sellerUser.name ? `${sellerUser.name}'s Store` : 'WukariMart Seller';
+      const shopName = sellerUser.name ? `${sellerUser.name}'s Store` : 'FU MARKET Seller';
       const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       profile = {
         id: `profile-${sellerUser.id}`,
         userId: sellerUser.id,
         shopName,
         shopSlug: `${slug}-${sellerUser.id.slice(-4)}`,
-        description: `Student storefront on WukariMart (${sellerUser.city || 'Wukari'}).`,
+        description: `Student storefront on FU MARKET (${sellerUser.city || 'Wukari'}).`,
         whatsappNumber: sellerUser.whatsappNumber || sellerUser.phone || '',
         state: sellerUser.state || 'Taraba',
         city: sellerUser.city || 'Wukari',
@@ -46,14 +46,14 @@ router.get('/storefront/:identifier', (req: Request, res: Response) => {
     const matchingProducts = db.products.filter(p => p.sellerId === identifier);
     if (matchingProducts.length > 0) {
       const firstP = matchingProducts[0];
-      const shopName = firstP.shopName || firstP.sellerName || 'WukariMart Seller';
+      const shopName = firstP.shopName || firstP.sellerName || 'FU MARKET Seller';
       const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       profile = {
         id: `profile-${identifier}`,
         userId: identifier,
         shopName,
         shopSlug: `${slug}-${identifier.slice(-4)}`,
-        description: `Genuine FUWUKARI student seller on WukariMart.`,
+        description: `Genuine FUWUKARI student seller on FU MARKET.`,
         whatsappNumber: firstP.whatsappNumber || '',
         state: firstP.state || 'Taraba',
         city: firstP.city || 'Wukari',
@@ -136,7 +136,7 @@ router.put('/profile', requireSeller, (req: AuthenticatedRequest, res: Response)
       userId: user.id,
       shopName: `${user.name}'s Store`,
       shopSlug: `${user.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`,
-      description: 'Official student storefront on WukariMart.',
+      description: 'Official student storefront on FU MARKET.',
       whatsappNumber: user.whatsappNumber || user.phone || '',
       state: user.state || 'Taraba',
       city: user.city || 'Wukari',

@@ -17,7 +17,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
   onClose,
   onSuccess,
   initialData,
-  title = 'Join WukariMart Campus Hub',
+  title = 'Join FU MARKET Campus Hub',
   subtitle = 'Enter your name and matric number to join Single Hub, message sellers or agents directly, and post student requests.'
 }) => {
   const [fullName, setFullName] = useState(initialData?.name || '');
@@ -91,7 +91,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <div>
               <h3 className="text-base font-black tracking-tight text-white">{title}</h3>
               <p className="text-[11px] text-white/90 mt-0.5">
-                WukariMart • Federal University Wukari (FUWUKARI)
+                FU MARKET • Federal University Wukari (FUWUKARI)
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             className="w-full mt-2 py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs sm:text-sm font-black rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <CheckCircle2 className="w-4 h-4 text-[#0B6B3A]" />
-            <span>{initialData ? 'Update Campus Profile' : 'Continue to WukariMart'}</span>
+            <span>{initialData ? 'Update Campus Profile' : 'Continue to FU MARKET'}</span>
           </button>
         </form>
       </div>

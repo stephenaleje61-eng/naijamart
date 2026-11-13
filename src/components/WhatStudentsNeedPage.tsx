@@ -90,7 +90,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
-    document.title = 'What Students Need | WukariMart — FUWUKARI';
+    document.title = 'What Students Need | FU MARKET — FUWUKARI';
   }, []);
 
   useEffect(() => {
@@ -304,7 +304,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
           userName: student.name,
           matricNumber: student.matricNumber
         });
-        showToast('Your request is now live on WukariMart!');
+        showToast('Your request is now live on FU MARKET!');
       }
 
       setShowFormModal(false);
@@ -345,7 +345,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${req.userName}, I saw your request "${req.title}" on WukariMart (What Students Need). I can help with this!`
+      `Hello ${req.userName}, I saw your request "${req.title}" on FU MARKET (What Students Need). I can help with this!`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -383,7 +383,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#14532D] hover:bg-[#F2B90D] hover:text-[#111111] border border-white/20 rounded-xl transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to WukariMart</span>
+              <span className="hidden sm:inline">Back to FU MARKET</span>
             </button>
             <div>
               <h1 className="text-sm sm:text-base font-black text-[#F2B90D] tracking-tight">
@@ -661,7 +661,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
                   {editingRequest ? 'Edit Student Request' : 'Post What You Need'}
                 </h3>
                 <p className="text-[11px] text-white/85">
-                  Visible to genuine FUWUKARI students on WukariMart
+                  Visible to genuine FUWUKARI students on FU MARKET
                 </p>
               </div>
               <button
@@ -903,7 +903,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
           setWhatsapp(logged.whatsappNumber || logged.phone || '');
         }}
         initialData={student}
-        title="Verify Student Identity — WukariMart"
+        title="Verify Student Identity — FU MARKET"
         subtitle="Enter your name and FUWUKARI matric number to post requests and chat directly with other students."
       />
     </div>

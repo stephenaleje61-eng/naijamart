@@ -77,7 +77,7 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${item.shopName || item.sellerName}, I placed an order on WukariMart${
+      `Hello ${item.shopName || item.sellerName}, I placed an order on FU MARKET${
         orderId ? ` (Ref: ${orderId})` : ''
       }:\n- ${item.quantity}x ${item.title} (${formatNaira(item.price * item.quantity)})\nPickup/Delivery: ${deliveryLocation}\nPayment: Pay on Inspection`
     );
@@ -136,7 +136,7 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
                 {confirmedOrder ? 'Order Saved & Ready' : 'Review Cart & Order'}
               </h2>
               <p className="text-[11px] text-white/90">
-                WukariMart • Verify quantities, seller details, and meetup point
+                FU MARKET • Verify quantities, seller details, and meetup point
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export const CartOrderReviewModal: React.FC<CartOrderReviewModalProps> = ({
           ) : items.length === 0 ? (
             <div className="py-10 text-center space-y-3">
               <ShoppingCart className="w-12 h-12 text-[#0B6B3A] mx-auto" />
-              <h3 className="text-sm font-black text-[#111111]">Your WukariMart cart is empty</h3>
+              <h3 className="text-sm font-black text-[#111111]">Your FU MARKET cart is empty</h3>
               <p className="text-xs text-[#555555]">
                 Add items from the marketplace to review your order before meetup.
               </p>

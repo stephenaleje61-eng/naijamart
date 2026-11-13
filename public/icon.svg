@@ -15,9 +15,9 @@
   <path d="M192 172 v-28 c0 -35.3 28.7 -64 64 -64 s64 28.7 64 64 v28" fill="none" stroke="#F2B90D" stroke-width="26" stroke-linecap="round" />
   <!-- Shopping Bag Body -->
   <path d="M120 172 h272 l24 236 c2 18 -12 34 -30 34 H126 c-18 0 -32 -16 -30 -34 z" fill="url(#goldGrad)" />
-  <!-- Bold WM Letters -->
-  <text x="256" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="116" letter-spacing="-4" fill="#111111">WM</text>
+  <!-- Bold FU Letters -->
+  <text x="256" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="116" letter-spacing="-4" fill="#111111">FU</text>
   <!-- Bottom Brand Bar -->
   <rect x="148" y="366" width="216" height="28" rx="14" fill="#0B6B3A" />
-  <text x="256" y="385" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="15" letter-spacing="3" fill="#FFFFFF">WUKARIMART</text>
+  <text x="256" y="385" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="15" letter-spacing="3" fill="#FFFFFF">FU MARKET</text>
 </svg>
