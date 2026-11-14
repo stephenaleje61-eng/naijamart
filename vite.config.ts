@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
+        includeAssets: ['icon.svg', 'fuwukari-crest.png', 'fuwukari-logo.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: '/',
           name: 'FU MARKET — FUWUKARI Student Marketplace',
@@ -49,11 +49,25 @@ export default defineConfig(() => {
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-              handler: 'StaleWhileRevalidate',
+              handler: 'CacheFirst',
               options: {
                 cacheName: 'firebase-storage-images',
                 expiration: {
-                  maxEntries: 120,
+                  maxEntries: 200,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /\/uploads\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'uploaded-product-images',
+                expiration: {
+                  maxEntries: 150,
                   maxAgeSeconds: 60 * 60 * 24 * 14,
                 },
                 cacheableResponse: {
@@ -69,6 +83,19 @@ export default defineConfig(() => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase')) return 'firebase-sdk';
+              if (id.includes('lucide-react')) return 'icons';
+              if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

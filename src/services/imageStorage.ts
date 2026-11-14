@@ -6,28 +6,87 @@ import {
   UploadTask
 } from 'firebase/storage';
 import { app, auth } from './firebase.js';
-import { compressImageBeforeUpload, isValidImageFormat } from '../utils/imagePersistence.js';
+import {
+  compressImageBeforeUpload,
+  compressImageForFirestoreFallback,
+  isValidImageFormat
+} from '../utils/imagePersistence.js';
 import activeFirebaseConfig from './firebaseConfig.js';
 
-// Initialize Firebase Storage instance with bounded retry windows (instead of 10m defaults)
-let storageInstance: ReturnType<typeof getStorage> | null = null;
-try {
-  if (activeFirebaseConfig.storageBucket) {
-    storageInstance = getStorage(app);
-    storageInstance.maxUploadRetryTime = 15000;
-    storageInstance.maxOperationRetryTime = 10000;
-  }
-} catch (err) {
-  console.warn('[Firebase Storage] Init warning:', err);
+function configureStorageLimits(instance: ReturnType<typeof getStorage>) {
+  instance.maxUploadRetryTime = 15000;
+  instance.maxOperationRetryTime = 10000;
+  return instance;
 }
 
-export function getStorageInstance() {
-  if (!storageInstance) {
-    storageInstance = getStorage(app);
-    storageInstance.maxUploadRetryTime = 15000;
-    storageInstance.maxOperationRetryTime = 10000;
+// Track resolved working Storage bucket (handles .firebasestorage.app vs .appspot.com cleanly)
+const bucketCheckCache = new Map<string, { exists: boolean; checkedAt: number }>();
+
+function getCandidateBuckets(): string[] {
+  const projectId = activeFirebaseConfig.projectId || 'zangamarket1';
+  const configured = activeFirebaseConfig.storageBucket || `${projectId}.firebasestorage.app`;
+  const candidates = [
+    configured,
+    `${projectId}.firebasestorage.app`,
+    `${projectId}.appspot.com`
+  ];
+  return Array.from(new Set(candidates.filter(Boolean)));
+}
+
+async function checkStorageBucketProvisioned(bucket: string): Promise<boolean | null> {
+  if (!bucket) return false;
+  const cached = bucketCheckCache.get(bucket);
+  if (cached && Date.now() - cached.checkedAt < 60000) {
+    return cached.exists;
   }
-  return storageInstance;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch(`https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o`, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    const exists = res.status !== 404;
+    bucketCheckCache.set(bucket, { exists, checkedAt: Date.now() });
+    return exists;
+  } catch {
+    // Offline or DNS failure -> unknown (treat as transient network issue)
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function resolveWorkingStorageBucket(): Promise<{
+  bucket: string;
+  provisioned: boolean | null;
+}> {
+  const candidates = getCandidateBuckets();
+  let unknownResult: string | null = null;
+
+  for (const candidate of candidates) {
+    const status = await checkStorageBucketProvisioned(candidate);
+    if (status === true) {
+      return { bucket: candidate, provisioned: true };
+    }
+    if (status === null && !unknownResult) {
+      unknownResult = candidate;
+    }
+  }
+
+  if (unknownResult) {
+    return { bucket: unknownResult, provisioned: null };
+  }
+
+  return { bucket: candidates[0], provisioned: false };
+}
+
+export function getStorageInstance(bucketOverride?: string) {
+  if (bucketOverride && bucketOverride !== activeFirebaseConfig.storageBucket) {
+    return configureStorageLimits(getStorage(app, `gs://${bucketOverride}`));
+  }
+  return configureStorageLimits(getStorage(app));
 }
 
 export type StorageFolder = 'products' | 'riders' | 'hub_chats' | 'hux' | 'requests';
@@ -51,6 +110,8 @@ export interface UploadResult {
   previewUrl: string;
   fileName: string;
   isFirebaseStorage: boolean;
+  isFallback?: boolean;
+  payloadBytes?: number;
   warning?: string;
 }
 
@@ -71,7 +132,17 @@ function isBucketUnprovisionedError(error: any): boolean {
     message.includes('bucket-not-found') ||
     message.includes('NoSuchBucket') ||
     message.includes('Not enabled') ||
-    message.includes('404')
+    message.includes('404 Not Found')
+  );
+}
+
+function isFallbackEligibleError(error: any): boolean {
+  const code = String(error?.code || '');
+  return (
+    isBucketUnprovisionedError(error) ||
+    code === 'storage/unauthorized' ||
+    code === 'storage/permission-denied' ||
+    code === 'storage/unauthenticated'
   );
 }
 
@@ -82,6 +153,7 @@ function isPermanentUploadError(error: any): boolean {
     code === 'storage/canceled' ||
     code === 'storage/unauthorized' ||
     code === 'storage/permission-denied' ||
+    code === 'storage/unauthenticated' ||
     code === 'storage/quota-exceeded' ||
     code === 'storage/invalid-argument' ||
     code === 'storage/invalid-checksum' ||
@@ -94,38 +166,6 @@ function isPermanentUploadError(error: any): boolean {
   );
 }
 
-/**
- * Probes whether the configured Firebase Storage bucket actually exists.
- * Google returns HTTP 404 only when the bucket has not been created/enabled yet
- * (an active bucket returns 200 or 403). Cached briefly per bucket per session.
- */
-const bucketCheckCache = new Map<string, { exists: boolean; checkedAt: number }>();
-
-async function checkStorageBucketProvisioned(bucket: string): Promise<boolean | null> {
-  if (!bucket) return false;
-  const cached = bucketCheckCache.get(bucket);
-  if (cached && Date.now() - cached.checkedAt < 60000) {
-    return cached.exists;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4500);
-  try {
-    const res = await fetch(`https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o`, {
-      method: 'GET',
-      signal: controller.signal
-    });
-    const exists = res.status !== 404;
-    bucketCheckCache.set(bucket, { exists, checkedAt: Date.now() });
-    return exists;
-  } catch {
-    // Offline or DNS failure -> unknown (treat as transient network issue)
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export function isValidFirebaseDownloadUrl(url: unknown): boolean {
   if (!url || typeof url !== 'string') return false;
   const trimmed = url.trim();
@@ -136,7 +176,7 @@ export function isValidFirebaseDownloadUrl(url: unknown): boolean {
 }
 
 /**
- * Parses Firebase Storage errors into actionable, exact user messages.
+ * Parses Firebase Storage errors into exact, developer- & user-clear messages including the Firebase error code.
  */
 export function formatStorageErrorMessage(error: any): string {
   const code = String(error?.code || '');
@@ -148,15 +188,15 @@ export function formatStorageErrorMessage(error: any): string {
   }
 
   if (isBucketUnprovisionedError(error)) {
-    return `Firebase Storage bucket (${bucket}) is not enabled yet. Open Firebase Console > Storage > Get Started, then retry.`;
+    return `[${code || 'storage/bucket-not-found'}] Firebase Storage bucket (${bucket}) is not enabled yet in Firebase Console > Storage > Get Started.`;
   }
 
-  if (code === 'storage/unauthorized' || code === 'storage/permission-denied') {
-    return 'Upload failed: Permission denied by Firebase Storage rules. Please verify Storage rules allow image uploads.';
+  if (code === 'storage/unauthorized' || code === 'storage/permission-denied' || code === 'storage/unauthenticated') {
+    return `[${code}] Permission denied by Firebase Storage rules. Ensure Anonymous/Google Auth & Storage rules are published.`;
   }
 
   if (code === 'storage/quota-exceeded') {
-    return `Upload failed: Storage quota exceeded for project ${activeFirebaseConfig.projectId || 'zangamarket1'}.`;
+    return `[${code}] Storage quota exceeded for project ${activeFirebaseConfig.projectId || 'zangamarket1'}.`;
   }
 
   if (
@@ -166,10 +206,10 @@ export function formatStorageErrorMessage(error: any): string {
     message.toLowerCase().includes('timed out') ||
     message.toLowerCase().includes('network')
   ) {
-    return 'Upload failed due to a network issue or unreachable storage server. Please check your connection and click Retry.';
+    return `[${code || 'storage/network-timeout'}] Upload timed out or server unreachable. Please check your connection and tap Retry.`;
   }
 
-  return message.startsWith('Upload failed:') ? message : `Upload failed: ${message}`;
+  return code ? `[${code}] ${message}` : `Upload failed: ${message}`;
 }
 
 function waitWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
@@ -194,12 +234,9 @@ function waitWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-/**
- * Executes a single isolated Firebase Storage uploadBytesResumable attempt with
- * inactivity stall detection and zero-byte bucket reachability checks.
- */
 async function executeSingleUploadAttempt(params: {
   storage: ReturnType<typeof getStorage>;
+  bucket: string;
   storagePath: string;
   file: File;
   timeoutMs: number;
@@ -208,13 +245,12 @@ async function executeSingleUploadAttempt(params: {
   onStageChange?: (stage: UploadStage, attempt?: number, maxAttempts?: number) => void;
   onTaskCreated?: (task: UploadTask) => void;
 }): Promise<string> {
-  const { storage, storagePath, file, timeoutMs, signal, onProgress, onStageChange, onTaskCreated } = params;
+  const { storage, bucket, storagePath, file, timeoutMs, signal, onProgress, onStageChange, onTaskCreated } = params;
 
   if (signal?.aborted) {
     throw new Error('Upload cancelled.');
   }
 
-  const bucket = activeFirebaseConfig.storageBucket || storage.app.options.storageBucket || '';
   const fileRef = ref(storage, storagePath);
   const metadata = {
     contentType: 'image/jpeg',
@@ -251,7 +287,7 @@ async function executeSingleUploadAttempt(params: {
       try {
         uploadTask.cancel();
       } catch {
-        // Ignore if task already terminated
+        // Ignore
       }
     };
 
@@ -277,7 +313,7 @@ async function executeSingleUploadAttempt(params: {
       signal.addEventListener('abort', onAbort, { once: true });
     }
 
-    // Fast-fail if upload never moves past 0 bytes because the bucket does not exist (404/CORS)
+    // Fast-fail if upload stalls at 0 bytes because the bucket does not exist (404)
     zeroByteCheckTimer = setTimeout(async () => {
       if (isSettled || maxBytesTransferred > 0) return;
       const bucketExists = await checkStorageBucketProvisioned(bucket);
@@ -292,13 +328,13 @@ async function executeSingleUploadAttempt(params: {
       }
     }, 3500);
 
-    // Stall / inactivity detection: resets whenever bytesTransferred increases
+    // 15s inactivity/stall timeout detection
     inactivityTimer = setInterval(() => {
       if (isSettled) return;
       const idleMs = Date.now() - lastProgressAt;
       if (idleMs >= timeoutMs) {
         cancelTaskSafely();
-        const timeoutErr: any = new Error('Upload timed out due to stalled connection.');
+        const timeoutErr: any = new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)}s due to stalled connection.`);
         timeoutErr.code = 'storage/retry-limit-exceeded';
         fail(timeoutErr);
       }
@@ -324,7 +360,6 @@ async function executeSingleUploadAttempt(params: {
       async (error: any) => {
         if (isSettled) return;
 
-        // If Firebase threw storage/unknown or retry-limit-exceeded, check whether bucket exists (404 vs network)
         if (error?.code === 'storage/unknown' || error?.code === 'storage/retry-limit-exceeded') {
           const bucketExists = await checkStorageBucketProvisioned(bucket);
           if (bucketExists === false) {
@@ -368,10 +403,10 @@ async function executeSingleUploadAttempt(params: {
 
 /**
  * Uploads an image to Firebase Storage with:
- * - Pre-compression & validation
- * - Genuine 0%-100% progress tracking (never 100% before getDownloadURL resolves)
- * - Automatic exponential-backoff retry for transient failures
- * - AbortSignal cancellation & per-upload isolation
+ * - ~500 KB EXIF-preserving browser compression
+ * - Automatic bucket resolution (.firebasestorage.app vs .appspot.com)
+ * - 15-second stall timeout + AbortSignal cancellation + retries
+ * - Controlled compressed base64 fallback ONLY when allowPersistentFallback is true & Storage is unprovisioned/blocked
  */
 export async function uploadImageToFirebaseStorage(
   file: File,
@@ -380,12 +415,13 @@ export async function uploadImageToFirebaseStorage(
   const {
     onProgress,
     onStageChange,
-    timeoutMs = 25000,
+    timeoutMs = 15000,
     maxRetries = 2,
     folder = 'products',
     ownerId,
     onTaskCreated,
-    signal
+    signal,
+    allowPersistentFallback = false
   } = options;
 
   if (signal?.aborted) {
@@ -400,9 +436,9 @@ export async function uploadImageToFirebaseStorage(
     throw new Error('No internet connection. Please reconnect and try again.');
   }
 
-  // 1. Compress in browser once before attempting network upload
+  // 1. Compress in browser once (~500KB target, preserving EXIF orientation)
   onStageChange?.('compressing');
-  onProgress?.(2);
+  onProgress?.(5);
   const compressed = await compressImageBeforeUpload(file, {
     signal,
     includeDataUrl: false
@@ -412,7 +448,6 @@ export async function uploadImageToFirebaseStorage(
   }
   onProgress?.(10);
 
-  // Use authenticated Firebase UID when signed in so storage.rules (request.auth.uid == sellerId) always matches
   const effectiveOwner = auth.currentUser?.uid || ownerId || 'anonymous';
   const ownerSegment = sanitizePathSegment(effectiveOwner, 'anonymous');
 
@@ -425,17 +460,38 @@ export async function uploadImageToFirebaseStorage(
   const uniqueFileName = `${timestamp}_${rand}_${cleanOriginalName || 'photo'}.jpg`;
   const storagePath = `${folder}/${ownerSegment}/${uniqueFileName}`;
 
-  const storage = getStorageInstance();
+  const { bucket, provisioned } = await resolveWorkingStorageBucket();
+  const storage = getStorageInstance(bucket);
 
-  // Quick fail if bucket doesn't exist before entering retries
-  const bucket = activeFirebaseConfig.storageBucket || storage.app.options.storageBucket || '';
-  const initialBucketCheck = await checkStorageBucketProvisioned(bucket);
-  if (initialBucketCheck === false) {
-    const err: any = new Error(
+  const buildFallbackResult = async (reasonErr: any): Promise<UploadResult> => {
+    onStageChange?.('finalizing');
+    onProgress?.(85);
+    const fallbackCompressed = await compressImageForFirestoreFallback(file, signal);
+    if (!fallbackCompressed.dataUrl) {
+      throw new Error(formatStorageErrorMessage(reasonErr));
+    }
+    onProgress?.(100);
+    return {
+      downloadUrl: fallbackCompressed.dataUrl,
+      storagePath: `firestore-fallback/${ownerSegment}/${uniqueFileName}`,
+      previewUrl: fallbackCompressed.dataUrl,
+      fileName: uniqueFileName,
+      isFirebaseStorage: false,
+      isFallback: true,
+      payloadBytes: fallbackCompressed.dataUrl.length,
+      warning: `${formatStorageErrorMessage(reasonErr)} Used compact Firestore fallback (${Math.round(fallbackCompressed.size / 1024)} KB).`
+    };
+  };
+
+  if (provisioned === false) {
+    const bucketErr: any = new Error(
       `Firebase Storage bucket (${bucket}) is not enabled yet (404 Not Found).`
     );
-    err.code = 'storage/bucket-not-found';
-    throw new Error(formatStorageErrorMessage(err));
+    bucketErr.code = 'storage/bucket-not-found';
+    if (allowPersistentFallback) {
+      return await buildFallbackResult(bucketErr);
+    }
+    throw new Error(formatStorageErrorMessage(bucketErr));
   }
 
   let lastError: any = null;
@@ -458,6 +514,7 @@ export async function uploadImageToFirebaseStorage(
     try {
       const downloadUrl = await executeSingleUploadAttempt({
         storage,
+        bucket,
         storagePath,
         file: compressed.file,
         timeoutMs,
@@ -472,7 +529,8 @@ export async function uploadImageToFirebaseStorage(
         storagePath,
         previewUrl: downloadUrl,
         fileName: uniqueFileName,
-        isFirebaseStorage: true
+        isFirebaseStorage: true,
+        isFallback: false
       };
     } catch (err: any) {
       lastError = err;
@@ -483,12 +541,13 @@ export async function uploadImageToFirebaseStorage(
     }
   }
 
+  if (allowPersistentFallback && lastError && isFallbackEligibleError(lastError)) {
+    return await buildFallbackResult(lastError);
+  }
+
   throw new Error(formatStorageErrorMessage(lastError));
 }
 
-/**
- * Uploads product photo to products/{sellerId}/{uniqueFileName}
- */
 export async function uploadProductPhoto(
   file: File,
   sellerId = 'seller',
@@ -500,14 +559,11 @@ export async function uploadProductPhoto(
     ownerId: sellerId,
     onProgress,
     onTaskCreated,
-    allowPersistentFallback: false
+    allowPersistentFallback: true
   });
   return result.downloadUrl;
 }
 
-/**
- * Uploads bike rider photo to riders/{userId}/{uniqueFileName}
- */
 export async function uploadRiderPhoto(
   file: File,
   userId = 'rider',
@@ -518,14 +574,12 @@ export async function uploadRiderPhoto(
     folder: 'riders',
     ownerId: userId,
     onProgress,
-    onTaskCreated
+    onTaskCreated,
+    allowPersistentFallback: true
   });
   return result.downloadUrl;
 }
 
-/**
- * Uploads chat attachment photo to hub_chats/{userId}/{uniqueFileName}
- */
 export async function uploadHubChatPhoto(
   file: File,
   userId = 'user',
@@ -536,14 +590,12 @@ export async function uploadHubChatPhoto(
     folder: 'hub_chats',
     ownerId: userId,
     onProgress,
-    onTaskCreated
+    onTaskCreated,
+    allowPersistentFallback: true
   });
   return result.downloadUrl;
 }
 
-/**
- * Uploads campus housing photo to hux/{userId}/{uniqueFileName}
- */
 export async function uploadHuxPhoto(
   file: File,
   userId = 'user',
@@ -554,14 +606,12 @@ export async function uploadHuxPhoto(
     folder: 'hux',
     ownerId: userId,
     onProgress,
-    onTaskCreated
+    onTaskCreated,
+    allowPersistentFallback: true
   });
   return result.downloadUrl;
 }
 
-/**
- * Uploads student request photo to requests/{userId}/{uniqueFileName}
- */
 export async function uploadRequestPhoto(
   file: File,
   userId = 'user',
@@ -572,7 +622,8 @@ export async function uploadRequestPhoto(
     folder: 'requests',
     ownerId: userId,
     onProgress,
-    onTaskCreated
+    onTaskCreated,
+    allowPersistentFallback: true
   });
   return result.downloadUrl;
 }

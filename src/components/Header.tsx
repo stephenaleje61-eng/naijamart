@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Navigation Row */}
       <div className="max-w-7xl mx-auto px-4 py-3 space-y-2.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* FU MARKET Logo in Gold */}
+          {/* Official FUWUKARI Crest + FU MARKET Brand */}
           <a
             href="/"
             onClick={(e) => {
@@ -155,17 +155,24 @@ export const Header: React.FC<HeaderProps> = ({
               onSearchChange('');
               onNavigateView('marketplace');
             }}
-            className="flex items-center gap-2.5 shrink-0 group"
+            className="flex items-center gap-2 sm:gap-2.5 shrink-0 group"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F2B90D] flex items-center justify-center shadow group-hover:scale-105 transition">
-              <span className="text-[#111111] font-black text-base sm:text-lg tracking-tighter">FU</span>
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-sm border-2 border-[#F2B90D] group-hover:scale-105 transition overflow-hidden shrink-0">
+              <img
+                src="/fuwukari-crest.png"
+                alt="Federal University Wukari (FUWUKARI) Official Logo"
+                width={44}
+                height={44}
+                decoding="async"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-black text-lg sm:text-2xl tracking-tight text-[#F2B90D] leading-none">
+              <span className="font-display font-black text-base sm:text-2xl tracking-tight text-[#F2B90D] leading-none">
                 FU MARKET
               </span>
               <span className="text-[10px] font-semibold text-white/90 hidden sm:block mt-0.5">
-                FUWUKARI Student Marketplace
+                FUWUKARI Official Student Marketplace
               </span>
             </div>
           </a>

@@ -31,6 +31,7 @@ import {
   getCachedSessionInfo,
   saveUserSessionCache,
   mapAuthErrorToUserMessage,
+  invalidateProductsCache,
   auth
 } from './firebase.js';
 import { DEFAULT_CATEGORIES } from '../constants/categories.js';
@@ -226,21 +227,8 @@ export async function fetchProducts(filters: ProductFilter = {}): Promise<{ item
 
   const queryStr = params.toString();
 
+  // Primary: direct Cloud Firestore with instant in-memory cache (0 redundant reads across filters/categories)
   try {
-    return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2500 });
-  } catch (networkOrServerErr) {
-    console.warn('[fetchProducts primary endpoint failed, trying direct Cloud Firestore]:', networkOrServerErr);
-
-    // If a custom external backend URL was configured and failed, also try same-origin /api/products before Firestore
-    if (getApiBaseUrl()) {
-      try {
-        return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2000, baseOverride: '' });
-      } catch {
-        // Proceed to direct Cloud Firestore
-      }
-    }
-
-    // Directly query Google Cloud Firestore permanent database (guarded with 4s timeout in firebase.ts)
     const items = await getProductsFromFirestore({
       categoryId: filters.category,
       sellerId: filters.sellerId,
@@ -251,17 +239,34 @@ export async function fetchProducts(filters: ProductFilter = {}): Promise<{ item
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
       sort: filters.sort,
-      limitCount: filters.limit || 50
+      limitCount: filters.limit,
+      forceRefresh: filters.forceRefresh
     });
+
     return {
       items,
       pagination: {
         page: filters.page || 1,
-        limit: filters.limit || 50,
+        pageSize: filters.limit || items.length || 24,
         total: items.length,
         totalPages: 1
       }
     };
+  } catch (firestoreErr) {
+    console.warn('[fetchProducts Firestore failed, trying Express API fallback]:', firestoreErr);
+
+    try {
+      return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2500 });
+    } catch (apiErr) {
+      if (getApiBaseUrl()) {
+        try {
+          return await safeFetchJson(`/api/products?${queryStr}`, { timeoutMs: 2000, baseOverride: '' });
+        } catch {
+          // Throw primary Firestore error cleanly so user gets accurate diagnostic
+        }
+      }
+      throw firestoreErr instanceof Error ? firestoreErr : apiErr;
+    }
   }
 }
 
@@ -328,11 +333,13 @@ export async function createProductListing(
       body = JSON.stringify(payload);
     }
 
-    return await safeFetchJson('/api/products', {
+    const createdRes = await safeFetchJson('/api/products', {
       method: 'POST',
       headers,
       body
     });
+    invalidateProductsCache();
+    return createdRes;
   } catch (networkOrServerErr) {
     console.warn('[createProductListing fallback directly to Cloud Firestore]:', networkOrServerErr);
     // Directly save to Google Cloud Firestore permanent database (e.g. on Netlify static build)
@@ -355,7 +362,7 @@ export async function createProductListing(
         state: String(payload.get('state') || 'Taraba'),
         city: String(payload.get('city') || 'Wukari'),
         whatsappNumber: String(payload.get('whatsapp') || payload.get('whatsappNumber') || ''),
-        categoryId: String(payload.get('categoryId') || payload.get('category') || 'phones-tablets'),
+        categoryId: String(payload.get('categoryId') || payload.get('category') || 'hostel-items'),
         condition: (payload.get('condition') === 'used' ? 'used' : 'new') as 'new' | 'used',
         quantity: Number(payload.get('quantity')) || 1,
         images: parsedImages
@@ -369,6 +376,7 @@ export async function createProductListing(
       productData.shopName = cached.sellerProfile.shopName;
     }
     const createdProduct = await createProductDirectlyInFirestore(productData, cached.user);
+    invalidateProductsCache();
     return {
       success: true,
       product: createdProduct,
@@ -378,6 +386,7 @@ export async function createProductListing(
 }
 
 export async function updateProductListing(id: string, productData: Partial<Product>): Promise<{ product: Product; message: string }> {
+  invalidateProductsCache();
   try {
     return await safeFetchJson(`/api/products/${id}`, {
       method: 'PUT',
@@ -392,6 +401,7 @@ export async function updateProductListing(id: string, productData: Partial<Prod
 }
 
 export async function deleteProductListing(id: string): Promise<{ message: string }> {
+  invalidateProductsCache();
   try {
     return await safeFetchJson(`/api/products/${id}`, {
       method: 'DELETE',
@@ -572,19 +582,23 @@ export async function fetchSellerStorefront(identifier: string): Promise<{ selle
 export async function fetchMySellerListings(): Promise<{ listings: Product[]; stats: any }> {
   const cached = getCachedSessionInfo();
   const token = getAuthToken();
-  const userId = auth.currentUser?.uid || cached.uid || cached.user?.id || '';
+  const guestId =
+    typeof window !== 'undefined' ? localStorage.getItem('fu_market_guest_id') || '' : '';
+  const userId = auth.currentUser?.uid || cached.uid || cached.user?.id || guestId || '';
+
+  const buildStats = (items: Product[]) => ({
+    totalProducts: items.length,
+    activeCount: items.filter(p => p.status === 'active').length,
+    expiringSoonCount: 0,
+    totalViews: items.reduce((sum, p) => sum + (p.views || 0), 0),
+    totalWhatsAppClicks: items.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0)
+  });
 
   if (userId && (!token || token.startsWith('firebase-session:'))) {
     const items = await getProductsFromFirestore({ sellerId: userId, limitCount: 100 });
     return {
       listings: items,
-      stats: {
-        totalProducts: items.length,
-        activeCount: items.filter(p => p.status === 'active').length,
-        expiringSoonCount: 0,
-        totalViews: items.reduce((sum, p) => sum + (p.views || 0), 0),
-        totalWhatsAppClicks: items.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0)
-      }
+      stats: buildStats(items)
     };
   }
 
@@ -594,16 +608,13 @@ export async function fetchMySellerListings(): Promise<{ listings: Product[]; st
     });
   } catch (err) {
     console.warn('[fetchMySellerListings fallback to Firestore]:', err);
-    const items = await getProductsFromFirestore({ sellerId: userId || undefined, limitCount: 100 });
+    if (!userId) {
+      return { listings: [], stats: buildStats([]) };
+    }
+    const items = await getProductsFromFirestore({ sellerId: userId, limitCount: 100 });
     return {
       listings: items,
-      stats: {
-        totalProducts: items.length,
-        activeCount: items.filter(p => p.status === 'active').length,
-        expiringSoonCount: 0,
-        totalViews: items.reduce((sum, p) => sum + (p.views || 0), 0),
-        totalWhatsAppClicks: items.reduce((sum, p) => sum + (p.whatsappClicks || 0), 0)
-      }
+      stats: buildStats(items)
     };
   }
 }
@@ -694,6 +705,20 @@ export async function adminToggleUserSuspension(id: string, reason?: string): Pr
 
 export async function adminTriggerExpirationPurge(): Promise<any> {
   return safeFetchJson('/api/admin/trigger-cleanup', {
+    method: 'POST',
+    headers: getHeaders()
+  });
+}
+
+export async function fetchLegacyRecoveryStatus(): Promise<any> {
+  return safeFetchJson('/api/admin/legacy-status', {
+    headers: getHeaders()
+  });
+}
+
+export async function triggerLegacyRecovery(): Promise<any> {
+  invalidateProductsCache();
+  return safeFetchJson('/api/admin/migrate-legacy', {
     method: 'POST',
     headers: getHeaders()
   });

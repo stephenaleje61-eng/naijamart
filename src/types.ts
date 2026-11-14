@@ -85,6 +85,7 @@ export interface ProductFilter {
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular';
   page?: number;
   limit?: number;
+  forceRefresh?: boolean;
 }
 
 export interface AdminMetrics {

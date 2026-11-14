@@ -25,6 +25,8 @@ interface ProductImageProps {
 }
 
 const MAX_RETRIES = 3;
+// Remember already decoded/loaded URLs across tab/category switches to prevent flashing
+const loadedImageUrls = new Set<string>();
 
 export const ProductImage: React.FC<ProductImageProps> = ({
   src,
@@ -35,12 +37,14 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   loading = 'lazy',
   onClick
 }) => {
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
-  const [isRetrying, setIsRetrying] = useState(false);
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
-  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const candidateSources = React.useMemo(() => {
     const list: string[] = [];
@@ -57,46 +61,69 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     return list;
   }, [src, fallbackSrcs]);
 
+  const candidateKey = candidateSources.join('|');
+  const activeSrc = candidateSources[currentSourceIndex] || null;
+
+  const displaySrc = React.useMemo(() => {
+    if (!activeSrc) return null;
+    if (retryCount > 0 && retryNonce > 0 && !activeSrc.startsWith('data:')) {
+      const sep = activeSrc.includes('?') ? '&' : '?';
+      return `${activeSrc}${sep}_r=${retryCount}_${retryNonce}`;
+    }
+    return activeSrc;
+  }, [activeSrc, retryCount, retryNonce]);
+
+  const [isLoading, setIsLoading] = useState(() => {
+    if (!displaySrc) return false;
+    if (displaySrc.startsWith('data:') || loadedImageUrls.has(displaySrc)) return false;
+    return true;
+  });
+
   useEffect(() => {
     setHasError(false);
-    setIsLoading(true);
     setRetryCount(0);
+    setRetryNonce(0);
     setIsRetrying(false);
     setCurrentSourceIndex(0);
+    const first = candidateSources[0];
+    const alreadyReady = Boolean(first && (first.startsWith('data:') || loadedImageUrls.has(first)));
+    setIsLoading(Boolean(first) && !alreadyReady);
 
     return () => {
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
       }
     };
-  }, [src, candidateSources.length]);
+  }, [candidateKey]);
 
-  const activeSrc = candidateSources[currentSourceIndex] || null;
-
-  const computeDisplaySrc = () => {
-    if (!activeSrc) return null;
-
-    if (retryCount > 0 && !activeSrc.startsWith('data:')) {
-      const sep = activeSrc.includes('?') ? '&' : '?';
-      return `${activeSrc}${sep}_r=${retryCount}_${Date.now()}`;
+  useEffect(() => {
+    if (!displaySrc) {
+      setIsLoading(false);
+      return;
     }
-    return activeSrc;
-  };
-
-  const displaySrc = computeDisplaySrc();
+    if (displaySrc.startsWith('data:') || loadedImageUrls.has(displaySrc)) {
+      setIsLoading(false);
+      return;
+    }
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      loadedImageUrls.add(displaySrc);
+      setIsLoading(false);
+    }
+  }, [displaySrc]);
 
   const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isRetrying || retryCount >= MAX_RETRIES) return;
 
     setIsRetrying(true);
-    const delay = Math.min(800 * Math.pow(1.6, retryCount), 2500);
+    const delay = Math.min(600 * Math.pow(1.5, retryCount), 2000);
 
     retryTimerRef.current = setTimeout(() => {
       if (currentSourceIndex + 1 < candidateSources.length) {
         setCurrentSourceIndex((prev) => prev + 1);
       }
       setRetryCount((prev) => prev + 1);
+      setRetryNonce(Date.now());
       setHasError(false);
       setIsLoading(true);
       setIsRetrying(false);
@@ -187,15 +214,19 @@ export const ProductImage: React.FC<ProductImageProps> = ({
         <div className="absolute inset-0 bg-gradient-to-r from-[#F5F5F5] via-[#E5E7EB] to-[#F5F5F5] animate-pulse" />
       )}
       <img
+        key={displaySrc}
+        ref={imgRef}
         src={displaySrc}
         alt={alt}
         loading={loading}
+        decoding="async"
         onLoad={() => {
+          loadedImageUrls.add(displaySrc);
           setIsLoading(false);
           setHasError(false);
         }}
         onError={handleImageError}
-        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}
       />
     </div>
   );

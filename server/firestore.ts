@@ -5,7 +5,14 @@ import {
   doc,
   getDocs,
   setDoc,
-  deleteDoc
+  deleteDoc,
+  query,
+  limit,
+  startAfter,
+  Query,
+  QuerySnapshot,
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import fs from 'fs';
 import path from 'path';
@@ -21,9 +28,38 @@ try {
   console.error('[Firebase Server] Failed to read firebase-applet-config.json:', err);
 }
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-// Always use the (default) Firestore database where genuine FUWUKARI listings reside
-export const firestoreDb = getFirestore(app);
+export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const configuredDbId: string | undefined =
+  typeof firebaseConfig?.firestoreDatabaseId === 'string' && firebaseConfig.firestoreDatabaseId.trim().length > 0
+    ? firebaseConfig.firestoreDatabaseId.trim()
+    : undefined;
+
+// Primary Firestore database (governed by firestore.rules deployed to configuredDbId)
+export const firestoreDb = configuredDbId
+  ? getFirestore(firebaseApp, configuredDbId)
+  : getFirestore(firebaseApp);
+
+// Optional read-only handle for legacy (default) DB if rules/test mode allow reading it
+const legacyDefaultDb = configuredDbId ? getFirestore(firebaseApp) : null;
+
+export interface LegacyDbStatus {
+  checked: boolean;
+  accessible: boolean;
+  hasLegacyDb: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  recoveredCount: number;
+  legacyProductsCount: number;
+}
+
+export function formatServerFirestoreError(err: any): { code: string; message: string } {
+  const code = String(err?.code || 'firestore/error');
+  const rawMessage = String(err?.message || err || 'Unknown Firestore error');
+  return {
+    code,
+    message: `[${code}] ${rawMessage}`
+  };
+}
 
 function stripUndefined<T>(input: T): T {
   if (input === null || input === undefined) return input;
@@ -61,20 +97,16 @@ function toIsoString(val: any): string {
 
 function mapLegacyCategory(raw: any): string {
   const value = String(raw || '').toLowerCase().trim();
-  if (!value) return 'phones-tablets';
-  if (value.includes('phone') || value.includes('tablet') || value.includes('gadget')) return 'phones-tablets';
-  if (value.includes('computer') || value.includes('laptop') || value.includes('pc') || value.includes('electronic')) return 'computers';
-  if (value.includes('fashion') || value.includes('cloth') || value.includes('wear') || value.includes('shirt')) return 'fashion';
-  if (value.includes('shoe') || value.includes('bag') || value.includes('watch')) return 'shoes-bags';
-  if (value.includes('beauty') || value.includes('skin') || value.includes('hair') || value.includes('perfume')) return 'beauty-care';
-  if (value.includes('kitchen') || value.includes('cook')) return 'home-kitchen';
-  if (value.includes('furniture') || value.includes('appliance') || value.includes('home')) return 'furniture-appliances';
-  if (value.includes('food') || value.includes('grocer') || value.includes('provision') || value.includes('snack')) return 'food-groceries';
-  if (value.includes('car') || value.includes('vehicle') || value.includes('auto') || value.includes('bike')) return 'vehicles-auto';
-  if (value.includes('build') || value.includes('material')) return 'building-materials';
-  if (value.includes('solar') || value.includes('generator') || value.includes('power')) return 'generator-solar';
-  if (value.includes('service') || value.includes('tutor') || value.includes('artisan')) return 'services-jobs';
-  return value || 'other-goods';
+  if (!value) return 'hostel-items';
+  if (['hostel-items', 'textbooks-past-questions', 'food', 'electronics', 'fashion', 'gas-cooking'].includes(value)) {
+    return value;
+  }
+  if (value.includes('gas') || value.includes('kitchen') || value.includes('cook') || value.includes('burner') || value.includes('kettle')) return 'gas-cooking';
+  if (value.includes('textbook') || value.includes('book') || value.includes('education') || value.includes('handout') || value.includes('past question')) return 'textbooks-past-questions';
+  if (value.includes('food') || value.includes('grocer') || value.includes('provision') || value.includes('snack') || value.includes('meal')) return 'food';
+  if (value.includes('phone') || value.includes('tablet') || value.includes('gadget') || value.includes('computer') || value.includes('laptop') || value.includes('electronic')) return 'electronics';
+  if (value.includes('fashion') || value.includes('cloth') || value.includes('wear') || value.includes('shirt') || value.includes('shoe') || value.includes('bag') || value.includes('beauty')) return 'fashion';
+  return 'hostel-items';
 }
 
 function normalizeServerProduct(id: string, data: any): Product {
@@ -85,9 +117,14 @@ function normalizeServerProduct(id: string, data: any): Product {
     images.unshift(data.imageUrl.trim());
   }
 
-  const rawStatus = String(data?.status || 'active').toLowerCase();
+  const rawStatus = String(data?.status || 'active').toLowerCase().trim();
   const status: Product['status'] =
-    rawStatus === 'approved' || rawStatus === 'active'
+    rawStatus === '' ||
+    rawStatus === 'approved' ||
+    rawStatus === 'active' ||
+    rawStatus === 'available' ||
+    rawStatus === 'published' ||
+    rawStatus === 'live'
       ? 'active'
       : rawStatus === 'sold'
       ? 'sold'
@@ -127,9 +164,37 @@ function normalizeServerProduct(id: string, data: any): Product {
   };
 }
 
+async function fetchAllDocsPaginated(
+  targetDb: ReturnType<typeof getFirestore>,
+  collectionName: string,
+  batchSize = 300,
+  maxDocs = 2000
+): Promise<QueryDocumentSnapshot<DocumentData>[]> {
+  const docs: QueryDocumentSnapshot<DocumentData>[] = [];
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
+  while (docs.length < maxDocs) {
+    const q: Query<DocumentData> = lastDoc
+      ? query(collection(targetDb, collectionName), startAfter(lastDoc), limit(batchSize))
+      : query(collection(targetDb, collectionName), limit(batchSize));
+    const snap: QuerySnapshot<DocumentData> = await getDocs(q);
+    if (snap.empty) break;
+    snap.forEach((d) => docs.push(d));
+    if (snap.size < batchSize) break;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+  return docs;
+}
+
 export class FirestoreSync {
   private static instance: FirestoreSync;
   public initialized = false;
+  public legacyDbStatus: LegacyDbStatus = {
+    checked: false,
+    accessible: false,
+    hasLegacyDb: Boolean(legacyDefaultDb),
+    recoveredCount: 0,
+    legacyProductsCount: 0
+  };
 
   public static getInstance(): FirestoreSync {
     if (!FirestoreSync.instance) {
@@ -138,22 +203,72 @@ export class FirestoreSync {
     return FirestoreSync.instance;
   }
 
-  // Load all genuine products from (default) Cloud Firestore
+  // Load ALL genuine products from primary Cloud Firestore (throws on error so failures are never masked)
   async loadProducts(): Promise<Product[]> {
-    try {
-      const colRef = collection(firestoreDb, 'products');
-      const snap = await getDocs(colRef);
-      const list: Product[] = [];
-      snap.forEach(d => {
-        if (d.id.startsWith('prod_live_seed')) return;
-        list.push(normalizeServerProduct(d.id, d.data()));
-      });
-      console.log(`[FirestoreSync] Loaded ${list.length} genuine products from (default) Cloud Firestore.`);
-      return list;
-    } catch (err) {
-      console.error('[FirestoreSync] Failed to load products from Firestore:', err);
-      return [];
+    const primaryDocs = await fetchAllDocsPaginated(firestoreDb, 'products');
+    const seenIds = new Set<string>();
+    const list: Product[] = [];
+
+    for (const d of primaryDocs) {
+      if (d.id.startsWith('prod_live_seed')) continue;
+      seenIds.add(d.id);
+      list.push(normalizeServerProduct(d.id, d.data()));
     }
+
+    // Best-effort additive read + permanent migration from legacy (default) database if accessible
+    if (legacyDefaultDb) {
+      try {
+        const legacyDocs = await fetchAllDocsPaginated(legacyDefaultDb, 'products');
+        let legacyAdded = 0;
+        const toMigrate: Product[] = [];
+        for (const d of legacyDocs) {
+          if (d.id.startsWith('prod_live_seed')) continue;
+          const normalized = normalizeServerProduct(d.id, d.data());
+          if (!seenIds.has(d.id)) {
+            seenIds.add(d.id);
+            list.push(normalized);
+            toMigrate.push(normalized);
+            legacyAdded++;
+          }
+        }
+        this.legacyDbStatus = {
+          checked: true,
+          accessible: true,
+          hasLegacyDb: true,
+          recoveredCount: legacyAdded,
+          legacyProductsCount: legacyDocs.filter((d) => !d.id.startsWith('prod_live_seed')).length
+        };
+
+        // Permanently persist recovered legacy products into active primary Firestore DB
+        for (const prod of toMigrate) {
+          this.saveProduct(prod).catch((err) => {
+            console.warn(`[FirestoreSync] Could not migrate legacy product ${prod.id}:`, err?.message || err);
+          });
+        }
+
+        if (legacyAdded > 0) {
+          console.log(`[FirestoreSync] Recovered & migrated ${legacyAdded} legacy products from (default) database.`);
+        }
+      } catch (legacyErr: any) {
+        const code = String(legacyErr?.code || 'unknown');
+        const msg = String(legacyErr?.message || legacyErr);
+        this.legacyDbStatus = {
+          checked: true,
+          accessible: false,
+          hasLegacyDb: true,
+          errorCode: code,
+          errorMessage: msg,
+          recoveredCount: 0,
+          legacyProductsCount: 0
+        };
+        console.warn(
+          `[FirestoreSync] Legacy (default) database unreadable (${code}: ${msg}). Primary DB active with ${list.length} products.`
+        );
+      }
+    }
+
+    console.log(`[FirestoreSync] Loaded ${list.length} genuine products from Cloud Firestore (${configuredDbId || 'default'}).`);
+    return list;
   }
 
   // Save or update a product in Firestore
@@ -164,7 +279,7 @@ export class FirestoreSync {
         docRef,
         stripUndefined({
           ...product,
-          updatedAt: new Date().toISOString()
+          updatedAt: product.updatedAt || new Date().toISOString()
         }),
         { merge: true }
       );
@@ -195,39 +310,61 @@ export class FirestoreSync {
       console.log(`[FirestoreSync] Saved user ${user.id} (${user.email}) to Firestore.`);
     } catch (err) {
       console.error(`[FirestoreSync] Error saving user to Firestore:`, err);
+      throw err;
     }
   }
 
-  // Load Users from Firestore
+  // Load Users from Firestore (with legacy (default) fallback merge)
   async loadUsers(): Promise<User[]> {
-    try {
-      const snap = await getDocs(collection(firestoreDb, 'users'));
-      const list: User[] = [];
-      snap.forEach(d => {
-        const data = d.data();
-        if (data?.email) {
-          list.push({
-            id: d.id,
-            name: String(data.name || data.displayName || 'FUWUKARI Student'),
-            email: String(data.email).toLowerCase().trim(),
-            passwordHash: String(data.passwordHash || ''),
-            role: data.role === 'admin' ? 'admin' : data.role === 'seller' ? 'seller' : 'buyer',
-            phone: data.phone || '',
-            whatsappNumber: data.whatsappNumber || data.phone || '',
-            state: data.state || 'Taraba',
-            city: data.city || 'Wukari',
-            avatarUrl: data.avatarUrl || data.photoURL,
-            isSuspended: Boolean(data.isSuspended),
-            suspensionReason: data.suspensionReason,
-            createdAt: toIsoString(data.createdAt)
-          });
-        }
-      });
-      return list;
-    } catch (err) {
-      console.error('[FirestoreSync] Failed to load users from Firestore:', err);
-      return [];
+    const docs = await fetchAllDocsPaginated(firestoreDb, 'users');
+    const seen = new Set<string>();
+    const list: User[] = [];
+    const mapUser = (d: any): User | null => {
+      const data = d.data();
+      if (!data?.email && !data?.name) return null;
+      return {
+        id: d.id,
+        name: String(data.name || data.displayName || 'FUWUKARI Student'),
+        email: String(data.email || '').toLowerCase().trim(),
+        passwordHash: String(data.passwordHash || ''),
+        role: data.role === 'admin' ? 'admin' : data.role === 'seller' ? 'seller' : 'buyer',
+        phone: data.phone || '',
+        whatsappNumber: data.whatsappNumber || data.phone || '',
+        state: data.state || 'Taraba',
+        city: data.city || 'Wukari',
+        avatarUrl: data.avatarUrl || data.photoURL,
+        isSuspended: Boolean(data.isSuspended),
+        suspensionReason: data.suspensionReason,
+        createdAt: toIsoString(data.createdAt)
+      };
+    };
+
+    for (const d of docs) {
+      const u = mapUser(d);
+      if (u) {
+        seen.add(u.id);
+        list.push(u);
+      }
     }
+
+    if (legacyDefaultDb) {
+      try {
+        const legacyDocs = await fetchAllDocsPaginated(legacyDefaultDb, 'users');
+        for (const d of legacyDocs) {
+          if (seen.has(d.id)) continue;
+          const u = mapUser(d);
+          if (u && u.role !== 'admin') {
+            seen.add(u.id);
+            list.push(u);
+            this.saveUser(u).catch(() => {});
+          }
+        }
+      } catch {
+        // Legacy DB unreadable
+      }
+    }
+
+    return list;
   }
 
   // Save Seller Profile
@@ -238,40 +375,62 @@ export class FirestoreSync {
       console.log(`[FirestoreSync] Saved seller profile ${profile.id} to Firestore.`);
     } catch (err) {
       console.error(`[FirestoreSync] Error saving seller profile to Firestore:`, err);
+      throw err;
     }
   }
 
-  // Load Seller Profiles from Firestore
+  // Load Seller Profiles from Firestore (with legacy (default) fallback merge)
   async loadSellerProfiles(): Promise<SellerProfile[]> {
-    try {
-      const snap = await getDocs(collection(firestoreDb, 'sellerProfiles'));
-      const list: SellerProfile[] = [];
-      snap.forEach(d => {
-        const data = d.data();
-        if (data?.userId && data?.shopName) {
-          list.push({
-            id: d.id,
-            userId: String(data.userId),
-            shopName: String(data.shopName),
-            shopSlug: String(data.shopSlug || ''),
-            shopLogo: data.shopLogo,
-            coverImage: data.coverImage,
-            description: String(data.description || ''),
-            whatsappNumber: String(data.whatsappNumber || ''),
-            state: String(data.state || 'Taraba'),
-            city: String(data.city || 'Wukari'),
-            address: data.address,
-            isVerified: Boolean(data.isVerified),
-            isSuspended: Boolean(data.isSuspended),
-            createdAt: toIsoString(data.createdAt)
-          });
-        }
-      });
-      return list;
-    } catch (err) {
-      console.error('[FirestoreSync] Failed to load sellerProfiles from Firestore:', err);
-      return [];
+    const docs = await fetchAllDocsPaginated(firestoreDb, 'sellerProfiles');
+    const seen = new Set<string>();
+    const list: SellerProfile[] = [];
+    const mapProfile = (d: any): SellerProfile | null => {
+      const data = d.data();
+      if (!data?.userId || !data?.shopName) return null;
+      return {
+        id: d.id,
+        userId: String(data.userId),
+        shopName: String(data.shopName),
+        shopSlug: String(data.shopSlug || ''),
+        shopLogo: data.shopLogo,
+        coverImage: data.coverImage,
+        description: String(data.description || ''),
+        whatsappNumber: String(data.whatsappNumber || ''),
+        state: String(data.state || 'Taraba'),
+        city: String(data.city || 'Wukari'),
+        address: data.address,
+        isVerified: Boolean(data.isVerified),
+        isSuspended: Boolean(data.isSuspended),
+        createdAt: toIsoString(data.createdAt)
+      };
+    };
+
+    for (const d of docs) {
+      const p = mapProfile(d);
+      if (p) {
+        seen.add(p.id);
+        list.push(p);
+      }
     }
+
+    if (legacyDefaultDb) {
+      try {
+        const legacyDocs = await fetchAllDocsPaginated(legacyDefaultDb, 'sellerProfiles');
+        for (const d of legacyDocs) {
+          if (seen.has(d.id)) continue;
+          const p = mapProfile(d);
+          if (p) {
+            seen.add(p.id);
+            list.push(p);
+            this.saveSellerProfile(p).catch(() => {});
+          }
+        }
+      } catch {
+        // Legacy DB unreadable
+      }
+    }
+
+    return list;
   }
 }
 

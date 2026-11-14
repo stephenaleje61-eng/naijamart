@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
 
     const unsubscribe = subscribeToFirebaseAuthChanges(async (fbUser) => {
-      if (fbUser) {
+      if (fbUser && !fbUser.isAnonymous) {
         try {
           const session = await getUserSessionFromFirestore(fbUser.uid);
           if (session) {

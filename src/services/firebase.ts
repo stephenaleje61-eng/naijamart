@@ -14,12 +14,18 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
+  Query,
+  QuerySnapshot,
+  QueryDocumentSnapshot,
+  DocumentData,
   onSnapshot
 } from 'firebase/firestore';
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -50,19 +56,26 @@ import {
   OrderRecord
 } from '../types.js';
 
-// 1. Initialize Firebase App and Services
+// 1. Initialize Firebase App and Services (Single App Initialization)
 export const app = getApps().length > 0 ? getApp() : initializeApp(activeFirebaseConfig);
-const configuredDbId = (activeFirebaseConfig as any).firestoreDatabaseId || undefined;
-function initFirestoreClient() {
+const configuredDbId =
+  typeof (activeFirebaseConfig as any).firestoreDatabaseId === 'string' &&
+  (activeFirebaseConfig as any).firestoreDatabaseId.trim().length > 0
+    ? (activeFirebaseConfig as any).firestoreDatabaseId.trim()
+    : undefined;
+
+function initFirestoreClient(dbId?: string) {
   try {
-    return configuredDbId
-      ? initializeFirestore(app, { experimentalForceLongPolling: true }, configuredDbId)
+    return dbId
+      ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
       : initializeFirestore(app, { experimentalForceLongPolling: true });
   } catch {
-    return configuredDbId ? getFirestore(app, configuredDbId) : getFirestore(app);
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
   }
 }
-export const db = initFirestoreClient();
+export const db = initFirestoreClient(configuredDbId);
+// Optional read-only handle for legacy (default) DB when rules are published there
+const legacyDefaultDb = configuredDbId ? getFirestore(app) : null;
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -225,9 +238,14 @@ export function normalizeFirestoreProduct(docId: string, data: any): Product {
     rawImages.unshift(String(data.imageUrl).trim());
   }
 
-  const rawStatus = String(data?.status || 'active').toLowerCase();
+  const rawStatus = String(data?.status || 'active').toLowerCase().trim();
   const normalizedStatus: Product['status'] =
-    rawStatus === 'approved' || rawStatus === 'active'
+    rawStatus === '' ||
+    rawStatus === 'approved' ||
+    rawStatus === 'active' ||
+    rawStatus === 'available' ||
+    rawStatus === 'published' ||
+    rawStatus === 'live'
       ? 'active'
       : rawStatus === 'sold'
       ? 'sold'
@@ -339,8 +357,143 @@ export async function testConnection(): Promise<boolean> {
 
 testConnection();
 
-// 4. Firestore Product Operations
-export async function getProductsFromFirestore(filters?: {
+export function formatFirestoreErrorMessage(err: any, action = 'load marketplace data'): string {
+  const code = String(err?.code || '');
+  const message = String(err?.message || err || 'Unknown Firestore error');
+
+  if (code === 'permission-denied' || message.toLowerCase().includes('permission-denied') || message.toLowerCase().includes('insufficient permissions')) {
+    return `[${code || 'permission-denied'}] Firestore permission denied while trying to ${action}. Publish updated Firestore rules in Firebase Console and tap Retry.`;
+  }
+  if (code === 'unavailable' || message.toLowerCase().includes('unavailable') || message.toLowerCase().includes('offline')) {
+    return `[${code || 'unavailable'}] Could not reach Cloud Firestore backend. Check your internet connection and tap Retry.`;
+  }
+  if (code === 'failed-precondition') {
+    return `[${code}] Firestore query requires an index or precondition: ${message}`;
+  }
+  if (message.toLowerCase().includes('timed out')) {
+    return `[timeout] ${message}`;
+  }
+  return code ? `[${code}] ${message}` : message;
+}
+
+let pendingAnonAuthPromise: Promise<string | null> | null = null;
+
+/**
+ * Silently establishes a real Firebase Anonymous Auth session in the background
+ * for Guest Mode / Guest Post when Anonymous sign-in is enabled in Firebase Console.
+ * Gracefully returns null without blocking Guest flow if disabled (auth/admin-restricted-operation).
+ */
+export async function ensureGuestAuth(): Promise<string | null> {
+  if (auth.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
+  if (pendingAnonAuthPromise) {
+    return pendingAnonAuthPromise;
+  }
+
+  pendingAnonAuthPromise = (async () => {
+    try {
+      const cred = await withTimeout(
+        signInAnonymously(auth),
+        4000,
+        'Anonymous auth timed out.'
+      );
+      return cred.user.uid;
+    } catch (err: any) {
+      const code = String(err?.code || '');
+      if (
+        code === 'auth/admin-restricted-operation' ||
+        code === 'auth/operation-not-allowed' ||
+        code === 'auth/unauthorized-domain'
+      ) {
+        console.warn(`[Guest Auth] Silent signInAnonymously unavailable (${code}). Proceeding with persistent local Guest ID.`);
+      } else {
+        console.warn('[Guest Auth] Anonymous sign-in skipped:', code || err?.message);
+      }
+      return null;
+    } finally {
+      pendingAnonAuthPromise = null;
+    }
+  })();
+
+  return pendingAnonAuthPromise;
+}
+
+// 4. Firestore Product Operations (Paginated Full Catalog + Stale-While-Revalidate Cache + Legacy Recovery)
+const PRODUCTS_CACHE_KEY = 'fu_market_products_cache_v1';
+const PRODUCTS_CACHE_TTL_MS = 45 * 1000;
+
+let memoryCatalogCache: Product[] | null = null;
+let memoryCatalogFetchedAt = 0;
+
+export interface LegacyDbDiagnostic {
+  checked: boolean;
+  accessible: boolean;
+  hasLegacyDb: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  recoveredCount: number;
+  legacyProductsCount: number;
+  lastCheckedAt?: string;
+}
+
+let legacyDbDiagnostic: LegacyDbDiagnostic = {
+  checked: false,
+  accessible: false,
+  hasLegacyDb: Boolean(legacyDefaultDb),
+  recoveredCount: 0,
+  legacyProductsCount: 0
+};
+
+export function getLegacyDbDiagnostic(): LegacyDbDiagnostic {
+  return { ...legacyDbDiagnostic };
+}
+
+export function invalidateProductsCache(): void {
+  memoryCatalogCache = null;
+  memoryCatalogFetchedAt = 0;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(PRODUCTS_CACHE_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
+function writeProductsCache(items: Product[]): void {
+  memoryCatalogCache = items;
+  memoryCatalogFetchedAt = Date.now();
+  if (typeof window === 'undefined') return;
+  try {
+    const lightweightPayload = JSON.stringify({
+      savedAt: memoryCatalogFetchedAt,
+      items: items.slice(0, 60)
+    });
+    if (lightweightPayload.length < 3.5 * 1024 * 1024) {
+      localStorage.setItem(PRODUCTS_CACHE_KEY, lightweightPayload);
+    }
+  } catch {
+    // Ignore localStorage quota exceeded cleanly when inline base64 images are large
+  }
+}
+
+function readLocalStorageProductsCache(): Product[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed?.items)) {
+      return parsed.items as Product[];
+    }
+  } catch {
+    // ignore corrupt cache
+  }
+  return null;
+}
+
+export interface ProductQueryFilters {
   categoryId?: string;
   sellerId?: string;
   searchQuery?: string;
@@ -351,91 +504,263 @@ export async function getProductsFromFirestore(filters?: {
   maxPrice?: number;
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular';
   limitCount?: number;
-}): Promise<Product[]> {
-  const path = 'products';
-  try {
-    const snapshot = await withTimeout(
-      getDocs(collection(db, path)),
-      4000,
-      'Listings request timed out after 5 seconds. Please try again.'
-    );
-    let items: Product[] = [];
+  forceRefresh?: boolean;
+}
 
-    snapshot.forEach(docSnap => {
-      if (docSnap.id.startsWith('prod_live_seed')) return;
-      const product = normalizeFirestoreProduct(docSnap.id, docSnap.data());
-      const isApproved = !product.moderationStatus || product.moderationStatus === 'approved';
-      if (product.status === 'active' && isApproved) {
-        items.push(product);
-      }
-    });
+export function applyProductFiltersAndSort(source: Product[], filters?: ProductQueryFilters): Product[] {
+  let items = source.slice();
 
-    if (filters?.categoryId && filters.categoryId !== 'all') {
-      const normalizedTarget = mapLegacyCategory(filters.categoryId);
-      items = items.filter(p => p.categoryId === normalizedTarget || p.categoryId === filters.categoryId);
-    }
-    if (filters?.condition && (filters.condition === 'new' || filters.condition === 'used')) {
-      items = items.filter(p => p.condition === filters.condition);
-    }
-    if (filters?.state && filters.state !== 'all') {
-      items = items.filter(p => p.state.toLowerCase() === filters.state!.toLowerCase());
-    }
-    if (filters?.city && filters.city !== 'all') {
-      items = items.filter(p => p.city.toLowerCase() === filters.city!.toLowerCase());
-    }
-    if (filters?.minPrice !== undefined && filters.minPrice > 0) {
-      items = items.filter(p => p.price >= filters.minPrice!);
-    }
-    if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
-      items = items.filter(p => p.price <= filters.maxPrice!);
-    }
-    if (filters?.sellerId) {
-      items = items.filter(p => p.sellerId === filters.sellerId);
-    }
-    if (filters?.searchQuery && filters.searchQuery.trim().length > 0) {
-      const term = filters.searchQuery.toLowerCase().trim();
-      items = items.filter(p =>
+  if (filters?.categoryId && filters.categoryId !== 'all') {
+    const normalizedTarget = mapLegacyCategory(filters.categoryId);
+    items = items.filter((p) => p.categoryId === normalizedTarget || p.categoryId === filters.categoryId);
+  }
+  if (filters?.condition && (filters.condition === 'new' || filters.condition === 'used')) {
+    items = items.filter((p) => p.condition === filters.condition);
+  }
+  if (filters?.state && filters.state !== 'all') {
+    items = items.filter((p) => p.state.toLowerCase() === filters.state!.toLowerCase());
+  }
+  if (filters?.city && filters.city !== 'all') {
+    items = items.filter((p) => p.city.toLowerCase() === filters.city!.toLowerCase());
+  }
+  if (filters?.minPrice !== undefined && filters.minPrice > 0) {
+    items = items.filter((p) => p.price >= filters.minPrice!);
+  }
+  if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
+    items = items.filter((p) => p.price <= filters.maxPrice!);
+  }
+  if (filters?.sellerId) {
+    items = items.filter((p) => p.sellerId === filters.sellerId);
+  }
+  if (filters?.searchQuery && filters.searchQuery.trim().length > 0) {
+    const term = filters.searchQuery.toLowerCase().trim();
+    items = items.filter(
+      (p) =>
         p.title.toLowerCase().includes(term) ||
         p.description.toLowerCase().includes(term) ||
         p.shopName?.toLowerCase().includes(term) ||
         p.sellerName?.toLowerCase().includes(term) ||
         p.city?.toLowerCase().includes(term) ||
         p.state?.toLowerCase().includes(term)
-      );
+    );
+  }
+
+  if (filters?.sort === 'price-asc') {
+    items.sort((a, b) => a.price - b.price);
+  } else if (filters?.sort === 'price-desc') {
+    items.sort((a, b) => b.price - a.price);
+  } else if (filters?.sort === 'popular') {
+    items.sort((a, b) => b.views + b.whatsappClicks * 3 - (a.views + a.whatsappClicks * 3));
+  } else {
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  if (filters?.limitCount && filters.limitCount > 0) {
+    items = items.slice(0, filters.limitCount);
+  }
+
+  return items;
+}
+
+export function getCachedProductsSnapshot(filters?: ProductQueryFilters): Product[] | null {
+  const base = memoryCatalogCache || readLocalStorageProductsCache();
+  if (!base) return null;
+  if (!memoryCatalogCache) {
+    memoryCatalogCache = base;
+  }
+  return applyProductFiltersAndSort(base, filters);
+}
+
+async function fetchAllClientDocsPaginated(
+  targetDb: ReturnType<typeof getFirestore>,
+  collectionName: string,
+  batchSize = 300,
+  maxDocs = 1500
+): Promise<QueryDocumentSnapshot<DocumentData>[]> {
+  const docs: QueryDocumentSnapshot<DocumentData>[] = [];
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
+
+  while (docs.length < maxDocs) {
+    const q: Query<DocumentData> = lastDoc
+      ? query(collection(targetDb, collectionName), startAfter(lastDoc), limit(batchSize))
+      : query(collection(targetDb, collectionName), limit(batchSize));
+    const snap: QuerySnapshot<DocumentData> = await withTimeout(
+      getDocs(q),
+      4500,
+      'Listings request timed out after 5 seconds. Please try again.'
+    );
+    if (snap.empty) break;
+    snap.forEach((docSnap) => docs.push(docSnap));
+    if (snap.size < batchSize) break;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+
+  return docs;
+}
+
+export async function tryRecoverLegacyDefaultDb(): Promise<LegacyDbDiagnostic> {
+  if (!legacyDefaultDb) {
+    legacyDbDiagnostic = {
+      checked: true,
+      accessible: false,
+      hasLegacyDb: false,
+      recoveredCount: 0,
+      legacyProductsCount: 0,
+      lastCheckedAt: new Date().toISOString()
+    };
+    return getLegacyDbDiagnostic();
+  }
+
+  try {
+    const primaryDocs = await fetchAllClientDocsPaginated(db, 'products', 300, 1500);
+    const seenIds = new Set<string>(primaryDocs.map((d) => d.id));
+    const legacyDocs = await fetchAllClientDocsPaginated(legacyDefaultDb, 'products', 300, 1500);
+
+    let recovered = 0;
+    let totalLegacy = 0;
+    for (const d of legacyDocs) {
+      if (d.id.startsWith('prod_live_seed')) continue;
+      totalLegacy++;
+      if (!seenIds.has(d.id)) {
+        seenIds.add(d.id);
+        const normalized = normalizeFirestoreProduct(d.id, d.data());
+        await saveProductToFirestore(normalized).catch(() => {});
+        recovered++;
+      }
     }
 
-    if (filters?.sort === 'price-asc') {
-      items.sort((a, b) => a.price - b.price);
-    } else if (filters?.sort === 'price-desc') {
-      items.sort((a, b) => b.price - a.price);
-    } else if (filters?.sort === 'popular') {
-      items.sort((a, b) => (b.views + b.whatsappClicks * 3) - (a.views + a.whatsappClicks * 3));
-    } else {
-      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    legacyDbDiagnostic = {
+      checked: true,
+      accessible: true,
+      hasLegacyDb: true,
+      recoveredCount: recovered,
+      legacyProductsCount: totalLegacy,
+      lastCheckedAt: new Date().toISOString()
+    };
+    if (recovered > 0) {
+      invalidateProductsCache();
     }
-
-    if (filters?.limitCount) {
-      items = items.slice(0, filters.limitCount);
-    }
-
-    return items;
   } catch (err: any) {
-    if (err instanceof Error && err.message.toLowerCase().includes('timed out')) {
-      throw err;
+    legacyDbDiagnostic = {
+      checked: true,
+      accessible: false,
+      hasLegacyDb: true,
+      errorCode: String(err?.code || 'permission-denied'),
+      errorMessage: String(err?.message || err),
+      recoveredCount: 0,
+      legacyProductsCount: 0,
+      lastCheckedAt: new Date().toISOString()
+    };
+  }
+
+  return getLegacyDbDiagnostic();
+}
+
+export async function getProductsFromFirestore(filters?: ProductQueryFilters): Promise<Product[]> {
+  const path = 'products';
+
+  // Fast memory cache hit (avoids redundant Firestore reads on every category/search/filter tap)
+  const cacheFresh = memoryCatalogCache !== null && Date.now() - memoryCatalogFetchedAt < PRODUCTS_CACHE_TTL_MS;
+  if (!filters?.forceRefresh && cacheFresh) {
+    return applyProductFiltersAndSort(memoryCatalogCache!, filters);
+  }
+
+  const fetchFullPrimaryCatalog = async () => {
+    try {
+      return await fetchAllClientDocsPaginated(db, path, 300, 1500);
+    } catch (firstErr: any) {
+      const code = String(firstErr?.code || '');
+      if (code === 'permission-denied') {
+        throw firstErr;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+      return await fetchAllClientDocsPaginated(db, path, 300, 1500);
     }
-    handleFirestoreError(err, OperationType.LIST, path);
+  };
+
+  try {
+    const primaryDocs = await fetchFullPrimaryCatalog();
+    const seenIds = new Set<string>();
+    const allActive: Product[] = [];
+
+    for (const docSnap of primaryDocs) {
+      if (docSnap.id.startsWith('prod_live_seed')) continue;
+      seenIds.add(docSnap.id);
+      const product = normalizeFirestoreProduct(docSnap.id, docSnap.data());
+      const isApproved = !product.moderationStatus || product.moderationStatus === 'approved';
+      if (product.status === 'active' && isApproved) {
+        allActive.push(product);
+      }
+    }
+
+    // Check legacy (default) database once or on forceRefresh to recover any older products
+    if (legacyDefaultDb && (!legacyDbDiagnostic.checked || filters?.forceRefresh)) {
+      try {
+        const legacyDocs = await withTimeout(
+          fetchAllClientDocsPaginated(legacyDefaultDb, path, 300, 1500),
+          2800,
+          'Legacy DB check timed out'
+        );
+        let recovered = 0;
+        let legacyTotal = 0;
+        const toMigrate: Product[] = [];
+
+        for (const docSnap of legacyDocs) {
+          if (docSnap.id.startsWith('prod_live_seed')) continue;
+          legacyTotal++;
+          if (seenIds.has(docSnap.id)) continue;
+          seenIds.add(docSnap.id);
+          const product = normalizeFirestoreProduct(docSnap.id, docSnap.data());
+          const isApproved = !product.moderationStatus || product.moderationStatus === 'approved';
+          if (product.status === 'active' && isApproved) {
+            allActive.push(product);
+          }
+          toMigrate.push(product);
+          recovered++;
+        }
+
+        legacyDbDiagnostic = {
+          checked: true,
+          accessible: true,
+          hasLegacyDb: true,
+          recoveredCount: recovered,
+          legacyProductsCount: legacyTotal,
+          lastCheckedAt: new Date().toISOString()
+        };
+
+        for (const prod of toMigrate) {
+          saveProductToFirestore(prod).catch(() => {});
+        }
+      } catch (legacyErr: any) {
+        legacyDbDiagnostic = {
+          checked: true,
+          accessible: false,
+          hasLegacyDb: true,
+          errorCode: String(legacyErr?.code || 'unknown'),
+          errorMessage: String(legacyErr?.message || legacyErr),
+          recoveredCount: 0,
+          legacyProductsCount: 0,
+          lastCheckedAt: new Date().toISOString()
+        };
+      }
+    }
+
+    writeProductsCache(allActive);
+    return applyProductFiltersAndSort(allActive, filters);
+  } catch (err: any) {
+    throw new Error(formatFirestoreErrorMessage(err, 'load marketplace listings'));
   }
 }
 
 export async function getAllProductsFromFirestoreForAdmin(): Promise<Product[]> {
   const path = 'products';
   try {
-    const snapshot = await getDocs(collection(db, path));
+    const docs = await fetchAllClientDocsPaginated(db, path, 300, 1500);
     const items: Product[] = [];
-    snapshot.forEach(docSnap => {
-      if (docSnap.id.startsWith('prod_live_seed')) return;
+    for (const docSnap of docs) {
+      if (docSnap.id.startsWith('prod_live_seed')) continue;
       items.push(normalizeFirestoreProduct(docSnap.id, docSnap.data()));
-    });
+    }
     return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (err) {
     console.warn('[getAllProductsFromFirestoreForAdmin warning]:', err);
@@ -453,13 +778,13 @@ export async function adminUpdateFirestoreProduct(
       ...updates,
       updatedAt: new Date().toISOString()
     }));
+    invalidateProductsCache();
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
   }
 }
 
 export async function saveProductToFirestore(product: Product): Promise<void> {
-  const path = `products/${product.id}`;
   try {
     const productRef = doc(db, 'products', product.id);
     const primaryImg = product.images?.[0] || product.imageUrl || '';
@@ -468,9 +793,19 @@ export async function saveProductToFirestore(product: Product): Promise<void> {
       imageUrl: primaryImg,
       updatedAt: new Date().toISOString()
     });
+    const payloadBytes = new Blob([JSON.stringify(payload)]).size;
+    if (payloadBytes >= 980 * 1024) {
+      throw new Error(
+        `Product document (${Math.round(payloadBytes / 1024)} KB) is too close to Firestore's 1 MB limit. Please use fewer fallback photos or enable Firebase Storage.`
+      );
+    }
     await setDoc(productRef, payload, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    invalidateProductsCache();
+  } catch (err: any) {
+    if (err?.message?.includes('1 MB limit')) {
+      throw err;
+    }
+    throw new Error(formatFirestoreErrorMessage(err, 'save product listing'));
   }
 }
 
@@ -478,6 +813,7 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
   const path = `products/${productId}`;
   try {
     await deleteDoc(doc(db, 'products', productId));
+    invalidateProductsCache();
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }
@@ -1720,13 +2056,16 @@ export function subscribeToFriends(
     return onSnapshot(
       q,
       async (snapshot) => {
-        const list: Friend[] = [];
         const now = Date.now();
         const onlineThresholdMs = 5 * 60 * 1000;
-
-        for (const docSnap of snapshot.docs) {
+        const matchedDocs = snapshot.docs.filter((docSnap) => {
           const data = docSnap.data();
-          if (data.userA === userId || data.userB === userId) {
+          return data.userA === userId || data.userB === userId;
+        });
+
+        const list: Friend[] = await Promise.all(
+          matchedDocs.map(async (docSnap) => {
+            const data = docSnap.data();
             const isUserA = data.userA === userId;
             const friendUserId = isUserA ? data.userB : data.userA;
             const friendName = isUserA ? data.userBName : data.userAName;
@@ -1751,7 +2090,7 @@ export function subscribeToFriends(
               isOnline = false;
             }
 
-            list.push({
+            return {
               id: docSnap.id,
               userId: friendUserId,
               name: friendName || 'FUWUKARI Friend',
@@ -1761,9 +2100,10 @@ export function subscribeToFriends(
               isOnline,
               lastSeen,
               chatId: data.chatId || docSnap.id
-            });
-          }
-        }
+            };
+          })
+        );
+
         callback(list);
       },
       (err) => {

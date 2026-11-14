@@ -234,5 +234,27 @@ router.post('/trigger-cleanup', requireAdmin, (req: AuthenticatedRequest, res: R
   });
 });
 
+// Inspect Legacy (default) Database recovery status
+router.get('/legacy-status', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    legacyDbStatus: firestoreSync.legacyDbStatus,
+    activeProductsCount: db.products.length,
+    activeUsersCount: db.users.length
+  });
+});
+
+// Scan & migrate any accessible products/users from legacy (default) Firestore DB
+router.post('/migrate-legacy', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  await db.initFirestoreSync();
+  res.json({
+    legacyDbStatus: firestoreSync.legacyDbStatus,
+    activeProductsCount: db.products.length,
+    activeUsersCount: db.users.length,
+    message: firestoreSync.legacyDbStatus.accessible
+      ? `Legacy scan complete: ${firestoreSync.legacyDbStatus.recoveredCount} item(s) recovered.`
+      : 'Legacy (default) database is still locked by Firebase rules. Update (default) rules in Firebase Console and try again.'
+  });
+});
+
 export default router;
 

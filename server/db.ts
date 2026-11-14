@@ -141,6 +141,7 @@ export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 class Database {
   private data: DatabaseSchema;
+  public lastFirestoreError: { code: string; message: string } | null = null;
 
   constructor() {
     this.data = this.loadDatabase();
@@ -218,34 +219,116 @@ class Database {
     }
   }
 
+  private lastRefreshAt = 0;
+  private refreshInFlight: Promise<void> | null = null;
+
   // --- PERMANENT PRODUCTION PERSISTENCE ---
   public async initFirestoreSync(): Promise<void> {
-    try {
-      const { firestoreSync } = await import('./firestore.js');
-      // Load permanent products directly from Firestore
-      const [firestoreProducts, firestoreUsers, firestoreProfiles] = await Promise.all([
-        firestoreSync.loadProducts(),
-        firestoreSync.loadUsers(),
-        firestoreSync.loadSellerProfiles()
-      ]);
-      this.data.products = firestoreProducts || [];
-
-      for (const fu of firestoreUsers) {
-        if (!this.data.users.some(u => u.id === fu.id || (fu.email && u.email === fu.email))) {
-          this.data.users.push(fu);
-        }
-      }
-      for (const fp of firestoreProfiles) {
-        if (!this.data.sellerProfiles.some(p => p.id === fp.id || p.userId === fp.userId)) {
-          this.data.sellerProfiles.push(fp);
-        }
-      }
-
-      this.save();
-      console.log(`[Database] Production sync active: ${this.data.products.length} genuine permanent products and ${this.data.users.length} users loaded.`);
-    } catch (err) {
-      console.error('[Database] initFirestoreSync error:', err);
+    if (this.refreshInFlight) {
+      return this.refreshInFlight;
     }
+
+    this.refreshInFlight = (async () => {
+      try {
+        const { firestoreSync, formatServerFirestoreError } = await import('./firestore.js');
+        // Load permanent products directly from primary Firestore + optional legacy (default) DB
+        try {
+          const firestoreProducts = await firestoreSync.loadProducts();
+          const mergedMap = new Map<string, Product>();
+
+          // Preserve any local products that have not yet been mirrored to the active Firestore DB
+          const fsIds = new Set(firestoreProducts.map((p) => p.id));
+          for (const localProd of this.data.products) {
+            if (!localProd.id.startsWith('prod_live_seed')) {
+              mergedMap.set(localProd.id, localProd);
+              if (!fsIds.has(localProd.id)) {
+                firestoreSync.saveProduct(localProd).catch((err) => {
+                  console.warn(`[Database] Failed to push local product ${localProd.id} to Firestore:`, err?.message || err);
+                });
+              }
+            }
+          }
+
+          for (const fsProd of firestoreProducts) {
+            mergedMap.set(fsProd.id, fsProd);
+          }
+
+          this.data.products = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          this.lastFirestoreError = null;
+          this.lastRefreshAt = Date.now();
+        } catch (prodErr: any) {
+          const formatted = formatServerFirestoreError(prodErr);
+          this.lastFirestoreError = formatted;
+          console.error('[Database] Firestore loadProducts failed (preserving local snapshot):', formatted.message);
+        }
+
+        const [usersResult, profilesResult] = await Promise.allSettled([
+          firestoreSync.loadUsers(),
+          firestoreSync.loadSellerProfiles()
+        ]);
+
+        if (usersResult.status === 'fulfilled') {
+          const remoteUsers = usersResult.value;
+          const remoteUserKeys = new Set<string>();
+          for (const fu of remoteUsers) {
+            remoteUserKeys.add(fu.id);
+            if (fu.email) remoteUserKeys.add(fu.email.toLowerCase());
+            if (!this.data.users.some((u) => u.id === fu.id || (fu.email && u.email?.toLowerCase() === fu.email.toLowerCase()))) {
+              this.data.users.push(fu);
+            }
+          }
+          // Backfill local registered users up into the active named Firestore DB if missing there
+          for (const localUser of this.data.users) {
+            if (localUser.id === 'admin-001' && localUser.role === 'admin') continue;
+            const hasId = remoteUserKeys.has(localUser.id);
+            const hasEmail = localUser.email && remoteUserKeys.has(localUser.email.toLowerCase());
+            if (!hasId && !hasEmail) {
+              firestoreSync.saveUser(localUser).catch((err) => {
+                console.warn(`[Database] Could not backfill user ${localUser.email} to Firestore:`, err?.message || err);
+              });
+            }
+          }
+        }
+
+        if (profilesResult.status === 'fulfilled') {
+          const remoteProfiles = profilesResult.value;
+          const remoteProfileKeys = new Set<string>();
+          for (const fp of remoteProfiles) {
+            remoteProfileKeys.add(fp.id);
+            if (fp.userId) remoteProfileKeys.add(fp.userId);
+            if (!this.data.sellerProfiles.some((p) => p.id === fp.id || p.userId === fp.userId)) {
+              this.data.sellerProfiles.push(fp);
+            }
+          }
+          // Backfill local seller profiles up into the active named Firestore DB if missing there
+          for (const localProf of this.data.sellerProfiles) {
+            if (!remoteProfileKeys.has(localProf.id) && !remoteProfileKeys.has(localProf.userId)) {
+              firestoreSync.saveSellerProfile(localProf).catch((err) => {
+                console.warn(`[Database] Could not backfill seller profile ${localProf.shopName}:`, err?.message || err);
+              });
+            }
+          }
+        }
+
+        this.save();
+        console.log(`[Database] Production sync active: ${this.data.products.length} genuine permanent products and ${this.data.users.length} users loaded.`);
+      } catch (err: any) {
+        const code = String(err?.code || 'firestore/sync-error');
+        this.lastFirestoreError = { code, message: `[${code}] ${err?.message || String(err)}` };
+        console.error('[Database] initFirestoreSync error:', err);
+      } finally {
+        this.refreshInFlight = null;
+      }
+    })();
+
+    return this.refreshInFlight;
+  }
+
+  public async refreshFromFirestoreIfStale(maxAgeMs = 15000): Promise<void> {
+    if (Date.now() - this.lastRefreshAt < maxAgeMs) return;
+    await this.initFirestoreSync();
   }
 
   // Save product directly to both in-memory cache and Firestore permanent production storage

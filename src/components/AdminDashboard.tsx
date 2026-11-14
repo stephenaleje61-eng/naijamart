@@ -12,7 +12,8 @@ import {
   Home,
   HelpCircle,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Database
 } from 'lucide-react';
 import {
   Product,
@@ -33,7 +34,9 @@ import {
   fetchAdminReports,
   adminResolveReport,
   adminModerateProduct,
-  adminToggleUserSuspension
+  adminToggleUserSuspension,
+  fetchLegacyRecoveryStatus,
+  triggerLegacyRecovery
 } from '../services/api.js';
 import {
   getAllProductsFromFirestoreForAdmin,
@@ -42,7 +45,10 @@ import {
   subscribeToHuxReports,
   resolveHuxReport,
   subscribeToStudentRequests,
-  deleteStudentRequest
+  deleteStudentRequest,
+  getLegacyDbDiagnostic,
+  tryRecoverLegacyDefaultDb,
+  LegacyDbDiagnostic
 } from '../services/firebase.js';
 import { formatNaira } from './ProductCard.js';
 import { ProductImage } from './ProductImage.js';
@@ -85,22 +91,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [resolveNotes, setResolveNotes] = useState('');
   const [suspendUserTarget, setSuspendUserTarget] = useState<User | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
+  const [legacyDiag, setLegacyDiag] = useState<LegacyDbDiagnostic>(() => getLegacyDbDiagnostic());
+  const [scanningLegacy, setScanningLegacy] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const [metricRes, prodRes, repRes, userRes, fsProducts] = await Promise.allSettled([
+      const [metricRes, prodRes, repRes, userRes, fsProducts, legacyApiRes] = await Promise.allSettled([
         fetchAdminMetrics(),
         fetchAdminProducts(),
         fetchAdminReports(),
         fetchAdminUsers(),
-        getAllProductsFromFirestoreForAdmin()
+        getAllProductsFromFirestoreForAdmin(),
+        fetchLegacyRecoveryStatus()
       ]);
 
       if (metricRes.status === 'fulfilled') {
         setMetrics(metricRes.value.metrics);
         setAuditLogs(metricRes.value.recentAuditLogs || []);
+      }
+
+      if (legacyApiRes.status === 'fulfilled' && legacyApiRes.value?.legacyDbStatus) {
+        setLegacyDiag(legacyApiRes.value.legacyDbStatus);
+      } else {
+        setLegacyDiag(getLegacyDbDiagnostic());
       }
 
       const apiProds = prodRes.status === 'fulfilled' ? prodRes.value.products || [] : [];
@@ -120,6 +135,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setErrorMsg(err?.message || 'Failed to load admin data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleScanLegacyDb = async () => {
+    setScanningLegacy(true);
+    setErrorMsg(null);
+    try {
+      const [clientDiag, serverDiag] = await Promise.allSettled([
+        tryRecoverLegacyDefaultDb(),
+        triggerLegacyRecovery()
+      ]);
+      const diag =
+        clientDiag.status === 'fulfilled'
+          ? clientDiag.value
+          : serverDiag.status === 'fulfilled'
+          ? serverDiag.value.legacyDbStatus
+          : getLegacyDbDiagnostic();
+      setLegacyDiag(diag);
+      if (diag?.accessible) {
+        flashStatus(`Legacy DB scan complete: ${diag.recoveredCount} product(s) migrated.`);
+        await loadData();
+      } else {
+        setErrorMsg(
+          'Legacy (default) Firestore database is locked by expired Firebase rules (permission-denied). Follow the Console steps below to publish read access, then click Scan again.'
+        );
+      }
+    } finally {
+      setScanningLegacy(false);
     }
   };
 
@@ -443,6 +486,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </span>
                       <span className="text-[10px] text-[#555555]">Genuine buyer clicks</span>
                     </div>
+                  </div>
+
+                  {/* Database & Legacy Product Recovery Diagnostic */}
+                  <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#0B6B3A] text-[#F2B90D] flex items-center justify-center shrink-0">
+                          <Database className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-[#111111]">
+                            Firestore Database &amp; Legacy Recovery Status
+                          </h4>
+                          <p className="text-[11px] text-[#555555]">
+                            Active DB: <span className="font-mono text-[#0B6B3A]">ai-studio-naijamartnigeria-7994e8d8...</span> ({products.length} products)
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleScanLegacyDb}
+                        disabled={scanningLegacy}
+                        className="px-4 py-2 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 text-[#F2B90D] ${scanningLegacy ? 'animate-spin' : ''}`} />
+                        <span>{scanningLegacy ? 'Scanning...' : 'Scan & Migrate Legacy Products'}</span>
+                      </button>
+                    </div>
+
+                    {legacyDiag.hasLegacyDb && (
+                      <div
+                        className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                          legacyDiag.accessible
+                            ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#14532D]'
+                            : 'bg-[#FFF8DB] border-[#F2B90D] text-[#111111]'
+                        }`}
+                      >
+                        {legacyDiag.accessible ? (
+                          <p className="font-bold">
+                            Legacy <code className="font-mono">(default)</code> DB accessible — {legacyDiag.legacyProductsCount} item(s) scanned, {legacyDiag.recoveredCount} newly migrated to active DB.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="font-black">
+                              Legacy <code className="font-mono">(default)</code> Firestore database returned <span className="underline">{legacyDiag.errorCode || 'permission-denied'}</span>.
+                            </p>
+                            <p className="text-[11px] leading-relaxed">
+                              If you posted older products in the original <code className="font-mono">(default)</code> database of project <code className="font-mono">zangamarket1</code>, open{' '}
+                              <strong>Firebase Console → Firestore Database → select (default) → Rules</strong> and allow read access on <code className="font-mono">products</code>,{' '}
+                              <code className="font-mono">users</code>, and <code className="font-mono">sellerProfiles</code>, then click <strong>Scan &amp; Migrate Legacy Products</strong> above to automatically copy them into your active database.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Recent Audit Logs */}

@@ -25,7 +25,7 @@ import {
   getApiBaseUrl,
   setApiBaseUrl
 } from '../services/api.js';
-import { auth } from '../services/firebase.js';
+import { auth, ensureGuestAuth } from '../services/firebase.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { DEFAULT_CATEGORIES } from '../constants/categories.js';
 import { formatNaira } from './ProductCard.js';
@@ -34,7 +34,7 @@ import {
   isValidFirebaseDownloadUrl,
   UploadStage
 } from '../services/imageStorage.js';
-import { isValidImageFormat } from '../utils/imagePersistence.js';
+import { isValidImageFormat, estimateJsonUtf8Bytes } from '../utils/imagePersistence.js';
 import { getOrCreateGuestId } from '../utils/studentAuth.js';
 import { ProductImage } from './ProductImage.js';
 
@@ -57,6 +57,17 @@ export interface PhotoSlot {
   maxRetries?: number;
   errorMessage?: string;
   downloadUrl?: string;
+  isFallback?: boolean;
+  warningMessage?: string;
+}
+
+const MAX_FALLBACK_IMAGE_BYTES = 750 * 1024; // Keeps total Firestore document well under 1 MiB limit
+
+function isConfirmedPersistedImageUrl(url?: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (isValidFirebaseDownloadUrl(trimmed)) return true;
+  return trimmed.startsWith('data:image/') && trimmed.includes(';base64,') && trimmed.length > 150;
 }
 
 function getFileFingerprint(file: File): string {
@@ -161,6 +172,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
   useEffect(() => {
     mountedRef.current = true;
+    if (!user && !auth.currentUser) {
+      ensureGuestAuth().catch(() => {});
+    }
     return () => {
       mountedRef.current = false;
       for (const slotId of Array.from(abortControllersRef.current.keys())) {
@@ -175,7 +189,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
       }
       previewUrlsRef.current.clear();
     };
-  }, []);
+  }, [user]);
 
   const handleResetForm = () => {
     for (const slotId of Array.from(abortControllersRef.current.keys())) {
@@ -223,13 +237,17 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     }
 
     try {
+      if (!user && !auth.currentUser) {
+        await ensureGuestAuth();
+      }
+
       const result = await uploadImageToFirebaseStorage(file, {
         folder: 'products',
-        ownerId: auth.currentUser?.uid || user?.id || getOrCreateGuestId(),
-        timeoutMs: 25000,
+        ownerId: user?.id || auth.currentUser?.uid || getOrCreateGuestId(),
+        timeoutMs: 15000,
         maxRetries: 2,
         signal: controller.signal,
-        allowPersistentFallback: false,
+        allowPersistentFallback: true,
         onStageChange: (stage: UploadStage, attempt?: number, maxRetries?: number) => {
           if (!mountedRef.current || controller.signal.aborted) return;
           setPhotoSlots((prev) =>
@@ -271,27 +289,54 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         }
       });
 
-      if (!result.isFirebaseStorage || !isValidFirebaseDownloadUrl(result.downloadUrl)) {
-        throw new Error('Firebase Storage did not return a confirmed download URL.');
+      if (!isConfirmedPersistedImageUrl(result.downloadUrl)) {
+        throw new Error('Upload did not produce a valid persistent image URL.');
       }
 
       if (!mountedRef.current || controller.signal.aborted) return;
 
-      setPhotoSlots((prev) =>
-        prev.map((s) =>
+      setPhotoSlots((prev) => {
+        const existingFallbackBytes = prev
+          .filter((s) => s.id !== slotId && s.status === 'success' && s.isFallback && s.downloadUrl)
+          .reduce((sum, s) => sum + (s.downloadUrl?.length || 0), 0);
+
+        const nextBytes = result.isFallback ? result.downloadUrl.length : 0;
+        const exceedsDocCap = result.isFallback && existingFallbackBytes + nextBytes > MAX_FALLBACK_IMAGE_BYTES;
+
+        if (exceedsDocCap) {
+          return prev.map((s) =>
+            s.id === slotId
+              ? {
+                  ...s,
+                  status: 'error',
+                  progress: 0,
+                  downloadUrl: undefined,
+                  isFallback: false,
+                  retryAttempt: undefined,
+                  maxRetries: undefined,
+                  errorMessage:
+                    'Firestore 1MB fallback limit reached (Storage bucket not enabled). Keep 1–2 compressed photos or enable Firebase Storage.'
+                }
+              : s
+          );
+        }
+
+        return prev.map((s) =>
           s.id === slotId
             ? {
                 ...s,
                 status: 'success',
                 progress: 100,
                 downloadUrl: result.downloadUrl,
+                isFallback: Boolean(result.isFallback),
+                warningMessage: result.warning,
                 retryAttempt: undefined,
                 maxRetries: undefined,
                 errorMessage: undefined
               }
             : s
-        )
-      );
+        );
+      });
     } catch (err: any) {
       if (!mountedRef.current) return;
       const errMsg =
@@ -307,6 +352,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 status: 'error',
                 progress: 0,
                 downloadUrl: undefined,
+                isFallback: false,
                 retryAttempt: undefined,
                 maxRetries: undefined,
                 errorMessage: errMsg
@@ -469,13 +515,13 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     const successfulUrls = Array.from(
       new Set(
         photoSlots
-          .filter((s) => s.status === 'success' && isValidFirebaseDownloadUrl(s.downloadUrl))
+          .filter((s) => s.status === 'success' && isConfirmedPersistedImageUrl(s.downloadUrl))
           .map((s) => s.downloadUrl!.trim())
       )
     );
 
     if (successfulUrls.length === 0) {
-      setErrorMessage('Please upload at least 1 product photograph to Firebase Storage before publishing.');
+      setErrorMessage('Please upload at least 1 product photograph before publishing.');
       return;
     }
 
@@ -528,6 +574,13 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         shopName: effectiveShopName
       };
 
+      const totalPayloadBytes = estimateJsonUtf8Bytes(productPayload);
+      if (totalPayloadBytes >= 960 * 1024) {
+        throw new Error(
+          `Product data (${Math.round(totalPayloadBytes / 1024)} KB) exceeds Firestore's 1 MB document limit. Please keep only 1–2 compressed fallback photos or enable Firebase Storage.`
+        );
+      }
+
       const res = await createProductListing(productPayload);
       onSuccess();
       if (res && res.product) {
@@ -536,7 +589,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         onClose();
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to publish listing. Please check backend connection.');
+      setErrorMessage(err.message || 'Failed to publish listing. Please check Firebase connection.');
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -717,6 +770,15 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 Upload clear photos of your item. Images &gt;1MB are compressed automatically for fast campus upload.
               </p>
 
+              {photoSlots.some((s) => s.isFallback && s.status === 'success') && (
+                <div className="mb-3 p-2.5 bg-[#FFFDF2] border border-[#F2B90D] rounded-xl text-[11px] text-[#111111] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#0B6B3A] shrink-0 mt-0.5" />
+                  <span>
+                    Firebase Storage bucket is not enabled yet — photo(s) saved safely via compact Firestore fallback (up to 1–2 compressed photos per item).
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
                 {photoSlots.map((slot, idx) => (
                   <div
@@ -750,7 +812,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1 text-[10px] font-bold text-[#F2B90D]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                            <span>Uploaded (100%)</span>
+                            <span>{slot.isFallback ? 'Saved (Fallback)' : 'Uploaded (100%)'}</span>
                           </div>
                         </div>
                       )}

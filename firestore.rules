@@ -11,135 +11,185 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isValidDocId(docId) {
+      return docId is string && docId.size() > 0 && docId.size() <= 128;
+    }
+
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'stephenaleje61@gmail.com' ||
+        (request.auth.token.email == 'stephenaleje61@gmail.com' && request.auth.token.email_verified == true) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     function isValidProduct(data) {
       return data.keys().hasAll(['id', 'sellerId', 'title', 'price', 'categoryId', 'images', 'status']) &&
-        data.id is string && data.id.size() <= 128 &&
-        data.sellerId is string && data.sellerId.size() <= 128 &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.sellerId is string && data.sellerId.size() > 0 && data.sellerId.size() <= 128 &&
         data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
-        data.price is number && data.price > 0 &&
-        data.categoryId is string && data.categoryId.size() <= 100 &&
+        data.price is number && data.price > 0 && data.price <= 1000000000 &&
+        data.categoryId is string && data.categoryId.size() > 0 && data.categoryId.size() <= 100 &&
         data.images is list && data.images.size() > 0 && data.images.size() <= 10 &&
-        data.status is string;
+        data.status is string && data.status in ['active', 'sold', 'unavailable', 'expired'];
     }
 
-    // Products: public buyers can read listings; owners/admins manage
+    // Products: public buyers browse without login; sellers/guests create own listings
+    // Note: Once Anonymous Auth is enabled in Firebase Console, tighten create to require isSignedIn().
     match /products/{productId} {
       allow read: if true;
 
-      allow create: if isValidProduct(request.resource.data) &&
+      allow create: if isValidDocId(productId) &&
+        isValidProduct(request.resource.data) &&
         (!isSignedIn() || request.resource.data.sellerId == request.auth.uid || isAdmin());
 
-      allow update: if isValidProduct(request.resource.data) &&
-        (!isSignedIn() || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update: if isValidDocId(productId) &&
+        isValidProduct(request.resource.data) &&
+        (isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid && request.resource.data.sellerId == resource.data.sellerId));
 
-      allow delete: if !isSignedIn() || resource.data.sellerId == request.auth.uid || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
     }
 
-    // Categories: publicly readable
+    // Categories: publicly readable, admin managed
     match /categories/{categoryId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Users collection
+    // Users collection: block privilege escalation and validate IDs
     match /users/{userId} {
       allow read: if true;
-      allow create, update: if true;
+      allow create: if isValidDocId(userId) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 120 &&
+        (!('role' in request.resource.data) || request.resource.data.role in ['buyer', 'seller']);
+      allow update: if isValidDocId(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role || isAdmin());
       allow delete: if isAdmin();
     }
 
     // Seller storefront profiles
     match /sellerProfiles/{sellerId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update: if isValidDocId(sellerId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'shopName']) &&
+        request.resource.data.shopName is string &&
+        request.resource.data.shopName.size() > 0 &&
+        request.resource.data.shopName.size() <= 120;
+      allow delete: if isAdmin();
     }
 
-    // Admins collection
+    // Admins collection (strictly admin only)
     match /admins/{adminId} {
       allow read, write: if isAdmin();
     }
 
-    // Reports collection
+    // Reports collection (public report submission; private admin review)
     match /reports/{reportId} {
-      allow create: if true;
+      allow create: if isValidDocId(reportId) &&
+        request.resource.data.keys().hasAll(['id', 'reason', 'details', 'status']) &&
+        request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
 
     // Wukari Bike Riders (Okada Directory)
     match /bikeRiders/{riderId} {
       allow read: if true;
-      allow create, update: if true;
-      allow delete: if isAdmin() || true;
+      allow create, update: if isValidDocId(riderId) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.phoneNumber is string;
+      allow delete: if isAdmin();
     }
 
     // What Students Need (Student Requests)
     match /studentRequests/{requestId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'title', 'budget', 'location', 'phone', 'userId', 'status']) &&
+      allow create: if isValidDocId(requestId) &&
+        request.resource.data.keys().hasAll(['id', 'title', 'budget', 'location', 'phone', 'userId', 'status']) &&
         request.resource.data.title is string && request.resource.data.title.size() > 0 &&
         request.resource.data.budget is number && request.resource.data.budget >= 0;
-      allow update, delete: if true;
+      allow update: if isValidDocId(requestId) &&
+        (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
-    // Orders & Cart Review Persistence
+    // Orders & Cart Review Persistence (buyers submit orders; only admin reads/manages order archive)
     match /orders/{orderId} {
-      allow create: if request.resource.data.keys().hasAll(['id', 'buyerId', 'buyerName', 'buyerPhone', 'items', 'totalAmount', 'status']) &&
-        request.resource.data.items is list && request.resource.data.items.size() > 0;
-      allow read, update: if true;
-      allow delete: if isAdmin();
+      allow create: if isValidDocId(orderId) &&
+        request.resource.data.keys().hasAll(['id', 'buyerId', 'buyerName', 'buyerPhone', 'items', 'totalAmount', 'status']) &&
+        request.resource.data.items is list && request.resource.data.items.size() > 0 &&
+        request.resource.data.totalAmount is number && request.resource.data.totalAmount >= 0;
+      allow read, update, delete: if isAdmin();
     }
 
     // SINGLE HUB - FUWukari (Open Campus Group Chat)
     match /hubMessages/{messageId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['senderId', 'senderName', 'createdAt']);
+      allow create: if isValidDocId(messageId) &&
+        request.resource.data.keys().hasAll(['senderId', 'senderName', 'createdAt']) &&
+        request.resource.data.senderId is string &&
+        request.resource.data.senderName is string;
       allow update, delete: if isAdmin();
     }
 
     match /hubActiveUsers/{userId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidDocId(userId) &&
+        request.resource.data.keys().hasAll(['userId', 'name', 'lastActiveAt']);
+      allow delete: if isAdmin();
     }
 
     // FRIEND SYSTEM & DIRECT 1-ON-1 PRIVATE CHAT
     match /friendRequests/{requestId} {
-      allow read, create, update, delete: if true;
+      allow read: if true;
+      allow create, update: if isValidDocId(requestId);
+      allow delete: if isAdmin() || (isSignedIn() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid));
     }
 
     match /friends/{friendId} {
-      allow read, create, update, delete: if true;
+      allow read: if true;
+      allow create, update: if isValidDocId(friendId);
+      allow delete: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid));
     }
 
     match /privateChats/{chatId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidDocId(chatId);
+      allow delete: if isAdmin();
 
       match /messages/{msgId} {
-        allow read, write: if true;
+        allow read: if true;
+        allow create: if isValidDocId(chatId) && isValidDocId(msgId) &&
+          request.resource.data.keys().hasAll(['id', 'chatId', 'senderId', 'createdAt']);
+        allow update: if isValidDocId(chatId) && isValidDocId(msgId);
+        allow delete: if isAdmin();
       }
     }
 
     // WUKARI AGENT (Lodges, Self-Contains & Roommate Finder)
     match /hux/{huxId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['title', 'location', 'price', 'category', 'type', 'phone', 'userId']);
-      allow update, delete: if true;
+      allow create: if isValidDocId(huxId) &&
+        request.resource.data.keys().hasAll(['title', 'location', 'price', 'category', 'type', 'phone', 'userId']) &&
+        request.resource.data.price is number && request.resource.data.price >= 0;
+      allow update: if isValidDocId(huxId) &&
+        (isAdmin() || request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
-    // Scam and fraud reports on housing listings
+    // Scam and fraud reports on housing listings (private admin moderation)
     match /huxReports/{reportId} {
-      allow create: if true;
-      allow read, update, delete: if true;
+      allow create: if isValidDocId(reportId) &&
+        request.resource.data.keys().hasAll(['reason', 'details', 'status']) &&
+        request.resource.data.status == 'pending';
+      allow read, update, delete: if isAdmin();
     }
 
     // Connection test document
     match /test/{docId} {
-      allow read, write: if true;
+      allow read: if docId == 'connection';
+      allow write: if isAdmin();
     }
   }
 }

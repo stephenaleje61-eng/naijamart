@@ -1,59 +1,62 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    function isImage() {
-      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
-    }
-    
-    function isUnder5MB() {
-      return request.resource.size < 5 * 1024 * 1024;
-    }
-    
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Products: images uploaded to products/{sellerId}/{fileName}
+    function isImage() {
+      return request.resource != null &&
+        request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+
+    function isUnder5MB() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 5 * 1024 * 1024;
+    }
+
+    // Products: public buyers read product photos; authenticated guests or sellers upload to own folder
     match /products/{sellerId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == sellerId);
-      allow delete: if !isSignedIn() || request.auth.uid == sellerId;
+      allow create, update: if isSignedIn() && request.auth.uid == sellerId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == sellerId;
     }
 
     // Okada Riders: photos uploaded to riders/{userId}/{fileName}
     match /riders/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
-      allow delete: if !isSignedIn() || request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     // BikeRiders alternate path
     match /bikeRiders/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
-      allow delete: if !isSignedIn() || request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     // Hub chat attachments
     match /hub_chats/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
-      allow delete: if !isSignedIn() || request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     // Hux housing photos
     match /hux/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
-      allow delete: if !isSignedIn() || request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     // Student request photos
     match /requests/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == userId);
-      allow delete: if !isSignedIn() || request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
   }
 }

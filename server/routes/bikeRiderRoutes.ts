@@ -1,22 +1,18 @@
 import { Router, Request, Response } from 'express';
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
   setDoc,
   updateDoc,
   query,
-  where
+  where,
+  limit
 } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { firestoreDb as db } from '../firestore.js';
 import { BikeRider } from '../../src/types.js';
 
 const router = Router();
-
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 // In-memory cache if Firestore is temporarily unreachable
 let inMemoryRiders: BikeRider[] = [];
@@ -26,9 +22,9 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { area } = req.query;
     const ridersCol = collection(db, 'bikeRiders');
-    let q = query(ridersCol);
+    let q = query(ridersCol, limit(100));
     if (area && typeof area === 'string' && area !== 'all' && area.trim().length > 0) {
-      q = query(ridersCol, where('area', '==', area.trim()));
+      q = query(ridersCol, where('area', '==', area.trim()), limit(100));
     }
 
     const snapshot = await getDocs(q);
@@ -59,13 +55,20 @@ router.get('/', async (req: Request, res: Response) => {
     inMemoryRiders = riders;
     res.json({ success: true, count: riders.length, riders });
   } catch (err: any) {
-    console.warn('[GET /api/bike-riders fallback to memory]:', err.message);
-    const { area } = req.query;
-    let list = inMemoryRiders;
-    if (area && typeof area === 'string' && area !== 'all') {
-      list = list.filter((r) => r.area === area.trim());
+    console.warn('[GET /api/bike-riders error]:', err?.code || err?.message);
+    if (inMemoryRiders.length > 0) {
+      const { area } = req.query;
+      let list = inMemoryRiders;
+      if (area && typeof area === 'string' && area !== 'all') {
+        list = list.filter((r) => r.area === area.trim());
+      }
+      return res.json({ success: true, count: list.length, riders: list });
     }
-    res.json({ success: true, count: list.length, riders: list });
+    res.status(503).json({
+      success: false,
+      code: err?.code || 'firestore/unavailable',
+      error: `[${err?.code || 'firestore/error'}] ${err?.message || 'Unable to load bike riders.'}`
+    });
   }
 });
 

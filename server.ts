@@ -32,7 +32,9 @@ const uploadsDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir, { maxAge: '1d' }));
+app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', immutable: true }));
+app.use('/fuwukari-crest.png', express.static(path.resolve(__dirname, 'public/fuwukari-crest.png'), { maxAge: '30d' }));
+app.use('/fuwukari-logo.png', express.static(path.resolve(__dirname, 'public/fuwukari-logo.png'), { maxAge: '30d' }));
 
 // INITIALIZE FIRESTORE PRODUCTION DATABASE SYNC
 import { firestoreSync } from './server/firestore.js';
@@ -73,6 +75,9 @@ app.get('/api/health', (_req, res) => {
     app: 'FU MARKET',
     time: new Date().toISOString(),
     uptime: process.uptime(),
+    productsCount: db.products.length,
+    usersCount: db.users.length,
+    legacyDbStatus: firestoreSync.legacyDbStatus,
     cleanupStats: db.cleanupStats
   });
 });
@@ -111,11 +116,21 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Production mode: serve built assets from dist
+    // Production mode: serve built assets from dist with caching
     const distPath = path.resolve(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
-      app.use(express.static(distPath));
+      app.use(
+        express.static(distPath, {
+          maxAge: '7d',
+          setHeaders(res, filePath) {
+            if (filePath.endsWith('.html')) {
+              res.setHeader('Cache-Control', 'no-cache');
+            }
+          }
+        })
+      );
       app.get('*', (_req, res) => {
+        res.setHeader('Cache-Control', 'no-cache');
         res.sendFile(path.join(distPath, 'index.html'));
       });
     } else {

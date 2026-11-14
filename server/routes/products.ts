@@ -127,12 +127,27 @@ function scanForFraud(data: {
 }
 
 // GET all public active products with filters and search
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
+    await Promise.race([
+      db.refreshFromFirestoreIfStale(15000),
+      new Promise<void>((resolve) => setTimeout(resolve, 1800))
+    ]).catch(() => {});
+
+    if (db.products.length === 0 && db.lastFirestoreError) {
+      return res.status(503).json({
+        success: false,
+        code: db.lastFirestoreError.code,
+        error: `Cloud Firestore error ${db.lastFirestoreError.message}`
+      });
+    }
+
     let list = db.products.filter(p => {
       // Show active and approved listings to public buyers (never expire)
       const isModeratedApproved = !p.moderationStatus || p.moderationStatus === 'approved';
-      return p.status === 'active' && isModeratedApproved;
+      const st = String(p.status || 'active').toLowerCase().trim();
+      const isPublicActive = st === '' || st === 'active' || st === 'approved' || st === 'available' || st === 'published' || st === 'live';
+      return isPublicActive && isModeratedApproved;
     });
 
     const {
@@ -399,8 +414,9 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       });
     }
 
-    // Identify user or fall back to verified merchant
-    const user = req.user || db.users.find(u => u.role === 'seller') || db.users[0];
+    // Identify authenticated JWT user or match explicitly supplied Firebase/Guest sellerId (never hijack to admin-001)
+    const suppliedSellerId = typeof req.body.sellerId === 'string' ? req.body.sellerId.trim() : '';
+    const user = req.user || (suppliedSellerId ? db.users.find(u => u.id === suppliedSellerId) : undefined);
 
     // Check if seller is suspended
     if (user?.isSuspended) {
@@ -410,7 +426,11 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       });
     }
 
-    const sellerProfile = db.sellerProfiles.find(s => s.userId === user?.id) || db.sellerProfiles[0];
+    const sellerProfile = user
+      ? db.sellerProfiles.find(s => s.userId === user.id)
+      : suppliedSellerId
+      ? db.sellerProfiles.find(s => s.userId === suppliedSellerId)
+      : undefined;
 
     // Process uploaded files or image URLs
     const validImages: string[] = [];
@@ -521,7 +541,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
 
     const newProduct: Product = {
       id: `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
-      sellerId: user?.id || (typeof req.body.sellerId === 'string' && req.body.sellerId.trim()) || `seller-${Date.now()}`,
+      sellerId: user?.id || suppliedSellerId || `guest_${Date.now()}`,
       sellerName: user?.name || (typeof req.body.sellerName === 'string' && req.body.sellerName.trim()) || 'FUWUKARI Student',
       shopName: sellerProfile?.shopName || (typeof req.body.shopName === 'string' && req.body.shopName.trim()) || `${user?.name || req.body.sellerName || 'Student'}'s Store`,
       whatsappNumber: sellerPhone,

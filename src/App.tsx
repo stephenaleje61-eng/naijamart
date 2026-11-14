@@ -51,11 +51,15 @@ import { BottomNav, AppView } from './components/BottomNav.js';
 import { OfflineIndicator } from './components/OfflineIndicator.js';
 import { WelcomeNotice } from './components/WelcomeNotice.js';
 import { GuestChoiceModal } from './components/GuestChoiceModal.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { usePWAInstall } from './hooks/usePWAInstall.js';
 import {
   subscribeToFriendRequests,
   subscribeToStudentRequests,
-  subscribeToHuxListings
+  subscribeToHuxListings,
+  ensureGuestAuth,
+  getCachedProductsSnapshot,
+  invalidateProductsCache
 } from './services/firebase.js';
 import {
   getLocalStudentSession,
@@ -141,7 +145,7 @@ function MainMarketplace() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Listen for incoming friend requests & homepage real-time previews
+  // Listen for incoming friend requests & defer non-critical homepage previews so catalog loads first
   useEffect(() => {
     const student = getLocalStudentSession();
     const studentId = student?.id || user?.id;
@@ -153,15 +157,20 @@ function MainMarketplace() {
       });
     }
 
-    const unsubStudentReqs = subscribeToStudentRequests((list) => {
-      setLatestRequests(list.slice(0, 3));
-    });
+    let unsubStudentReqs = () => {};
+    let unsubHux = () => {};
+    const previewTimer = setTimeout(() => {
+      unsubStudentReqs = subscribeToStudentRequests((list) => {
+        setLatestRequests(list.slice(0, 3));
+      });
 
-    const unsubHux = subscribeToHuxListings('all', (list) => {
-      setLatestAccommodation(list.filter((l) => l.isAvailable !== false).slice(0, 3));
-    });
+      unsubHux = subscribeToHuxListings('all', (list) => {
+        setLatestAccommodation(list.filter((l) => l.isAvailable !== false).slice(0, 3));
+      });
+    }, 600);
 
     return () => {
+      clearTimeout(previewTimer);
       unsubReq();
       unsubStudentReqs();
       unsubHux();
@@ -253,13 +262,22 @@ function MainMarketplace() {
 
   const clearCart = () => setCartItems([]);
 
-  // Data states
+  // Data states (hydrate instantly from cache if available)
+  const initialCachedProducts = useRef<Product[] | null>(getCachedProductsSnapshot());
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [products, setProducts] = useState<Product[]>(() => initialCachedProducts.current || []);
+  const [loading, setLoading] = useState<boolean>(() => !(initialCachedProducts.current && initialCachedProducts.current.length > 0));
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [visibleCount, setVisibleCount] = useState<number>(16);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+  const [pagination, setPagination] = useState(() => ({
+    total: initialCachedProducts.current?.length || 0,
+    page: 1,
+    pageSize: 24,
+    totalPages: 1
+  }));
   const catalogRequestIdRef = useRef<number>(0);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -291,6 +309,7 @@ function MainMarketplace() {
   const downloadAppRef = useRef<HTMLElement>(null);
 
   const handleProductPostSuccess = async () => {
+    invalidateProductsCache();
     setSelectedCategory('all');
     setSelectedState('all');
     setSearchQuery('');
@@ -299,7 +318,7 @@ function MainMarketplace() {
     setActivePricePreset('all');
     setViewingFavouritesOnly(false);
 
-    await Promise.all([loadCatalogProducts(1), loadCategories()]);
+    await Promise.all([loadCatalogProducts(1, true), loadCategories()]);
     showToast('Product published on FU MARKET!');
 
     setTimeout(() => {
@@ -320,26 +339,55 @@ function MainMarketplace() {
     }
   };
 
-  const loadCatalogProducts = async (page = 1) => {
+  const loadCatalogProducts = async (page = 1, forceRefresh = false) => {
     const requestId = ++catalogRequestIdRef.current;
-    setLoading(true);
+    const minVal = minPrice !== '' && !isNaN(Number(minPrice)) ? Number(minPrice) : undefined;
+    const maxVal = maxPrice !== '' && !isNaN(Number(maxPrice)) ? Number(maxPrice) : undefined;
+
+    // Instant cached display when switching categories/filters so UI updates with 0ms delay
+    const cachedSlice = !forceRefresh
+      ? getCachedProductsSnapshot({
+          categoryId: selectedCategory,
+          state: selectedState,
+          searchQuery,
+          condition: conditionFilter,
+          minPrice: minVal,
+          maxPrice: maxVal,
+          sort: sortOption
+        })
+      : null;
+
+    if (cachedSlice && cachedSlice.length > 0) {
+      setProducts(cachedSlice);
+      setPagination({
+        total: cachedSlice.length,
+        page,
+        pageSize: 24,
+        totalPages: Math.max(1, Math.ceil(cachedSlice.length / 24))
+      });
+      setLoading(false);
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     setFetchError(null);
 
     let timedOut = false;
     const timeoutTimer = setTimeout(() => {
       timedOut = true;
       if (catalogRequestIdRef.current === requestId) {
-        setProducts([]);
-        setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
-        setFetchError('Listings request timed out after 5 seconds.');
+        if (!cachedSlice || cachedSlice.length === 0) {
+          setProducts([]);
+          setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+          setFetchError('Listings request timed out after 5 seconds.');
+        }
         setLoading(false);
+        setIsRefreshing(false);
       }
     }, 5000);
 
     try {
-      const minVal = minPrice !== '' && !isNaN(Number(minPrice)) ? Number(minPrice) : undefined;
-      const maxVal = maxPrice !== '' && !isNaN(Number(maxPrice)) ? Number(maxPrice) : undefined;
-
       const filters: ProductFilter = {
         category: selectedCategory,
         state: selectedState,
@@ -349,7 +397,7 @@ function MainMarketplace() {
         maxPrice: maxVal,
         sort: sortOption,
         page,
-        limit: 24
+        forceRefresh
       };
 
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -373,13 +421,16 @@ function MainMarketplace() {
     } catch (err: any) {
       if (timedOut || catalogRequestIdRef.current !== requestId) return;
       console.error('Failed to fetch products', err);
-      setProducts([]);
-      setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
-      setFetchError(err?.message || 'Unable to load listings right now.');
+      if (!cachedSlice || cachedSlice.length === 0) {
+        setProducts([]);
+        setPagination({ total: 0, page: 1, pageSize: 24, totalPages: 1 });
+        setFetchError(err?.message || 'Unable to load listings right now.');
+      }
     } finally {
       clearTimeout(timeoutTimer);
       if (!timedOut && catalogRequestIdRef.current === requestId) {
         setLoading(false);
+        setIsRefreshing(false);
       }
     }
   };
@@ -389,6 +440,7 @@ function MainMarketplace() {
   }, []);
 
   useEffect(() => {
+    setVisibleCount(16);
     loadCatalogProducts(1);
   }, [selectedCategory, selectedState, searchQuery, conditionFilter, minPrice, maxPrice, sortOption]);
 
@@ -450,6 +502,24 @@ function MainMarketplace() {
   const displayedProducts = viewingFavouritesOnly
     ? products.filter((p) => favourites.includes(p.id))
     : products;
+
+  const visibleProducts = displayedProducts.slice(0, visibleCount);
+  const hasMoreProducts = displayedProducts.length > visibleProducts.length;
+
+  useEffect(() => {
+    if (!hasMoreProducts || !loadMoreRef.current) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleCount((prev) => prev + 16);
+        }
+      },
+      { rootMargin: '250px' }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMoreProducts, visibleProducts.length]);
 
   const totalCartItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -621,8 +691,15 @@ function MainMarketplace() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#555555] mt-0.5">
-                      Showing {displayedProducts.length} of {pagination.total} genuine listings
+                    <p className="text-xs text-[#555555] mt-0.5 flex items-center gap-2">
+                      <span>
+                        Showing {visibleProducts.length} of {displayedProducts.length} genuine listings
+                      </span>
+                      {isRefreshing && (
+                        <span className="text-[10px] font-bold text-[#0B6B3A] animate-pulse">
+                          Updating...
+                        </span>
+                      )}
                     </p>
                   </div>
 
@@ -767,15 +844,15 @@ function MainMarketplace() {
                 <div className="bg-white rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-xl mx-auto shadow-xs">
                   <ShoppingBag className="w-12 h-12 text-[#0B6B3A] mx-auto mb-3" />
                   <h3 className="text-base sm:text-lg font-black text-[#111111]">
-                    No listings found for this category
+                    Unable to load listings right now
                   </h3>
-                  <p className="text-xs text-[#555555] mt-1 mb-4">
+                  <p className="text-xs text-[#555555] mt-1 mb-4 break-words">
                     {fetchError}
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
                     <button
                       type="button"
-                      onClick={() => loadCatalogProducts(1)}
+                      onClick={() => loadCatalogProducts(1, true)}
                       className="px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
                     >
                       Retry
@@ -823,7 +900,7 @@ function MainMarketplace() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => loadCatalogProducts(1)}
+                      onClick={() => loadCatalogProducts(1, true)}
                       className="px-4 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
                     >
                       Retry
@@ -840,17 +917,30 @@ function MainMarketplace() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                  {displayedProducts.map((prod) => (
-                    <ProductCard
-                      key={prod.id}
-                      product={prod}
-                      onOpenDetail={setSelectedProduct}
-                      onOpenStorefront={setSelectedSellerStorefrontId}
-                      onAddToCart={addToCart}
-                      onStartDirectChat={handleStartDirectChat}
-                    />
-                  ))}
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                    {visibleProducts.map((prod) => (
+                      <ProductCard
+                        key={prod.id}
+                        product={prod}
+                        onOpenDetail={setSelectedProduct}
+                        onOpenStorefront={setSelectedSellerStorefrontId}
+                        onAddToCart={addToCart}
+                        onStartDirectChat={handleStartDirectChat}
+                      />
+                    ))}
+                  </div>
+                  {hasMoreProducts && (
+                    <div ref={loadMoreRef} className="flex justify-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCount((prev) => prev + 16)}
+                        className="px-6 py-2.5 bg-white border border-[#E5E7EB] hover:border-[#0B6B3A] text-[#0B6B3A] text-xs font-black rounded-xl shadow-xs transition"
+                      >
+                        Load More Products ({displayedProducts.length - visibleProducts.length} remaining)
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -1177,6 +1267,7 @@ function MainMarketplace() {
           onClose={() => setShowAuthModal(false)}
           onContinueAsGuest={() => {
             activateGuestMode();
+            ensureGuestAuth().catch(() => {});
             showToast('Continuing as Guest on FU MARKET');
           }}
           onSuccess={(result) => {
@@ -1198,6 +1289,7 @@ function MainMarketplace() {
         onContinueAsGuest={() => {
           const action = pendingGuestAction;
           activateGuestMode();
+          ensureGuestAuth().catch(() => {});
           setPendingGuestAction(null);
           showToast('Continuing as Guest');
           if (action?.type === 'post') {
@@ -1274,8 +1366,10 @@ function MainMarketplace() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainMarketplace />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <MainMarketplace />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

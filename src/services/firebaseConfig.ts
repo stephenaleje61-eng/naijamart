@@ -44,7 +44,15 @@ export const activeFirebaseConfig = {
   authDomain: CUSTOM_FIREBASE_CONFIG.authDomain || defaultConfig.authDomain || "zangamarket1.firebaseapp.com",
   storageBucket: CUSTOM_FIREBASE_CONFIG.storageBucket || defaultConfig.storageBucket || "zangamarket1.firebasestorage.app",
   messagingSenderId: CUSTOM_FIREBASE_CONFIG.messagingSenderId || defaultConfig.messagingSenderId || "",
-  firestoreDatabaseId: CUSTOM_FIREBASE_CONFIG.firestoreDatabaseId || ""
+  firestoreDatabaseId: CUSTOM_FIREBASE_CONFIG.firestoreDatabaseId || defaultConfig.firestoreDatabaseId || ""
 };
+
+export const REQUIRED_AUTHORIZED_DOMAINS = [
+  "localhost",
+  "127.0.0.1",
+  "zangamarket1.firebaseapp.com",
+  "ais-dev-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app",
+  "ais-pre-zxli3yeil7c2zmrucseypf-183056457544.europe-west2.run.app"
+];
 
 export default activeFirebaseConfig;
