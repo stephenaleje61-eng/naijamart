@@ -11,7 +11,12 @@ import {
   Store,
   LayoutDashboard,
   ShoppingCart,
-  Download
+  Download,
+  PartyPopper,
+  Sliders,
+  Megaphone,
+  Briefcase,
+  Siren
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { Category } from '../types.js';
@@ -19,6 +24,7 @@ import { NIGERIA_STATES } from '../constants/states.js';
 import { usePWAInstall } from '../hooks/usePWAInstall.js';
 import { AppView } from './BottomNav.js';
 import { SafetyTickerBanner } from './SafetyTickerBanner.js';
+import { isAuthorizedCeo } from '../services/events.js';
 
 interface HeaderProps {
   categories: Category[];
@@ -32,6 +38,12 @@ interface HeaderProps {
   onOpenAuthModal: (mode?: 'login' | 'register', defaultRole?: 'buyer' | 'seller') => void;
   onOpenSellerDashboard: () => void;
   onOpenAdminDashboard: () => void;
+  onOpenCeoEventsDashboard?: () => void;
+  onOpenCeoMasterControl?: () => void;
+  onOpenCeoSuperAdmin?: () => void;
+  onOpenAdvertiseModal?: () => void;
+  onOpenServicesSection?: () => void;
+  onOpenEmergencySection?: () => void;
   onOpenFavourites: () => void;
   onOpenSafetyModal: () => void;
   onOpenCart: () => void;
@@ -52,6 +64,12 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuthModal,
   onOpenSellerDashboard,
   onOpenAdminDashboard,
+  onOpenCeoEventsDashboard,
+  onOpenCeoMasterControl,
+  onOpenCeoSuperAdmin,
+  onOpenAdvertiseModal,
+  onOpenServicesSection,
+  onOpenEmergencySection,
   onOpenFavourites,
   onOpenSafetyModal,
   onOpenCart,
@@ -61,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeView
 }) => {
   const { user, sellerProfile, favourites, logout } = useAuth();
+  const isCeo = isAuthorizedCeo(user);
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showLocationMenu, setShowLocationMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -121,7 +140,17 @@ export const Header: React.FC<HeaderProps> = ({
               Made for FUWUKARI Students • Wukari, Taraba State
             </span>
           </div>
-          <div className="flex items-center gap-4 text-white/90 text-[11px]">
+          <div className="flex items-center gap-3 sm:gap-4 text-white/90 text-[11px]">
+            {onOpenEmergencySection && (
+              <button
+                type="button"
+                onClick={onOpenEmergencySection}
+                className="bg-[#DC2626] hover:bg-[#B91C1C] text-white px-2.5 py-0.5 rounded-md font-black flex items-center gap-1 transition"
+              >
+                <Siren className="w-3 h-3" />
+                <span>Emergency Help</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenSafetyModal}
@@ -357,7 +386,49 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     )}
 
-                    {user.role === 'admin' && (
+                    {isCeo && onOpenCeoSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenCeoSuperAdmin();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-white bg-[#0B6B3A] hover:bg-[#14532D] flex items-center gap-2 font-black transition"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-[#F2B90D]" />
+                        CEO Super Admin Dashboard
+                      </button>
+                    )}
+
+                    {isCeo && onOpenCeoMasterControl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenCeoMasterControl();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-[#111111] bg-[#F2B90D]/20 hover:bg-[#F2B90D]/35 flex items-center gap-2 font-black transition"
+                      >
+                        <Sliders className="w-4 h-4 text-[#0B6B3A]" />
+                        FU MARKET CEO MASTER CONTROL
+                      </button>
+                    )}
+
+                    {isCeo && onOpenCeoEventsDashboard && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenCeoEventsDashboard();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-[#EA580C] hover:bg-[#FFF7ED] flex items-center gap-2 font-black transition"
+                      >
+                        <PartyPopper className="w-4 h-4" />
+                        CEO Birthday &amp; Events Desk
+                      </button>
+                    )}
+
+                    {(user.role === 'admin' || isCeo) && (
                       <button
                         type="button"
                         onClick={() => {
@@ -438,6 +509,36 @@ export const Header: React.FC<HeaderProps> = ({
               {nav.label}
             </button>
           ))}
+          {onOpenServicesSection && (
+            <button
+              type="button"
+              onClick={onOpenServicesSection}
+              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#14532D] hover:bg-white/15 text-[#F2B90D] border border-[#F2B90D]/50 font-black flex items-center gap-1.5"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Services</span>
+            </button>
+          )}
+          {onOpenEmergencySection && (
+            <button
+              type="button"
+              onClick={onOpenEmergencySection}
+              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#DC2626] hover:bg-[#B91C1C] text-white font-black flex items-center gap-1.5"
+            >
+              <Siren className="w-3.5 h-3.5" />
+              <span>Emergency &amp; Help</span>
+            </button>
+          )}
+          {onOpenAdvertiseModal && (
+            <button
+              type="button"
+              onClick={onOpenAdvertiseModal}
+              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#EA580C] hover:bg-[#C2410C] text-white font-black flex items-center gap-1.5"
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              <span>FU MARKET ADS</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

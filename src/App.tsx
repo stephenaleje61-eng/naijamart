@@ -17,6 +17,7 @@ import {
   Info,
   SlidersHorizontal
 } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import {
   Product,
@@ -24,7 +25,21 @@ import {
   ProductFilter,
   StudentRequest,
   HuxListing,
-  CartItem
+  CartItem,
+  CampusEvent,
+  SportUpdatePost,
+  GeneralAnnouncementPost,
+  CommunityAnnouncementPost,
+  PostCollectionName,
+  AdPackageId,
+  Advertisement,
+  ServiceCategory,
+  ServiceListing,
+  EmergencyContact,
+  SafetyAnnouncement,
+  LostFoundItem,
+  EmergencyReportKind,
+  CeoSessionState
 } from './types.js';
 import { fetchProducts, fetchCategories } from './services/api.js';
 import { Header } from './components/Header.js';
@@ -52,8 +67,64 @@ import { OfflineIndicator } from './components/OfflineIndicator.js';
 import { WelcomeNotice } from './components/WelcomeNotice.js';
 import { GuestChoiceModal } from './components/GuestChoiceModal.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { BirthdayEventsSection } from './components/BirthdayEventsSection.js';
+import { EventDetailModal } from './components/EventDetailModal.js';
+import { CeoEventsManager } from './components/CeoEventsManager.js';
+import { SportAndAnnouncementsSection } from './components/SportAndAnnouncementsSection.js';
+import { PostAnnouncementModal } from './components/PostAnnouncementModal.js';
+import { AnnouncementDetailModal } from './components/AnnouncementDetailModal.js';
+import { AuthorProfileModal } from './components/AuthorProfileModal.js';
+import {
+  getCachedPublishedEvents,
+  getEventByIdFromFirestore,
+  getPublishedEventsFromFirestore,
+  isAuthorizedCeo,
+  subscribeToPublishedEvents
+} from './services/events.js';
+import {
+  getAnnouncementById,
+  getCachedGeneralAnnouncements,
+  getCachedSportUpdates,
+  subscribeToGeneralAnnouncements,
+  subscribeToSavedAnnouncementIds,
+  subscribeToSportUpdates
+} from './services/announcements.js';
+import { FuMarketAdsSection } from './components/FuMarketAdsSection.js';
+import { AdvertiseBusinessModal } from './components/AdvertiseBusinessModal.js';
+import { AdDetailModal } from './components/AdDetailModal.js';
+import { CeoMasterControlModal } from './components/CeoMasterControlModal.js';
+import {
+  getCachedActivePublicAds,
+  subscribeToActivePublicAds
+} from './services/ads.js';
+import { FuMarketServicesSection } from './components/FuMarketServicesSection.js';
+import { PostServiceModal } from './components/PostServiceModal.js';
+import { ServiceDetailModal } from './components/ServiceDetailModal.js';
+import { ServicePromotionModal } from './components/ServicePromotionModal.js';
+import { ServiceProviderDashboardModal } from './components/ServiceProviderDashboardModal.js';
+import {
+  DEFAULT_SERVICE_CATEGORIES,
+  subscribeToPublicServices,
+  subscribeToServiceCategories
+} from './services/servicesMarketplace.js';
+import { FuMarketEmergencySection } from './components/FuMarketEmergencySection.js';
+import {
+  EmergencyContactDirectoryModal,
+  DirectoryFilter
+} from './components/EmergencyContactDirectoryModal.js';
+import { EmergencyReportModal } from './components/EmergencyReportModal.js';
+import { ReportTrackingModal } from './components/ReportTrackingModal.js';
+import { CampusSafetyInfoModal } from './components/CampusSafetyInfoModal.js';
+import { LostAndFoundModal } from './components/LostAndFoundModal.js';
+import {
+  dispatchSafetyNotification,
+  subscribeToEmergencyContacts,
+  subscribeToLostFoundItems,
+  subscribeToSafetyAnnouncements
+} from './services/emergencyCentre.js';
 import { usePWAInstall } from './hooks/usePWAInstall.js';
 import {
+  auth,
   subscribeToFriendRequests,
   subscribeToStudentRequests,
   subscribeToHuxListings,
@@ -61,6 +132,14 @@ import {
   getCachedProductsSnapshot,
   invalidateProductsCache
 } from './services/firebase.js';
+import { CeoLoginPage } from './components/CeoLoginPage.js';
+import { CeoSuperAdminDashboard } from './components/CeoSuperAdminDashboard.js';
+import {
+  getStoredCeoSession,
+  isAuthorizedCeoEmail,
+  logUnauthorizedCeoAccess,
+  saveCeoSession
+} from './services/ceoAdmin.js';
 import {
   getLocalStudentSession,
   isGuestModeActive,
@@ -95,6 +174,16 @@ function resolveViewFromPath(): AppView {
   return 'marketplace';
 }
 
+type CeoRouteMode = 'marketplace' | 'ceo-login' | 'ceo-admin';
+
+function resolveCeoRouteFromPath(): CeoRouteMode {
+  if (typeof window === 'undefined') return 'marketplace';
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  if (path === '/ceo-login' || path.startsWith('/ceo-login/')) return 'ceo-login';
+  if (path === '/ceo-admin' || path.startsWith('/ceo-admin/')) return 'ceo-admin';
+  return 'marketplace';
+}
+
 function loadCartFromStorage(): CartItem[] {
   try {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
@@ -110,6 +199,15 @@ function MainMarketplace() {
   const { user, favourites } = useAuth();
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
 
+  // Private CEO Route & Session State
+  const [ceoRouteMode, setCeoRouteMode] = useState<CeoRouteMode>(() => resolveCeoRouteFromPath());
+  const [ceoSession, setCeoSession] = useState<CeoSessionState | null>(() => getStoredCeoSession());
+  const [ceoLoginNotice, setCeoLoginNotice] = useState<string | null>(null);
+  const [firebaseAuthChecked, setFirebaseAuthChecked] = useState<boolean>(() =>
+    Boolean(auth.currentUser)
+  );
+  const unauthorizedCeoLogRef = useRef<string | null>(null);
+
   // Multi-page route state
   const [currentView, setCurrentView] = useState<AppView>(() => resolveViewFromPath());
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
@@ -122,6 +220,88 @@ function MainMarketplace() {
   // Live previews for homepage sections
   const [latestRequests, setLatestRequests] = useState<StudentRequest[]>([]);
   const [latestAccommodation, setLatestAccommodation] = useState<HuxListing[]>([]);
+
+  // FU MARKET Birthday & Events Announcement Centre state (publicly visible without login)
+  const [campusEvents, setCampusEvents] = useState<CampusEvent[]>(() => getCachedPublishedEvents());
+  const [eventsLoading, setEventsLoading] = useState<boolean>(
+    () => getCachedPublishedEvents().length === 0
+  );
+  const [selectedEvent, setSelectedEvent] = useState<CampusEvent | null>(null);
+  const [showCeoEventsModal, setShowCeoEventsModal] = useState<boolean>(false);
+
+  // FU SPORT UPDATE & ANNOUNCEMENT CENTRE state (public feed + authenticated interactions)
+  const [sportUpdates, setSportUpdates] = useState<SportUpdatePost[]>(() => getCachedSportUpdates());
+  const [generalAnnouncements, setGeneralAnnouncements] = useState<GeneralAnnouncementPost[]>(() =>
+    getCachedGeneralAnnouncements()
+  );
+  const [announcementsLoading, setAnnouncementsLoading] = useState<boolean>(
+    () => getCachedSportUpdates().length === 0 && getCachedGeneralAnnouncements().length === 0
+  );
+  const [savedAnnouncementIds, setSavedAnnouncementIds] = useState<Set<string>>(() => new Set());
+  const [selectedAnnouncement, setSelectedAnnouncement] =
+    useState<CommunityAnnouncementPost | null>(null);
+  const [postAnnouncementModalState, setPostAnnouncementModalState] = useState<{
+    open: boolean;
+    defaultFeedType: 'sport_update' | 'general_announcement';
+    editingPost?: CommunityAnnouncementPost | null;
+  }>({ open: false, defaultFeedType: 'sport_update', editingPost: null });
+  const [authorProfileTarget, setAuthorProfileTarget] = useState<{
+    authorId: string;
+    authorName: string;
+    authorAvatar?: string;
+  } | null>(null);
+
+  // FU MARKET ADS & CEO MASTER CONTROL state
+  const [activePublicAds, setActivePublicAds] = useState<Advertisement[]>(() =>
+    getCachedActivePublicAds()
+  );
+  const [adsLoading, setAdsLoading] = useState<boolean>(
+    () => getCachedActivePublicAds().length === 0
+  );
+  const [selectedAd, setSelectedAd] = useState<Advertisement | null>(null);
+  const [advertiseModalState, setAdvertiseModalState] = useState<{
+    open: boolean;
+    packageId: AdPackageId;
+  }>({ open: false, packageId: 'basic' });
+  const [showCeoMasterControl, setShowCeoMasterControl] = useState<boolean>(false);
+
+  // FU MARKET STUDENT SERVICES MARKETPLACE state
+  const [publicServices, setPublicServices] = useState<ServiceListing[]>([]);
+  const [servicesLoading, setServicesLoading] = useState<boolean>(true);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(
+    DEFAULT_SERVICE_CATEGORIES
+  );
+  const [selectedServiceState, setSelectedServiceState] = useState<{
+    service: ServiceListing;
+    showContact: boolean;
+  } | null>(null);
+  const [postServiceModalState, setPostServiceModalState] = useState<{
+    open: boolean;
+    editingService?: ServiceListing | null;
+  }>({ open: false, editingService: null });
+  const [promoteServiceTarget, setPromoteServiceTarget] = useState<ServiceListing | null>(null);
+  const [showServiceProviderDashboard, setShowServiceProviderDashboard] =
+    useState<boolean>(false);
+  const [adminInitialTab, setAdminInitialTab] = useState<
+    'overview' | 'services' | 'emergency'
+  >('overview');
+
+  // FU MARKET CAMPUS EMERGENCY & HELP CENTRE state
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [safetyAnnouncements, setSafetyAnnouncements] = useState<SafetyAnnouncement[]>([]);
+  const [lostFoundItems, setLostFoundItems] = useState<LostFoundItem[]>([]);
+  const [emergencyDirectoryState, setEmergencyDirectoryState] = useState<{
+    open: boolean;
+    filter: DirectoryFilter;
+  }>({ open: false, filter: 'all' });
+  const [emergencyReportModalState, setEmergencyReportModalState] = useState<{
+    open: boolean;
+    kind: EmergencyReportKind;
+    defaultCategory?: string;
+  }>({ open: false, kind: 'emergency' });
+  const [showReportTrackingModal, setShowReportTrackingModal] = useState<boolean>(false);
+  const [showCampusSafetyInfoModal, setShowCampusSafetyInfoModal] = useState<boolean>(false);
+  const [showLostAndFoundModal, setShowLostAndFoundModal] = useState<boolean>(false);
 
   // PWA guidance banner toggle
   const [showPWAInstructions, setShowPWAInstructions] = useState(false);
@@ -140,10 +320,223 @@ function MainMarketplace() {
   useEffect(() => {
     const handlePopState = () => {
       setCurrentView(resolveViewFromPath());
+      setCeoRouteMode(resolveCeoRouteFromPath());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (fbUser) => {
+      setFirebaseAuthChecked(true);
+      if (!fbUser || !isAuthorizedCeoEmail(fbUser.email) || !fbUser.emailVerified) {
+        setCeoSession((prev) => {
+          if (prev) saveCeoSession(null);
+          return null;
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const isCeoRouteAuthorized = Boolean(
+    ceoSession?.authorized &&
+      ceoSession.sessionExpiresAt > Date.now() &&
+      auth.currentUser &&
+      isAuthorizedCeoEmail(auth.currentUser.email) &&
+      auth.currentUser.emailVerified
+  );
+
+  useEffect(() => {
+    if (!firebaseAuthChecked) return;
+    if (ceoRouteMode !== 'ceo-admin') {
+      unauthorizedCeoLogRef.current = null;
+      return;
+    }
+    if (!isCeoRouteAuthorized) {
+      const actorKey = `${auth.currentUser?.uid || 'anon'}:${user?.email || 'anon'}`;
+      if (unauthorizedCeoLogRef.current !== actorKey) {
+        unauthorizedCeoLogRef.current = actorKey;
+        logUnauthorizedCeoAccess(
+          'Blocked unauthorized or unauthenticated direct access to /ceo-admin route.',
+          '/ceo-admin',
+          auth.currentUser?.email || user?.email || 'anonymous'
+        );
+      }
+      if (ceoSession) {
+        setCeoSession(null);
+        saveCeoSession(null);
+      }
+      setCeoLoginNotice('Access denied. Authorized FU MARKET CEO login is required.');
+    }
+  }, [firebaseAuthChecked, ceoRouteMode, isCeoRouteAuthorized, ceoSession, user?.email]);
+
+  // Load & subscribe publicly to homepage Firestore feeds (staggered to keep initial handshake fast)
+  useEffect(() => {
+    let active = true;
+    const unsubs: (() => void)[] = [];
+
+    // Priority 1 (0ms): Above-the-fold events & paid campus ads
+    unsubs.push(
+      subscribeToPublishedEvents(
+        (list) => {
+          if (active) {
+            setCampusEvents(list);
+            setEventsLoading(false);
+          }
+        },
+        () => {
+          if (active) setEventsLoading(false);
+        }
+      )
+    );
+
+    unsubs.push(
+      subscribeToActivePublicAds(
+        (list) => {
+          if (active) {
+            setActivePublicAds(list);
+            setAdsLoading(false);
+          }
+        },
+        () => {
+          if (active) setAdsLoading(false);
+        }
+      )
+    );
+
+    // Handle direct ?event=<id> and ?post=<id>&type=<collection> share URLs
+    const params = new URLSearchParams(window.location.search);
+    const sharedEventId = params.get('event');
+    if (sharedEventId) {
+      getEventByIdFromFirestore(sharedEventId).then((found) => {
+        if (active && found && found.status === 'published') {
+          setSelectedEvent(found);
+        }
+      });
+    }
+
+    const sharedPostId = params.get('post');
+    const sharedPostType = params.get('type');
+    if (sharedPostId) {
+      const colName: PostCollectionName =
+        sharedPostType === 'general_announcements' ? 'general_announcements' : 'sport_updates';
+      getAnnouncementById(colName, sharedPostId).then((found) => {
+        if (active && found && found.status === 'published') {
+          setSelectedAnnouncement(found);
+        }
+      });
+    }
+
+    // Priority 2 (~250ms): Sports, Announcements & Services Marketplace
+    const midTimer = setTimeout(() => {
+      if (!active) return;
+
+      unsubs.push(
+        subscribeToSportUpdates(
+          (list) => {
+            if (active) {
+              setSportUpdates(list);
+              setAnnouncementsLoading(false);
+            }
+          },
+          () => {
+            if (active) setAnnouncementsLoading(false);
+          }
+        )
+      );
+
+      unsubs.push(
+        subscribeToGeneralAnnouncements(
+          (list) => {
+            if (active) {
+              setGeneralAnnouncements(list);
+              setAnnouncementsLoading(false);
+            }
+          },
+          () => {
+            if (active) setAnnouncementsLoading(false);
+          }
+        )
+      );
+
+      unsubs.push(
+        subscribeToPublicServices(
+          (list) => {
+            if (active) {
+              setPublicServices(list);
+              setServicesLoading(false);
+            }
+          },
+          () => {
+            if (active) setServicesLoading(false);
+          }
+        )
+      );
+
+      unsubs.push(
+        subscribeToServiceCategories((cats) => {
+          if (active && cats.length > 0) {
+            setServiceCategories(cats);
+          }
+        })
+      );
+    }, 250);
+
+    // Priority 3 (~450ms): Campus Emergency & Help Centre public subscriptions
+    let safetyHydrated = false;
+    const seenAlertIds = new Set<string>();
+    const emergencyTimer = setTimeout(() => {
+      if (!active) return;
+
+      unsubs.push(
+        subscribeToEmergencyContacts((list) => {
+          if (active) setEmergencyContacts(list);
+        })
+      );
+
+      unsubs.push(
+        subscribeToSafetyAnnouncements((list) => {
+          if (!active) return;
+          if (!safetyHydrated) {
+            list.forEach((item) => seenAlertIds.add(item.id));
+            safetyHydrated = true;
+          } else {
+            for (const item of list) {
+              if (!seenAlertIds.has(item.id)) {
+                seenAlertIds.add(item.id);
+                dispatchSafetyNotification(item).catch(() => {});
+              }
+            }
+          }
+          setSafetyAnnouncements(list);
+        })
+      );
+
+      unsubs.push(
+        subscribeToLostFoundItems((list) => {
+          if (active) setLostFoundItems(list);
+        })
+      );
+    }, 450);
+
+    return () => {
+      active = false;
+      clearTimeout(midTimer);
+      clearTimeout(emergencyTimer);
+      for (const unsub of unsubs) {
+        unsub();
+      }
+    };
+  }, []);
+
+  // Keep saved announcement bookmarks synced for the current signed-in user
+  useEffect(() => {
+    const unsubSaved = subscribeToSavedAnnouncementIds((ids) => {
+      setSavedAnnouncementIds(ids);
+    });
+    return () => unsubSaved();
+  }, [user?.id]);
 
   // Listen for incoming friend requests & defer non-critical homepage previews so catalog loads first
   useEffect(() => {
@@ -177,7 +570,21 @@ function MainMarketplace() {
     };
   }, [user?.id]);
 
+  const navigateCeoRoute = (mode: CeoRouteMode, notice?: string | null) => {
+    if (notice !== undefined) {
+      setCeoLoginNotice(notice);
+    }
+    setCeoRouteMode(mode);
+    const targetPath =
+      mode === 'ceo-login' ? '/ceo-login' : mode === 'ceo-admin' ? '/ceo-admin' : '/';
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navigateToView = (view: AppView) => {
+    setCeoRouteMode('marketplace');
     setCurrentView(view);
     const targetPath =
       view === 'requests'
@@ -196,6 +603,32 @@ function MainMarketplace() {
       window.history.pushState(null, '', targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToServicesSection = () => {
+    if (currentView !== 'marketplace') {
+      navigateToView('marketplace');
+    }
+    setViewingFavouritesOnly(false);
+    setTimeout(() => {
+      document.getElementById('fu-market-services')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 120);
+  };
+
+  const scrollToEmergencySection = () => {
+    if (currentView !== 'marketplace') {
+      navigateToView('marketplace');
+    }
+    setViewingFavouritesOnly(false);
+    setTimeout(() => {
+      document.getElementById('fu-market-campus-emergency')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 120);
   };
 
   const hasActiveIdentityForActions = () =>
@@ -523,6 +956,76 @@ function MainMarketplace() {
 
   const totalCartItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
+  if (ceoRouteMode === 'ceo-admin') {
+    if (!firebaseAuthChecked) {
+      return (
+        <div className="min-h-screen bg-[#0B6B3A] text-white flex items-center justify-center p-6">
+          <div className="bg-[#14532D] border border-[#F2B90D]/50 rounded-2xl px-6 py-5 text-center space-y-2 shadow-2xl">
+            <div className="w-8 h-8 border-2 border-[#F2B90D] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-black uppercase tracking-wider text-[#F2B90D]">
+              Verifying FU MARKET CEO Session...
+            </p>
+          </div>
+        </div>
+      );
+    }
+    if (isCeoRouteAuthorized && ceoSession) {
+      return (
+        <CeoSuperAdminDashboard
+          session={ceoSession}
+          onSessionUpdate={(next) => {
+            setCeoSession(next);
+            saveCeoSession(next);
+          }}
+          onSessionExpired={() => {
+            setCeoSession(null);
+            saveCeoSession(null);
+            navigateCeoRoute('ceo-login', 'Your CEO session expired. Please sign in again.');
+          }}
+          onLoggedOut={() => {
+            setCeoSession(null);
+            saveCeoSession(null);
+            navigateCeoRoute('ceo-login', 'Signed out of FU MARKET CEO SUPER ADMINISTRATOR.');
+          }}
+          onBackToMarketplace={() => navigateCeoRoute('marketplace', null)}
+          onOpenEventsManager={() => {
+            navigateCeoRoute('marketplace', null);
+            setShowCeoEventsModal(true);
+          }}
+          onOpenAdsMasterModal={() => {
+            navigateCeoRoute('marketplace', null);
+            setShowCeoMasterControl(true);
+          }}
+        />
+      );
+    }
+    return (
+      <CeoLoginPage
+        initialNotice={ceoLoginNotice || 'Access denied. Authorized FU MARKET CEO login is required.'}
+        onSuccess={(session) => {
+          setCeoSession(session);
+          setCeoLoginNotice(null);
+          navigateCeoRoute('ceo-admin');
+        }}
+        onBackToMarketplace={() => navigateCeoRoute('marketplace', null)}
+      />
+    );
+  }
+
+  if (ceoRouteMode === 'ceo-login') {
+    return (
+      <CeoLoginPage
+        initialNotice={ceoLoginNotice}
+        onSuccess={(session) => {
+          setCeoSession(session);
+          setCeoLoginNotice(null);
+          navigateCeoRoute('ceo-admin');
+        }}
+        onBackToMarketplace={() => navigateCeoRoute('marketplace', null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col font-sans">
       <OfflineIndicator />
@@ -547,7 +1050,26 @@ function MainMarketplace() {
         onOpenSellModal={handleRequestSellModal}
         onOpenAuthModal={handleOpenAuth}
         onOpenSellerDashboard={() => setShowSellerDashboard(true)}
-        onOpenAdminDashboard={() => setShowAdminDashboard(true)}
+        onOpenAdminDashboard={() => {
+          setAdminInitialTab('overview');
+          setShowAdminDashboard(true);
+        }}
+        onOpenCeoEventsDashboard={() => {
+          if (isAuthorizedCeo(user)) setShowCeoEventsModal(true);
+        }}
+        onOpenCeoMasterControl={() => {
+          if (isAuthorizedCeo(user)) setShowCeoMasterControl(true);
+        }}
+        onOpenCeoSuperAdmin={() => {
+          if (isAuthorizedCeo(user)) {
+            navigateCeoRoute(isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login', null);
+          }
+        }}
+        onOpenAdvertiseModal={() =>
+          setAdvertiseModalState({ open: true, packageId: 'basic' })
+        }
+        onOpenServicesSection={scrollToServicesSection}
+        onOpenEmergencySection={scrollToEmergencySection}
         onOpenFavourites={() => {
           if (currentView !== 'marketplace') navigateToView('marketplace');
           setViewingFavouritesOnly(!viewingFavouritesOnly);
@@ -614,6 +1136,54 @@ function MainMarketplace() {
 
           {/* Main Marketplace Content */}
           <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-8">
+            {/* PROMINENT HOMEPAGE SECTION: FU MARKET BIRTHDAY & EVENTS CENTRE */}
+            {!viewingFavouritesOnly && !searchQuery && (
+              <BirthdayEventsSection
+                events={campusEvents}
+                loading={eventsLoading}
+                onSelectEvent={(ev) => setSelectedEvent(ev)}
+                onOpenCeoManager={() => {
+                  if (isAuthorizedCeo(user)) setShowCeoEventsModal(true);
+                }}
+              />
+            )}
+
+            {/* PROMINENT HOMEPAGE SECTION: FU SPORT UPDATE & ANNOUNCEMENT CENTRE */}
+            {!viewingFavouritesOnly && !searchQuery && (
+              <SportAndAnnouncementsSection
+                sportUpdates={sportUpdates}
+                generalAnnouncements={generalAnnouncements}
+                loading={announcementsLoading}
+                savedIds={savedAnnouncementIds}
+                onSelectPost={(post) => setSelectedAnnouncement(post)}
+                onOpenPostModal={(defaultFeedType) =>
+                  setPostAnnouncementModalState({
+                    open: true,
+                    defaultFeedType,
+                    editingPost: null
+                  })
+                }
+                onOpenAuthorProfile={(authorId, authorName, authorAvatar) =>
+                  setAuthorProfileTarget({ authorId, authorName, authorAvatar })
+                }
+              />
+            )}
+
+            {/* PROMINENT HOMEPAGE SECTION: FU MARKET ADS */}
+            {!viewingFavouritesOnly && !searchQuery && (
+              <FuMarketAdsSection
+                ads={activePublicAds}
+                loading={adsLoading}
+                onOpenSubmitModal={(packageId = 'basic') =>
+                  setAdvertiseModalState({ open: true, packageId })
+                }
+                onSelectAd={(ad) => setSelectedAd(ad)}
+                onOpenMasterControl={() => {
+                  if (isAuthorizedCeo(user)) setShowCeoMasterControl(true);
+                }}
+              />
+            )}
+
             {/* Quick Category Tiles (6 FU MARKET Categories) */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
@@ -945,6 +1515,62 @@ function MainMarketplace() {
               )}
             </section>
 
+            {/* PROMINENT HOMEPAGE SECTION: FU MARKET STUDENT SERVICES MARKETPLACE */}
+            {!viewingFavouritesOnly && (
+              <FuMarketServicesSection
+                services={publicServices}
+                categories={serviceCategories}
+                loading={servicesLoading}
+                onPostService={() =>
+                  setPostServiceModalState({ open: true, editingService: null })
+                }
+                onOpenProviderDashboard={() => setShowServiceProviderDashboard(true)}
+                onOpenAdminServices={() => {
+                  setAdminInitialTab('services');
+                  setShowAdminDashboard(true);
+                }}
+                onViewDetails={(service) =>
+                  setSelectedServiceState({ service, showContact: false })
+                }
+                onContactProvider={(service) =>
+                  setSelectedServiceState({ service, showContact: true })
+                }
+                onOpenPromoteService={(service) => setPromoteServiceTarget(service)}
+              />
+            )}
+
+            {/* PROMINENT HOMEPAGE SECTION: FU MARKET CAMPUS EMERGENCY & HELP CENTRE */}
+            {!viewingFavouritesOnly && (
+              <FuMarketEmergencySection
+                contacts={emergencyContacts}
+                announcements={safetyAnnouncements}
+                lostFoundCount={lostFoundItems.length}
+                onOpenContacts={(filter = 'all') =>
+                  setEmergencyDirectoryState({ open: true, filter })
+                }
+                onOpenReportEmergency={(defaultCategory) =>
+                  setEmergencyReportModalState({
+                    open: true,
+                    kind: 'emergency',
+                    defaultCategory
+                  })
+                }
+                onOpenSecurityConcern={() =>
+                  setEmergencyReportModalState({
+                    open: true,
+                    kind: 'security_concern'
+                  })
+                }
+                onOpenLostAndFound={() => setShowLostAndFoundModal(true)}
+                onOpenSafetyInfo={() => setShowCampusSafetyInfoModal(true)}
+                onOpenTrackReport={() => setShowReportTrackingModal(true)}
+                onOpenAdminEmergency={() => {
+                  setAdminInitialTab('emergency');
+                  setShowAdminDashboard(true);
+                }}
+              />
+            )}
+
             {/* What Students Need */}
             <section className="bg-white border border-[#E5E7EB] rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1229,6 +1855,18 @@ function MainMarketplace() {
             onOpenSafetyModal={() => setShowSafetyModal(true)}
             onNavigateView={navigateToView}
             onTriggerPWAHelp={handleTriggerPWAHelp}
+            onOpenAdvertiseModal={() =>
+              setAdvertiseModalState({ open: true, packageId: 'basic' })
+            }
+            onOpenServicesSection={scrollToServicesSection}
+            onOpenEmergencySection={scrollToEmergencySection}
+            onOpenPostServiceModal={() =>
+              setPostServiceModalState({ open: true, editingService: null })
+            }
+            onOpenServiceProviderDashboard={() => setShowServiceProviderDashboard(true)}
+            onOpenCeoPortal={() =>
+              navigateCeoRoute(isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login', null)
+            }
           />
         </>
       )}
@@ -1337,14 +1975,269 @@ function MainMarketplace() {
         />
       )}
 
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
+
+      {showCeoEventsModal && isAuthorizedCeo(user) && (
+        <CeoEventsManager
+          onClose={() => setShowCeoEventsModal(false)}
+          onEventsChanged={() => {
+            getPublishedEventsFromFirestore(true)
+              .then((list) => setCampusEvents(list))
+              .catch(() => {});
+          }}
+        />
+      )}
+
+      {postAnnouncementModalState.open && (
+        <PostAnnouncementModal
+          defaultFeedType={postAnnouncementModalState.defaultFeedType}
+          editingPost={postAnnouncementModalState.editingPost}
+          onClose={() =>
+            setPostAnnouncementModalState({
+              open: false,
+              defaultFeedType: 'sport_update',
+              editingPost: null
+            })
+          }
+          onOpenAuthModal={(mode = 'login') => handleOpenAuth(mode, 'buyer')}
+          onSuccess={(savedPost, msg) => {
+            setPostAnnouncementModalState({
+              open: false,
+              defaultFeedType: 'sport_update',
+              editingPost: null
+            });
+            if (msg) showToast(msg);
+            if (savedPost && savedPost.status === 'published') {
+              setSelectedAnnouncement(savedPost);
+            }
+          }}
+        />
+      )}
+
+      {selectedAnnouncement && (
+        <AnnouncementDetailModal
+          post={
+            (selectedAnnouncement.categoryType === 'sport_update'
+              ? sportUpdates.find((p) => p.id === selectedAnnouncement.id)
+              : generalAnnouncements.find((p) => p.id === selectedAnnouncement.id)) ||
+            selectedAnnouncement
+          }
+          isSaved={savedAnnouncementIds.has(selectedAnnouncement.id)}
+          onClose={() => setSelectedAnnouncement(null)}
+          onEditPost={(postToEdit) => {
+            setSelectedAnnouncement(null);
+            setPostAnnouncementModalState({
+              open: true,
+              defaultFeedType: postToEdit.categoryType,
+              editingPost: postToEdit
+            });
+          }}
+          onDeleted={() => setSelectedAnnouncement(null)}
+          onOpenAuthorProfile={(authorId, authorName, authorAvatar) =>
+            setAuthorProfileTarget({ authorId, authorName, authorAvatar })
+          }
+          onOpenAuthModal={(mode = 'login') => handleOpenAuth(mode, 'buyer')}
+          onToast={showToast}
+        />
+      )}
+
+      {authorProfileTarget && (
+        <AuthorProfileModal
+          authorId={authorProfileTarget.authorId}
+          authorName={authorProfileTarget.authorName}
+          authorAvatar={authorProfileTarget.authorAvatar}
+          allPosts={[...sportUpdates, ...generalAnnouncements]}
+          onSelectPost={(p) => {
+            setAuthorProfileTarget(null);
+            setSelectedAnnouncement(p);
+          }}
+          onClose={() => setAuthorProfileTarget(null)}
+        />
+      )}
+
       {showAdminDashboard && (
         <AdminDashboard
+          initialTab={adminInitialTab}
           onClose={() => setShowAdminDashboard(false)}
           onOpenProductDetail={setSelectedProduct}
+          onEventsChanged={() => {
+            getPublishedEventsFromFirestore(true)
+              .then((list) => setCampusEvents(list))
+              .catch(() => {});
+          }}
+          onOpenMasterControl={() => {
+            if (isAuthorizedCeo(user)) setShowCeoMasterControl(true);
+          }}
+        />
+      )}
+
+      {postServiceModalState.open && (
+        <PostServiceModal
+          categories={serviceCategories}
+          editingService={postServiceModalState.editingService}
+          onClose={() =>
+            setPostServiceModalState({ open: false, editingService: null })
+          }
+          onSuccess={(savedService, isEdit) => {
+            setPostServiceModalState({ open: false, editingService: null });
+            showToast(
+              isEdit
+                ? 'Service updated on FU MARKET!'
+                : 'Service posted on FU MARKET!'
+            );
+            setSelectedServiceState({ service: savedService, showContact: false });
+          }}
+        />
+      )}
+
+      {selectedServiceState && (
+        <ServiceDetailModal
+          service={
+            publicServices.find(
+              (s) => s.serviceId === selectedServiceState.service.serviceId
+            ) || selectedServiceState.service
+          }
+          initialShowContact={selectedServiceState.showContact}
+          onClose={() => setSelectedServiceState(null)}
+          onOpenPromotion={(svc) => {
+            setSelectedServiceState(null);
+            setPromoteServiceTarget(svc);
+          }}
+          onStartDirectChat={handleStartDirectChat}
+          onToast={showToast}
+        />
+      )}
+
+      {promoteServiceTarget && (
+        <ServicePromotionModal
+          service={promoteServiceTarget}
+          onClose={() => setPromoteServiceTarget(null)}
+          onSuccess={() => {
+            showToast('Service promotion activated on FU MARKET!');
+          }}
+        />
+      )}
+
+      {showServiceProviderDashboard && (
+        <ServiceProviderDashboardModal
+          categories={serviceCategories}
+          onClose={() => setShowServiceProviderDashboard(false)}
+          onPostNew={() => {
+            setShowServiceProviderDashboard(false);
+            setPostServiceModalState({ open: true, editingService: null });
+          }}
+          onEditService={(svc) => {
+            setShowServiceProviderDashboard(false);
+            setPostServiceModalState({ open: true, editingService: svc });
+          }}
+          onPromoteService={(svc) => {
+            setShowServiceProviderDashboard(false);
+            setPromoteServiceTarget(svc);
+          }}
+          onViewService={(svc) => {
+            setShowServiceProviderDashboard(false);
+            setSelectedServiceState({ service: svc, showContact: false });
+          }}
+          onToast={showToast}
+        />
+      )}
+
+      {advertiseModalState.open && (
+        <AdvertiseBusinessModal
+          initialPackageId={advertiseModalState.packageId}
+          onClose={() => setAdvertiseModalState({ open: false, packageId: 'basic' })}
+          onSubmitted={() => {
+            showToast('Advertisement submitted for CEO review and approval.');
+          }}
+        />
+      )}
+
+      {selectedAd && (
+        <AdDetailModal
+          ad={selectedAd}
+          onClose={() => setSelectedAd(null)}
+          onAdvertiseNow={() => setAdvertiseModalState({ open: true, packageId: 'basic' })}
+        />
+      )}
+
+      {showCeoMasterControl && isAuthorizedCeo(user) && (
+        <CeoMasterControlModal
+          onClose={() => setShowCeoMasterControl(false)}
+          onDataChanged={() => {
+            loadCatalogProducts(1, true);
+            getPublishedEventsFromFirestore(true)
+              .then((list) => setCampusEvents(list))
+              .catch(() => {});
+          }}
         />
       )}
 
       {showSafetyModal && <SafetyModal onClose={() => setShowSafetyModal(false)} />}
+
+      {emergencyDirectoryState.open && (
+        <EmergencyContactDirectoryModal
+          contacts={emergencyContacts}
+          initialFilter={emergencyDirectoryState.filter}
+          onClose={() => setEmergencyDirectoryState({ open: false, filter: 'all' })}
+          onReportEmergency={(defaultCategory) => {
+            setEmergencyDirectoryState({ open: false, filter: 'all' });
+            setEmergencyReportModalState({
+              open: true,
+              kind: 'emergency',
+              defaultCategory
+            });
+          }}
+        />
+      )}
+
+      {emergencyReportModalState.open && (
+        <EmergencyReportModal
+          initialKind={emergencyReportModalState.kind}
+          contacts={emergencyContacts}
+          defaultCategory={emergencyReportModalState.defaultCategory}
+          onClose={() =>
+            setEmergencyReportModalState({ open: false, kind: 'emergency' })
+          }
+          onSubmitted={(receipt) => {
+            showToast(`Report ${receipt.reportId} logged. Save your PIN: ${receipt.verificationPin}`);
+          }}
+          onOpenDirectory={() => {
+            setEmergencyReportModalState({ open: false, kind: 'emergency' });
+            setEmergencyDirectoryState({ open: true, filter: 'all' });
+          }}
+        />
+      )}
+
+      {showReportTrackingModal && (
+        <ReportTrackingModal onClose={() => setShowReportTrackingModal(false)} />
+      )}
+
+      {showCampusSafetyInfoModal && (
+        <CampusSafetyInfoModal
+          onClose={() => setShowCampusSafetyInfoModal(false)}
+          onOpenContacts={() => {
+            setShowCampusSafetyInfoModal(false);
+            setEmergencyDirectoryState({ open: true, filter: 'all' });
+          }}
+          onReportSecurityConcern={() => {
+            setShowCampusSafetyInfoModal(false);
+            setEmergencyReportModalState({ open: true, kind: 'security_concern' });
+          }}
+        />
+      )}
+
+      {showLostAndFoundModal && (
+        <LostAndFoundModal
+          items={lostFoundItems}
+          onClose={() => setShowLostAndFoundModal(false)}
+          onReportSubmitted={() => showToast('Lost & Found report published!')}
+        />
+      )}
 
       <CartOrderReviewModal
         isOpen={showCartModal}

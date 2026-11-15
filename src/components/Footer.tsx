@@ -8,11 +8,15 @@ import {
   HelpCircle,
   Bike,
   Phone,
-  MapPin
+  MapPin,
+  Briefcase,
+  Siren
 } from 'lucide-react';
 import { Category } from '../types.js';
 import { usePWAInstall } from '../hooks/usePWAInstall.js';
 import { AppView } from './BottomNav.js';
+import { CeoContactButton } from './CeoContactButton.js';
+import { CEO_ADS_PHONE } from '../services/ads.js';
 
 interface FooterProps {
   categories: Category[];
@@ -21,6 +25,12 @@ interface FooterProps {
   onOpenSafetyModal: () => void;
   onNavigateView: (view: AppView) => void;
   onTriggerPWAHelp: () => void;
+  onOpenAdvertiseModal?: () => void;
+  onOpenServicesSection?: () => void;
+  onOpenEmergencySection?: () => void;
+  onOpenPostServiceModal?: () => void;
+  onOpenServiceProviderDashboard?: () => void;
+  onOpenCeoPortal?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -29,7 +39,13 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenSellModal,
   onOpenSafetyModal,
   onNavigateView,
-  onTriggerPWAHelp
+  onTriggerPWAHelp,
+  onOpenAdvertiseModal,
+  onOpenServicesSection,
+  onOpenEmergencySection,
+  onOpenPostServiceModal,
+  onOpenServiceProviderDashboard,
+  onOpenCeoPortal
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
 
@@ -194,23 +210,81 @@ export const Footer: React.FC<FooterProps> = ({
                   <Bike className="w-3.5 h-3.5 text-[#F2B90D]" /> Okada Directory
                 </button>
               </li>
+              {onOpenServicesSection && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenServicesSection}
+                    className="hover:text-[#F2B90D] flex items-center gap-1.5"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-[#F2B90D]" /> Student Services
+                  </button>
+                </li>
+              )}
+              {onOpenEmergencySection && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenEmergencySection}
+                    className="text-white hover:text-[#F2B90D] font-bold flex items-center gap-1.5"
+                  >
+                    <Siren className="w-3.5 h-3.5 text-[#F87171]" /> Campus Emergency &amp; Help
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 
           <div>
             <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-3">
-              Contact &amp; Support
+              Advertising &amp; Support
             </h5>
-            <ul className="space-y-2 text-white/85">
+            <ul className="space-y-2.5 text-white/85">
               <li className="flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-[#F2B90D]" />
-                <span>Campus Desk: Wukari, Taraba</span>
+                <span className="tabular-nums">FU MARKET CEO – {CEO_ADS_PHONE}</span>
               </li>
+              <li>
+                <CeoContactButton compact showSubLabel={false} />
+              </li>
+              {onOpenAdvertiseModal && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenAdvertiseModal}
+                    className="text-[#F2B90D] hover:text-[#FFC107] font-black transition"
+                  >
+                    ADVERTISE YOUR BUSINESS
+                  </button>
+                </li>
+              )}
+              {onOpenPostServiceModal && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenPostServiceModal}
+                    className="text-[#F2B90D] hover:text-[#FFC107] font-black transition"
+                  >
+                    POST YOUR SERVICE
+                  </button>
+                </li>
+              )}
+              {onOpenServiceProviderDashboard && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenServiceProviderDashboard}
+                    className="hover:text-[#F2B90D] font-bold transition"
+                  >
+                    Service Provider Dashboard
+                  </button>
+                </li>
+              )}
               <li>
                 <button
                   type="button"
                   onClick={onOpenSellModal}
-                  className="text-[#F2B90D] hover:text-[#FFC107] font-black transition"
+                  className="hover:text-[#F2B90D] font-bold transition"
                 >
                   Post Item for FREE
                 </button>
@@ -231,9 +305,20 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* Bottom Copyright + Made for FUWUKARI Students */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/90">
-          <p className="font-semibold">
-            © {new Date().getFullYear()} FU MARKET — Federal University Wukari.
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-semibold">
+              © {new Date().getFullYear()} FU MARKET — Federal University Wukari.
+            </p>
+            {onOpenCeoPortal && (
+              <button
+                type="button"
+                onClick={onOpenCeoPortal}
+                className="text-white/65 hover:text-[#F2B90D] font-bold underline-offset-2 hover:underline transition"
+              >
+                CEO Portal
+              </button>
+            )}
+          </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0B6B3A] border border-[#F2B90D]/50 text-[#F2B90D] font-black">
             Made for FUWUKARI Students
           </span>

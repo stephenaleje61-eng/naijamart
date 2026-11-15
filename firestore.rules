@@ -22,6 +22,31 @@ service cloud.firestore {
       );
     }
 
+    function isCeo() {
+      return isSignedIn() &&
+        request.auth.token.email == 'stephenaleje61@gmail.com' &&
+        request.auth.token.email_verified == true &&
+        (!('ceoAdmin' in request.auth.token) || request.auth.token.ceoAdmin == true);
+    }
+
+    function noCeoVerificationFieldsIn(data) {
+      return !('isVerified' in data && data.isVerified == true) &&
+        !('ceoVerified' in data && data.ceoVerified == true) &&
+        !('verifiedBadgeText' in data) &&
+        !('verifiedByCeoAt' in data) &&
+        !('verifiedByCeoEmail' in data) &&
+        !('verificationNotes' in data);
+    }
+
+    function ceoVerificationFieldsUnchanged(newData, oldData) {
+      return newData.get('isVerified', false) == oldData.get('isVerified', false) &&
+        newData.get('ceoVerified', false) == oldData.get('ceoVerified', false) &&
+        newData.get('verifiedBadgeText', '') == oldData.get('verifiedBadgeText', '') &&
+        newData.get('verifiedByCeoAt', '') == oldData.get('verifiedByCeoAt', '') &&
+        newData.get('verifiedByCeoEmail', '') == oldData.get('verifiedByCeoEmail', '') &&
+        newData.get('verificationNotes', '') == oldData.get('verificationNotes', '');
+    }
+
     function isValidProduct(data) {
       return data.keys().hasAll(['id', 'sellerId', 'title', 'price', 'categoryId', 'images', 'status']) &&
         data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
@@ -55,28 +80,53 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Users collection: block privilege escalation and validate IDs
+    // Users collection: strictly block privilege escalation and CEO-only verification tampering
     match /users/{userId} {
       allow read: if true;
       allow create: if isValidDocId(userId) &&
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
         request.resource.data.name.size() <= 120 &&
-        (!('role' in request.resource.data) || request.resource.data.role in ['buyer', 'seller']);
+        (
+          isCeo() ||
+          (
+            (!('role' in request.resource.data) || request.resource.data.role in ['buyer', 'seller']) &&
+            noCeoVerificationFieldsIn(request.resource.data)
+          )
+        );
       allow update: if isValidDocId(userId) &&
-        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role || isAdmin());
-      allow delete: if isAdmin();
+        (
+          isCeo() ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            (
+              isAdmin() ||
+              (
+                (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+                request.resource.data.get('role', 'buyer') != 'admin'
+              )
+            )
+          )
+        );
+      allow delete: if isCeo() || isAdmin();
     }
 
-    // Seller storefront profiles
+    // Seller storefront profiles (verification status controllable ONLY by isCeo())
     match /sellerProfiles/{sellerId} {
       allow read: if true;
-      allow create, update: if isValidDocId(sellerId) &&
+      allow create: if isValidDocId(sellerId) &&
         request.resource.data.keys().hasAll(['id', 'userId', 'shopName']) &&
         request.resource.data.shopName is string &&
         request.resource.data.shopName.size() > 0 &&
-        request.resource.data.shopName.size() <= 120;
-      allow delete: if isAdmin();
+        request.resource.data.shopName.size() <= 120 &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data));
+      allow update: if isValidDocId(sellerId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'shopName']) &&
+        request.resource.data.shopName is string &&
+        request.resource.data.shopName.size() > 0 &&
+        request.resource.data.shopName.size() <= 120 &&
+        (isCeo() || ceoVerificationFieldsUnchanged(request.resource.data, resource.data));
+      allow delete: if isCeo() || isAdmin();
     }
 
     // Admins collection (strictly admin only)
@@ -184,6 +234,1249 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['reason', 'details', 'status']) &&
         request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
+    }
+
+    // FU MARKET BIRTHDAY & EVENTS CENTRE (CEO-only publish/edit/delete; public read for published events)
+    function isValidEvent(data) {
+      return data.keys().hasAll([
+          'id',
+          'celebrantName',
+          'eventType',
+          'eventDate',
+          'venue',
+          'description',
+          'photoUrl',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'celebrantName',
+          'eventType',
+          'eventDate',
+          'eventTime',
+          'venue',
+          'description',
+          'additionalInfo',
+          'photoUrl',
+          'status',
+          'publishAt',
+          'createdByUid',
+          'createdByEmail',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.celebrantName is string && data.celebrantName.size() > 0 && data.celebrantName.size() <= 140 &&
+        data.eventType is string && data.eventType.size() > 0 && data.eventType.size() <= 80 &&
+        data.eventDate is string && data.eventDate.size() >= 4 && data.eventDate.size() <= 32 &&
+        (!('eventTime' in data) || (data.eventTime is string && data.eventTime.size() <= 60)) &&
+        data.venue is string && data.venue.size() > 0 && data.venue.size() <= 180 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 3000 &&
+        (!('additionalInfo' in data) || (data.additionalInfo is string && data.additionalInfo.size() <= 1500)) &&
+        data.photoUrl is string && data.photoUrl.size() > 0 && data.photoUrl.size() <= 900000 &&
+        data.status is string && data.status in ['published', 'draft'] &&
+        (!('publishAt' in data) || (data.publishAt is string && data.publishAt.size() <= 64)) &&
+        (!('createdByUid' in data) || (data.createdByUid is string && data.createdByUid.size() <= 128)) &&
+        (!('createdByEmail' in data) || (data.createdByEmail is string && data.createdByEmail.size() <= 160)) &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() > 0 && data.updatedAt.size() <= 64;
+    }
+
+    match /events/{eventId} {
+      allow get: if isValidDocId(eventId) && (isAdmin() || (resource != null && resource.data.status == 'published'));
+      allow list: if isAdmin() || resource.data.status == 'published';
+      allow create: if isAdmin() && isValidDocId(eventId) && isValidEvent(request.resource.data);
+      allow update: if isAdmin() && isValidDocId(eventId) && isValidEvent(request.resource.data) &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin() && isValidDocId(eventId);
+    }
+
+    // ============================================================================
+    // FU SPORT UPDATE & GENERAL ANNOUNCEMENT CENTRE
+    // ============================================================================
+    match /users/{userId}/saved_announcements/{postId} {
+      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && isValidDocId(postId);
+    }
+
+    function isValidSportUpdate(data) {
+      return data.keys().hasAll([
+          'id',
+          'categoryType',
+          'sportCategory',
+          'title',
+          'description',
+          'authorId',
+          'authorName',
+          'status',
+          'isPinned',
+          'isFeatured',
+          'likesCount',
+          'commentsCount',
+          'views',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'categoryType',
+          'sportCategory',
+          'title',
+          'teamOrPlayer',
+          'competitionName',
+          'matchDate',
+          'matchTime',
+          'venue',
+          'score',
+          'description',
+          'imageUrl',
+          'authorId',
+          'authorName',
+          'authorAvatar',
+          'status',
+          'moderationFlags',
+          'adminNotes',
+          'isPinned',
+          'isFeatured',
+          'isUnverifiedUserPost',
+          'likesCount',
+          'commentsCount',
+          'views',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.categoryType == 'sport_update' &&
+        data.sportCategory is string && data.sportCategory.size() > 0 && data.sportCategory.size() <= 80 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
+        (!('teamOrPlayer' in data) || (data.teamOrPlayer is string && data.teamOrPlayer.size() <= 160)) &&
+        (!('competitionName' in data) || (data.competitionName is string && data.competitionName.size() <= 140)) &&
+        (!('matchDate' in data) || (data.matchDate is string && data.matchDate.size() <= 32)) &&
+        (!('matchTime' in data) || (data.matchTime is string && data.matchTime.size() <= 60)) &&
+        (!('venue' in data) || (data.venue is string && data.venue.size() <= 180)) &&
+        (!('score' in data) || (data.score is string && data.score.size() <= 60)) &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 900000)) &&
+        data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128 &&
+        data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 120 &&
+        (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 500)) &&
+        data.status is string && data.status in ['published', 'pending', 'rejected', 'removed'] &&
+        (!('moderationFlags' in data) || (data.moderationFlags is list && data.moderationFlags.size() <= 10)) &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500)) &&
+        data.isPinned is bool &&
+        data.isFeatured is bool &&
+        (!('isUnverifiedUserPost' in data) || data.isUnverifiedUserPost is bool) &&
+        data.likesCount is number && data.likesCount >= 0 &&
+        data.commentsCount is number && data.commentsCount >= 0 &&
+        data.views is number && data.views >= 0;
+    }
+
+    match /sport_updates/{postId} {
+      allow get: if isValidDocId(postId) && (
+        isAdmin() ||
+        (resource != null && resource.data.status == 'published') ||
+        (isSignedIn() && resource != null && resource.data.authorId == request.auth.uid)
+      );
+      allow list: if isAdmin() ||
+        resource.data.status == 'published' ||
+        (isSignedIn() && resource.data.authorId == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+        isValidDocId(postId) &&
+        isValidSportUpdate(request.resource.data) &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.status in ['published', 'pending'] &&
+        request.resource.data.isPinned == false &&
+        request.resource.data.isFeatured == false &&
+        request.resource.data.likesCount == 0 &&
+        request.resource.data.commentsCount == 0 &&
+        request.resource.data.views == 0 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isValidDocId(postId) &&
+        isValidSportUpdate(request.resource.data) &&
+        request.resource.data.authorId == resource.data.authorId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isAdmin() ||
+          (
+            isSignedIn() &&
+            resource.data.authorId == request.auth.uid &&
+            resource.data.status in ['published', 'pending'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'sportCategory',
+              'title',
+              'teamOrPlayer',
+              'competitionName',
+              'matchDate',
+              'matchTime',
+              'venue',
+              'score',
+              'description',
+              'imageUrl',
+              'status',
+              'moderationFlags',
+              'updatedAt'
+            ]) &&
+            request.resource.data.status in ['published', 'pending'] &&
+            request.resource.data.updatedAt == request.time
+          ) ||
+          (
+            isSignedIn() &&
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']) &&
+            (request.resource.data.likesCount == resource.data.likesCount + 1 || request.resource.data.likesCount == resource.data.likesCount - 1)
+          ) ||
+          (
+            isSignedIn() &&
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
+            (request.resource.data.commentsCount == resource.data.commentsCount + 1 || request.resource.data.commentsCount == resource.data.commentsCount - 1)
+          ) ||
+          (
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+            request.resource.data.views == resource.data.views + 1
+          )
+        );
+
+      allow delete: if isAdmin() || (isSignedIn() && isValidDocId(postId) && resource.data.authorId == request.auth.uid);
+
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn() && isValidDocId(postId) && isValidDocId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    function isValidGeneralAnnouncement(data) {
+      return data.keys().hasAll([
+          'id',
+          'categoryType',
+          'announcementCategory',
+          'title',
+          'description',
+          'authorId',
+          'authorName',
+          'status',
+          'isPinned',
+          'isFeatured',
+          'likesCount',
+          'commentsCount',
+          'views',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'categoryType',
+          'announcementCategory',
+          'title',
+          'eventDate',
+          'eventTime',
+          'location',
+          'description',
+          'imageUrl',
+          'authorId',
+          'authorName',
+          'authorAvatar',
+          'status',
+          'moderationFlags',
+          'adminNotes',
+          'isPinned',
+          'isFeatured',
+          'likesCount',
+          'commentsCount',
+          'views',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.categoryType == 'general_announcement' &&
+        data.announcementCategory is string && data.announcementCategory.size() > 0 && data.announcementCategory.size() <= 80 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
+        (!('eventDate' in data) || (data.eventDate is string && data.eventDate.size() <= 32)) &&
+        (!('eventTime' in data) || (data.eventTime is string && data.eventTime.size() <= 60)) &&
+        (!('location' in data) || (data.location is string && data.location.size() <= 180)) &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 900000)) &&
+        data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128 &&
+        data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 120 &&
+        (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 500)) &&
+        data.status is string && data.status in ['published', 'pending', 'rejected', 'removed'] &&
+        (!('moderationFlags' in data) || (data.moderationFlags is list && data.moderationFlags.size() <= 10)) &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500)) &&
+        data.isPinned is bool &&
+        data.isFeatured is bool &&
+        data.likesCount is number && data.likesCount >= 0 &&
+        data.commentsCount is number && data.commentsCount >= 0 &&
+        data.views is number && data.views >= 0;
+    }
+
+    match /general_announcements/{postId} {
+      allow get: if isValidDocId(postId) && (
+        isAdmin() ||
+        (resource != null && resource.data.status == 'published') ||
+        (isSignedIn() && resource != null && resource.data.authorId == request.auth.uid)
+      );
+      allow list: if isAdmin() ||
+        resource.data.status == 'published' ||
+        (isSignedIn() && resource.data.authorId == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+        isValidDocId(postId) &&
+        isValidGeneralAnnouncement(request.resource.data) &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.status in ['published', 'pending'] &&
+        request.resource.data.isPinned == false &&
+        request.resource.data.isFeatured == false &&
+        request.resource.data.likesCount == 0 &&
+        request.resource.data.commentsCount == 0 &&
+        request.resource.data.views == 0 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isValidDocId(postId) &&
+        isValidGeneralAnnouncement(request.resource.data) &&
+        request.resource.data.authorId == resource.data.authorId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isAdmin() ||
+          (
+            isSignedIn() &&
+            resource.data.authorId == request.auth.uid &&
+            resource.data.status in ['published', 'pending'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'announcementCategory',
+              'title',
+              'eventDate',
+              'eventTime',
+              'location',
+              'description',
+              'imageUrl',
+              'status',
+              'moderationFlags',
+              'updatedAt'
+            ]) &&
+            request.resource.data.status in ['published', 'pending'] &&
+            request.resource.data.updatedAt == request.time
+          ) ||
+          (
+            isSignedIn() &&
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']) &&
+            (request.resource.data.likesCount == resource.data.likesCount + 1 || request.resource.data.likesCount == resource.data.likesCount - 1)
+          ) ||
+          (
+            isSignedIn() &&
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
+            (request.resource.data.commentsCount == resource.data.commentsCount + 1 || request.resource.data.commentsCount == resource.data.commentsCount - 1)
+          ) ||
+          (
+            resource.data.status == 'published' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+            request.resource.data.views == resource.data.views + 1
+          )
+        );
+
+      allow delete: if isAdmin() || (isSignedIn() && isValidDocId(postId) && resource.data.authorId == request.auth.uid);
+
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn() && isValidDocId(postId) && isValidDocId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    function isValidAnnouncementComment(data) {
+      return data.keys().hasAll([
+          'id',
+          'postId',
+          'postCollection',
+          'authorId',
+          'authorName',
+          'text',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'postId',
+          'postCollection',
+          'parentCommentId',
+          'authorId',
+          'authorName',
+          'authorAvatar',
+          'text',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.postId is string && data.postId.size() > 0 && data.postId.size() <= 128 &&
+        data.postCollection in ['sport_updates', 'general_announcements'] &&
+        (!('parentCommentId' in data) || (data.parentCommentId is string && data.parentCommentId.size() <= 128)) &&
+        data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128 &&
+        data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 120 &&
+        (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 500)) &&
+        data.text is string && data.text.size() > 0 && data.text.size() <= 1500;
+    }
+
+    match /announcement_comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        isValidDocId(commentId) &&
+        isValidAnnouncementComment(request.resource.data) &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if isValidDocId(commentId) &&
+        isValidAnnouncementComment(request.resource.data) &&
+        request.resource.data.authorId == resource.data.authorId &&
+        request.resource.data.postId == resource.data.postId &&
+        request.resource.data.postCollection == resource.data.postCollection &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isAdmin() ||
+          (
+            isSignedIn() &&
+            resource.data.authorId == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']) &&
+            request.resource.data.updatedAt == request.time
+          )
+        );
+      allow delete: if isAdmin() || (isSignedIn() && isValidDocId(commentId) && resource.data.authorId == request.auth.uid);
+    }
+
+    function isValidAnnouncementReport(data) {
+      return data.keys().hasAll([
+          'id',
+          'postId',
+          'postCollection',
+          'postTitle',
+          'reason',
+          'details',
+          'status',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'postId',
+          'postCollection',
+          'postTitle',
+          'reason',
+          'details',
+          'reporterId',
+          'reporterName',
+          'status',
+          'adminNotes',
+          'createdAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.postId is string && data.postId.size() > 0 && data.postId.size() <= 128 &&
+        data.postCollection in ['sport_updates', 'general_announcements'] &&
+        data.postTitle is string && data.postTitle.size() > 0 && data.postTitle.size() <= 200 &&
+        data.reason is string && data.reason.size() > 0 && data.reason.size() <= 120 &&
+        data.details is string && data.details.size() > 0 && data.details.size() <= 1000 &&
+        (!('reporterId' in data) || (data.reporterId is string && data.reporterId.size() <= 128)) &&
+        (!('reporterName' in data) || (data.reporterName is string && data.reporterName.size() <= 120)) &&
+        data.status is string && data.status in ['pending', 'resolved', 'dismissed'] &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500));
+    }
+
+    match /announcement_reports/{reportId} {
+      allow create: if isValidDocId(reportId) &&
+        isValidAnnouncementReport(request.resource.data) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ============================================================================
+    // FU MARKET ADS & CEO MASTER CONTROL COLLECTIONS
+    // ============================================================================
+    function isValidAdvertisement(data) {
+      return data.keys().hasAll([
+          'id',
+          'businessName',
+          'ownerName',
+          'phone',
+          'whatsappNumber',
+          'businessCategory',
+          'title',
+          'description',
+          'imageUrl',
+          'location',
+          'packageId',
+          'packagePrice',
+          'durationDays',
+          'status',
+          'paymentStatus',
+          'isFeatured',
+          'isDeleted',
+          'impressions',
+          'clicks',
+          'whatsappClicks',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'businessName',
+          'ownerName',
+          'phone',
+          'whatsappNumber',
+          'businessCategory',
+          'title',
+          'description',
+          'imageUrl',
+          'logoUrl',
+          'location',
+          'packageId',
+          'packageName',
+          'packagePrice',
+          'durationDays',
+          'websiteOrSocialLink',
+          'ownerUid',
+          'status',
+          'paymentStatus',
+          'paymentReference',
+          'isFeatured',
+          'isDeleted',
+          'deletedAt',
+          'deletedBy',
+          'startDate',
+          'expiryDate',
+          'impressions',
+          'clicks',
+          'whatsappClicks',
+          'adminNotes',
+          'isVerified',
+          'ceoVerified',
+          'verifiedBadgeText',
+          'verifiedByCeoAt',
+          'verifiedByCeoEmail',
+          'verificationNotes',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 140 &&
+        data.ownerName is string && data.ownerName.size() > 0 && data.ownerName.size() <= 120 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        data.whatsappNumber is string && data.whatsappNumber.size() >= 5 && data.whatsappNumber.size() <= 40 &&
+        data.businessCategory is string && data.businessCategory.size() > 0 && data.businessCategory.size() <= 80 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 900000 &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 900000)) &&
+        data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
+        data.packageId is string && data.packageId in ['basic', 'premium', 'featured'] &&
+        (!('packageName' in data) || (data.packageName is string && data.packageName.size() <= 80)) &&
+        data.packagePrice is number && data.packagePrice > 0 && data.packagePrice <= 1000000 &&
+        data.durationDays is number && data.durationDays >= 1 && data.durationDays <= 365 &&
+        (!('websiteOrSocialLink' in data) || (data.websiteOrSocialLink is string && data.websiteOrSocialLink.size() <= 500)) &&
+        (!('ownerUid' in data) || (data.ownerUid is string && data.ownerUid.size() <= 128)) &&
+        data.status is string && data.status in ['pending_approval', 'active', 'paused', 'rejected', 'expired'] &&
+        data.paymentStatus is string && data.paymentStatus in ['unpaid', 'pending_verification', 'paid', 'failed'] &&
+        (!('paymentReference' in data) || (data.paymentReference is string && data.paymentReference.size() <= 160)) &&
+        data.isFeatured is bool &&
+        (!('isDeleted' in data) || data.isDeleted is bool) &&
+        (!('deletedAt' in data) || (data.deletedAt is string && data.deletedAt.size() <= 64)) &&
+        (!('deletedBy' in data) || (data.deletedBy is string && data.deletedBy.size() <= 160)) &&
+        (!('startDate' in data) || (data.startDate is string && data.startDate.size() <= 64)) &&
+        (!('expiryDate' in data) || (data.expiryDate is string && data.expiryDate.size() <= 64)) &&
+        data.impressions is number && data.impressions >= 0 &&
+        data.clicks is number && data.clicks >= 0 &&
+        data.whatsappClicks is number && data.whatsappClicks >= 0 &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500)) &&
+        (!('isVerified' in data) || data.isVerified is bool) &&
+        (!('ceoVerified' in data) || data.ceoVerified is bool) &&
+        (!('verifiedBadgeText' in data) || (data.verifiedBadgeText is string && data.verifiedBadgeText.size() <= 80)) &&
+        (!('verifiedByCeoAt' in data) || (data.verifiedByCeoAt is string && data.verifiedByCeoAt.size() <= 64)) &&
+        (!('verifiedByCeoEmail' in data) || (data.verifiedByCeoEmail is string && data.verifiedByCeoEmail.size() <= 160)) &&
+        (!('verificationNotes' in data) || (data.verificationNotes is string && data.verificationNotes.size() <= 400));
+    }
+
+    match /advertisements/{adId} {
+      allow get: if isValidDocId(adId) && (
+        isAdmin() ||
+        (resource != null && resource.data.status == 'active' && resource.data.paymentStatus == 'paid' && resource.data.isDeleted == false) ||
+        (isSignedIn() && resource != null && resource.data.ownerUid == request.auth.uid)
+      );
+      allow list: if isAdmin() ||
+        (resource.data.status == 'active' && resource.data.paymentStatus == 'paid' && resource.data.isDeleted == false) ||
+        (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+
+      // Anyone can submit an ad, but it MUST start as pending_approval & unpaid/pending_verification, never self-activated, featured, or CEO-verified
+      allow create: if isValidDocId(adId) &&
+        isValidAdvertisement(request.resource.data) &&
+        (!isSignedIn() || !('ownerUid' in request.resource.data) || request.resource.data.ownerUid == request.auth.uid || isAdmin()) &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data)) &&
+        request.resource.data.status == 'pending_approval' &&
+        request.resource.data.paymentStatus in ['unpaid', 'pending_verification'] &&
+        request.resource.data.isFeatured == false &&
+        request.resource.data.isDeleted == false &&
+        request.resource.data.impressions == 0 &&
+        request.resource.data.clicks == 0 &&
+        request.resource.data.whatsappClicks == 0 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isValidDocId(adId) &&
+        isValidAdvertisement(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isCeo() ||
+          (isAdmin() && ceoVerificationFieldsUnchanged(request.resource.data, resource.data)) ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            resource.data.status == 'active' &&
+            resource.data.paymentStatus == 'paid' &&
+            resource.data.isDeleted == false &&
+            (
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impressions']) &&
+                request.resource.data.impressions == resource.data.impressions + 1) ||
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
+                request.resource.data.clicks == resource.data.clicks + 1) ||
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['whatsappClicks']) &&
+                request.resource.data.whatsappClicks == resource.data.whatsappClicks + 1)
+            )
+          )
+        );
+
+      allow delete: if (isCeo() || isAdmin()) && isValidDocId(adId);
+    }
+
+    // Protected Payment Records: Admin read/write only, never deletable
+    match /adPayments/{paymentId} {
+      allow read, create, update: if isAdmin() && isValidDocId(paymentId);
+      allow delete: if false;
+    }
+
+    // Ad Analytics Events: Validated event create; Admin read/manage
+    match /adAnalytics/{analyticsId} {
+      allow create: if isValidDocId(analyticsId) &&
+        request.resource.data.keys().hasAll(['id', 'adId', 'eventType', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['id', 'adId', 'eventType', 'createdAt']) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 128 &&
+        request.resource.data.adId is string && request.resource.data.adId.size() <= 128 &&
+        request.resource.data.eventType in ['impression', 'click', 'whatsapp_click'] &&
+        request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Admin Audit Logs: Immutable log (Admin read/create only, never update/delete)
+    match /adminAuditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+        isValidDocId(logId) &&
+        request.resource.data.keys().hasAll(['id', 'action', 'contentType', 'recordId', 'adminEmail', 'createdAt']) &&
+        request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Soft-deleted Content Management & Recovery Archive (Admin only)
+    match /contentManagement/{archiveId} {
+      allow read, create, update, delete: if isAdmin() && isValidDocId(archiveId);
+    }
+
+    // ============================================================================
+    // FU MARKET STUDENT SERVICES MARKETPLACE
+    // ============================================================================
+    function isValidService(data) {
+      return data.keys().hasAll([
+          'serviceId',
+          'providerId',
+          'providerName',
+          'serviceName',
+          'category',
+          'description',
+          'price',
+          'location',
+          'phone',
+          'whatsapp',
+          'images',
+          'status',
+          'featured',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'serviceId',
+          'providerId',
+          'providerName',
+          'serviceName',
+          'category',
+          'description',
+          'price',
+          'priceMax',
+          'priceDisplay',
+          'location',
+          'phone',
+          'whatsapp',
+          'images',
+          'availability',
+          'availabilityNote',
+          'status',
+          'featured',
+          'promotionPlan',
+          'promotionStatus',
+          'promotionPrice',
+          'promotionReference',
+          'promotionStartDate',
+          'promotionExpiryDate',
+          'views',
+          'whatsappClicks',
+          'moderationNotes',
+          'isGuestPost',
+          'isVerified',
+          'ceoVerified',
+          'verifiedBadgeText',
+          'verifiedByCeoAt',
+          'verifiedByCeoEmail',
+          'verificationNotes',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.serviceId is string && data.serviceId.size() > 0 && data.serviceId.size() <= 128 && data.serviceId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.providerId is string && data.providerId.size() > 0 && data.providerId.size() <= 128 &&
+        data.providerName is string && data.providerName.size() > 0 && data.providerName.size() <= 120 &&
+        data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() <= 180 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        data.price is number && data.price >= 0 && data.price <= 100000000 &&
+        (!('priceMax' in data) || (data.priceMax is number && data.priceMax >= 0 && data.priceMax <= 100000000)) &&
+        (!('priceDisplay' in data) || (data.priceDisplay is string && data.priceDisplay.size() <= 80)) &&
+        data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        data.whatsapp is string && data.whatsapp.size() >= 5 && data.whatsapp.size() <= 40 &&
+        data.images is list && data.images.size() > 0 && data.images.size() <= 8 && data.images[0] is string &&
+        (!('availability' in data) || data.availability in ['available', 'busy', 'unavailable']) &&
+        (!('availabilityNote' in data) || (data.availabilityNote is string && data.availabilityNote.size() <= 160)) &&
+        data.status is string && data.status in ['active', 'pending', 'rejected', 'suspended', 'unavailable'] &&
+        data.featured is bool &&
+        (!('promotionPlan' in data) || data.promotionPlan in ['none', 'homepage', 'weekly', 'monthly']) &&
+        (!('promotionStatus' in data) || data.promotionStatus in ['none', 'pending_payment', 'pending_approval', 'active', 'expired']) &&
+        (!('promotionPrice' in data) || (data.promotionPrice is number && data.promotionPrice >= 0 && data.promotionPrice <= 1000000)) &&
+        (!('promotionReference' in data) || (data.promotionReference is string && data.promotionReference.size() <= 160)) &&
+        (!('promotionStartDate' in data) || (data.promotionStartDate is string && data.promotionStartDate.size() <= 64)) &&
+        (!('promotionExpiryDate' in data) || (data.promotionExpiryDate is string && data.promotionExpiryDate.size() <= 64)) &&
+        (!('views' in data) || (data.views is number && data.views >= 0)) &&
+        (!('whatsappClicks' in data) || (data.whatsappClicks is number && data.whatsappClicks >= 0)) &&
+        (!('moderationNotes' in data) || (data.moderationNotes is string && data.moderationNotes.size() <= 500)) &&
+        (!('isGuestPost' in data) || data.isGuestPost is bool) &&
+        (!('isVerified' in data) || data.isVerified is bool) &&
+        (!('ceoVerified' in data) || data.ceoVerified is bool) &&
+        (!('verifiedBadgeText' in data) || (data.verifiedBadgeText is string && data.verifiedBadgeText.size() <= 80)) &&
+        (!('verifiedByCeoAt' in data) || (data.verifiedByCeoAt is string && data.verifiedByCeoAt.size() <= 64)) &&
+        (!('verifiedByCeoEmail' in data) || (data.verifiedByCeoEmail is string && data.verifiedByCeoEmail.size() <= 160)) &&
+        (!('verificationNotes' in data) || (data.verificationNotes is string && data.verificationNotes.size() <= 400));
+    }
+
+    match /services/{serviceId} {
+      allow get: if isValidDocId(serviceId) && (
+        isAdmin() ||
+        (resource != null && resource.data.status == 'active') ||
+        (isSignedIn() && resource != null && resource.data.providerId == request.auth.uid)
+      );
+      allow list: if isAdmin() ||
+        resource.data.status == 'active' ||
+        (isSignedIn() && resource.data.providerId == request.auth.uid);
+
+      allow create: if isValidDocId(serviceId) &&
+        isValidService(request.resource.data) &&
+        request.resource.data.serviceId == serviceId &&
+        (!isSignedIn() || request.resource.data.providerId == request.auth.uid || isAdmin()) &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data)) &&
+        (isAdmin() || (
+          request.resource.data.featured == false &&
+          request.resource.data.get('promotionStatus', 'none') == 'none' &&
+          request.resource.data.status in ['active', 'pending'] &&
+          request.resource.data.get('views', 0) == 0 &&
+          request.resource.data.get('whatsappClicks', 0) == 0
+        )) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isValidDocId(serviceId) &&
+        isValidService(request.resource.data) &&
+        request.resource.data.serviceId == resource.data.serviceId &&
+        request.resource.data.providerId == resource.data.providerId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isCeo() ||
+          (isAdmin() && ceoVerificationFieldsUnchanged(request.resource.data, resource.data)) ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            isSignedIn() &&
+            resource.data.providerId == request.auth.uid &&
+            resource.data.status != 'suspended' &&
+            request.resource.data.featured == resource.data.featured &&
+            request.resource.data.status in ['active', 'pending', 'unavailable'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'providerName',
+              'serviceName',
+              'category',
+              'description',
+              'price',
+              'priceMax',
+              'priceDisplay',
+              'location',
+              'phone',
+              'whatsapp',
+              'images',
+              'availability',
+              'availabilityNote',
+              'status',
+              'promotionPlan',
+              'promotionStatus',
+              'promotionPrice',
+              'promotionReference',
+              'updatedAt'
+            ]) &&
+            request.resource.data.get('promotionStatus', 'none') != 'active' &&
+            request.resource.data.updatedAt == request.time
+          ) ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            resource.data.status == 'active' &&
+            (
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+                request.resource.data.views == resource.data.get('views', 0) + 1) ||
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['whatsappClicks']) &&
+                request.resource.data.whatsappClicks == resource.data.get('whatsappClicks', 0) + 1)
+            )
+          )
+        );
+
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && isValidDocId(serviceId) && resource.data.providerId == request.auth.uid);
+    }
+
+    match /serviceCategories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidDocId(categoryId);
+    }
+
+    function isValidServiceReport(data) {
+      return data.keys().hasAll([
+          'id',
+          'serviceId',
+          'serviceName',
+          'reason',
+          'details',
+          'status',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'serviceId',
+          'serviceName',
+          'providerId',
+          'reason',
+          'details',
+          'reporterId',
+          'reporterName',
+          'status',
+          'adminNotes',
+          'createdAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.serviceId is string && data.serviceId.size() > 0 && data.serviceId.size() <= 128 &&
+        data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() <= 180 &&
+        (!('providerId' in data) || (data.providerId is string && data.providerId.size() <= 128)) &&
+        data.reason is string && data.reason.size() > 0 && data.reason.size() <= 120 &&
+        data.details is string && data.details.size() > 0 && data.details.size() <= 1000 &&
+        (!('reporterId' in data) || (data.reporterId is string && data.reporterId.size() <= 128)) &&
+        (!('reporterName' in data) || (data.reporterName is string && data.reporterName.size() <= 120)) &&
+        data.status == 'pending';
+    }
+
+    match /serviceReports/{reportId} {
+      allow create: if isValidDocId(reportId) &&
+        isValidServiceReport(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ============================================================================
+    // FU MARKET CAMPUS EMERGENCY & HELP CENTRE
+    // ============================================================================
+    function isValidEmergencyContact(data) {
+      return data.keys().hasAll([
+          'id',
+          'name',
+          'department',
+          'phone',
+          'description',
+          'verified',
+          'operatingHours',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'name',
+          'department',
+          'phone',
+          'description',
+          'verified',
+          'operatingHours',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 140 &&
+        data.department is string && data.department in ['security', 'student_affairs', 'health_centre', 'fire_rescue', 'police', 'local_emergency'] &&
+        data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 40 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 1000 &&
+        data.verified is bool &&
+        data.operatingHours is string && data.operatingHours.size() > 0 && data.operatingHours.size() <= 140;
+    }
+
+    match /emergency_contacts/{contactId} {
+      allow get: if isValidDocId(contactId);
+      allow list: if true;
+      allow create: if isAdmin() &&
+        isValidDocId(contactId) &&
+        isValidEmergencyContact(request.resource.data) &&
+        request.resource.data.id == contactId &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidDocId(contactId) &&
+        isValidEmergencyContact(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin() && isValidDocId(contactId);
+    }
+
+    function isValidEmergencyReport(data) {
+      return data.keys().hasAll([
+          'reportId',
+          'kind',
+          'reportType',
+          'description',
+          'location',
+          'incidentDate',
+          'isConfidential',
+          'status',
+          'trackingHash',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'reportId',
+          'kind',
+          'reportType',
+          'description',
+          'location',
+          'incidentDate',
+          'contactPhone',
+          'reporterName',
+          'isConfidential',
+          'reporterUid',
+          'attachmentUrls',
+          'status',
+          'adminNotes',
+          'trackingHash',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.reportId is string && data.reportId.size() > 0 && data.reportId.size() <= 128 && data.reportId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.kind in ['emergency', 'security_concern'] &&
+        data.reportType is string && data.reportType.size() > 0 && data.reportType.size() <= 100 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        data.location is string && data.location.size() > 0 && data.location.size() <= 200 &&
+        data.incidentDate is string && data.incidentDate.size() >= 4 && data.incidentDate.size() <= 64 &&
+        (!('contactPhone' in data) || (data.contactPhone is string && data.contactPhone.size() <= 40)) &&
+        (!('reporterName' in data) || (data.reporterName is string && data.reporterName.size() <= 120)) &&
+        data.isConfidential is bool &&
+        (!('reporterUid' in data) || (data.reporterUid is string && data.reporterUid.size() <= 128)) &&
+        (!('attachmentUrls' in data) || (data.attachmentUrls is list && data.attachmentUrls.size() <= 5 && (data.attachmentUrls.size() == 0 || data.attachmentUrls[0] is string))) &&
+        data.status in ['Received', 'Under Review', 'Assigned', 'Resolved', 'Closed'] &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 1000)) &&
+        data.trackingHash is string && data.trackingHash.size() >= 32 && data.trackingHash.size() <= 128;
+    }
+
+    match /emergency_reports/{reportId} {
+      allow get: if isValidDocId(reportId) && (
+        isAdmin() ||
+        (isSignedIn() && resource != null && resource.data.reporterUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isSignedIn() && resource.data.reporterUid == request.auth.uid);
+
+      allow create: if isValidDocId(reportId) &&
+        isValidEmergencyReport(request.resource.data) &&
+        request.resource.data.reportId == reportId &&
+        (!isSignedIn() || !('reporterUid' in request.resource.data) || request.resource.data.reporterUid == request.auth.uid || isAdmin()) &&
+        request.resource.data.status == 'Received' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isAdmin() &&
+        isValidDocId(reportId) &&
+        isValidEmergencyReport(request.resource.data) &&
+        request.resource.data.reportId == resource.data.reportId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAdmin() && isValidDocId(reportId);
+    }
+
+    function isValidEmergencyReportTracking(data) {
+      return data.keys().hasAll([
+          'lookupHash',
+          'reportId',
+          'kind',
+          'reportType',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'lookupHash',
+          'reportId',
+          'kind',
+          'reportType',
+          'status',
+          'statusMessage',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.lookupHash is string && data.lookupHash.size() >= 32 && data.lookupHash.size() <= 128 && data.lookupHash.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.reportId is string && data.reportId.size() > 0 && data.reportId.size() <= 128 &&
+        data.kind in ['emergency', 'security_concern'] &&
+        data.reportType is string && data.reportType.size() > 0 && data.reportType.size() <= 100 &&
+        data.status in ['Received', 'Under Review', 'Assigned', 'Resolved', 'Closed'] &&
+        (!('statusMessage' in data) || (data.statusMessage is string && data.statusMessage.size() <= 500));
+    }
+
+    match /emergency_report_tracking/{lookupHash} {
+      allow list: if false;
+      allow get: if isValidDocId(lookupHash) && lookupHash.size() >= 32;
+      allow create: if isValidDocId(lookupHash) &&
+        lookupHash.size() >= 32 &&
+        isValidEmergencyReportTracking(request.resource.data) &&
+        request.resource.data.lookupHash == lookupHash &&
+        request.resource.data.status == 'Received' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidDocId(lookupHash) &&
+        isValidEmergencyReportTracking(request.resource.data) &&
+        request.resource.data.lookupHash == resource.data.lookupHash &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin() && isValidDocId(lookupHash);
+    }
+
+    function isValidSafetyAnnouncement(data) {
+      return data.keys().hasAll([
+          'id',
+          'title',
+          'description',
+          'category',
+          'severity',
+          'publishedAt',
+          'createdBy',
+          'isActive'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'title',
+          'description',
+          'category',
+          'severity',
+          'publishedAt',
+          'createdBy',
+          'isActive',
+          'isPinned',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
+        data.category in ['safety_notice', 'fire_safety', 'security_warning', 'service_update'] &&
+        data.severity in ['info', 'important', 'urgent'] &&
+        data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 160 &&
+        data.isActive is bool &&
+        (!('isPinned' in data) || data.isPinned is bool);
+    }
+
+    match /safety_announcements/{announcementId} {
+      allow get: if isValidDocId(announcementId) && (isAdmin() || (resource != null && resource.data.isActive == true));
+      allow list: if isAdmin() || resource.data.isActive == true;
+      allow create: if isAdmin() &&
+        isValidDocId(announcementId) &&
+        isValidSafetyAnnouncement(request.resource.data) &&
+        request.resource.data.id == announcementId &&
+        request.resource.data.publishedAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidDocId(announcementId) &&
+        isValidSafetyAnnouncement(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.publishedAt == resource.data.publishedAt &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin() && isValidDocId(announcementId);
+    }
+
+    function isValidLostFoundItem(data) {
+      return data.keys().hasAll([
+          'id',
+          'reportType',
+          'itemCategory',
+          'title',
+          'description',
+          'location',
+          'incidentDate',
+          'recoveryInstructions',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'reportType',
+          'itemCategory',
+          'title',
+          'description',
+          'location',
+          'incidentDate',
+          'recoveryInstructions',
+          'publicRecoveryContact',
+          'imageUrl',
+          'reporterUid',
+          'reporterLabel',
+          'status',
+          'isHiddenByAdmin',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.reportType in ['lost', 'found'] &&
+        data.itemCategory in ['phone', 'student_id', 'wallet', 'bag', 'keys', 'other'] &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 160 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+        data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
+        data.incidentDate is string && data.incidentDate.size() >= 4 && data.incidentDate.size() <= 64 &&
+        data.recoveryInstructions is string && data.recoveryInstructions.size() > 0 && data.recoveryInstructions.size() <= 500 &&
+        (!('publicRecoveryContact' in data) || (data.publicRecoveryContact is string && data.publicRecoveryContact.size() <= 40)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 900000)) &&
+        (!('reporterUid' in data) || (data.reporterUid is string && data.reporterUid.size() <= 128)) &&
+        (!('reporterLabel' in data) || (data.reporterLabel is string && data.reporterLabel.size() <= 100)) &&
+        data.status in ['open', 'matched', 'recovered', 'closed'] &&
+        (!('isHiddenByAdmin' in data) || data.isHiddenByAdmin is bool);
+    }
+
+    match /lost_and_found_items/{itemId} {
+      allow get: if isValidDocId(itemId) && (
+        isAdmin() ||
+        (resource != null && resource.data.get('isHiddenByAdmin', false) == false) ||
+        (isSignedIn() && resource != null && resource.data.reporterUid == request.auth.uid)
+      );
+      allow list: if isAdmin() ||
+        resource.data.get('isHiddenByAdmin', false) == false ||
+        (isSignedIn() && resource.data.reporterUid == request.auth.uid);
+
+      allow create: if isValidDocId(itemId) &&
+        isValidLostFoundItem(request.resource.data) &&
+        request.resource.data.id == itemId &&
+        (!isSignedIn() || !('reporterUid' in request.resource.data) || request.resource.data.reporterUid == request.auth.uid || isAdmin()) &&
+        (isAdmin() || (
+          request.resource.data.status == 'open' &&
+          request.resource.data.get('isHiddenByAdmin', false) == false
+        )) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if isValidDocId(itemId) &&
+        isValidLostFoundItem(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          isAdmin() ||
+          (
+            isSignedIn() &&
+            resource.data.reporterUid == request.auth.uid &&
+            request.resource.data.get('isHiddenByAdmin', false) == resource.data.get('isHiddenByAdmin', false) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title',
+              'description',
+              'location',
+              'recoveryInstructions',
+              'publicRecoveryContact',
+              'imageUrl',
+              'status',
+              'updatedAt'
+            ]) &&
+            request.resource.data.updatedAt == request.time
+          )
+        );
+
+      allow delete: if isAdmin() || (isSignedIn() && isValidDocId(itemId) && resource.data.reporterUid == request.auth.uid);
+    }
+
+    match /lost_and_found_private/{itemId} {
+      allow create: if isValidDocId(itemId) &&
+        request.resource.data.keys().hasAll(['id', 'itemId', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['id', 'itemId', 'privatePhone', 'privateIdentifierHint', 'createdAt']) &&
+        request.resource.data.id == itemId &&
+        request.resource.data.itemId is string && request.resource.data.itemId.size() <= 128 &&
+        (!('privatePhone' in request.resource.data) || (request.resource.data.privatePhone is string && request.resource.data.privatePhone.size() <= 40)) &&
+        (!('privateIdentifierHint' in request.resource.data) || (request.resource.data.privateIdentifierHint is string && request.resource.data.privateIdentifierHint.size() <= 300)) &&
+        request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin() && isValidDocId(itemId);
+    }
+
+    match /emergency_audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+        isValidDocId(logId) &&
+        request.resource.data.keys().hasAll(['id', 'action', 'targetType', 'targetId', 'summary', 'adminEmail', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['id', 'action', 'targetType', 'targetId', 'summary', 'adminEmail', 'createdAt']) &&
+        request.resource.data.id is string && request.resource.data.id == logId &&
+        request.resource.data.action is string && request.resource.data.action.size() <= 80 &&
+        request.resource.data.targetType is string && request.resource.data.targetType.size() <= 80 &&
+        request.resource.data.targetId is string && request.resource.data.targetId.size() <= 128 &&
+        request.resource.data.summary is string && request.resource.data.summary.size() <= 600 &&
+        request.resource.data.adminEmail is string && request.resource.data.adminEmail.size() <= 160 &&
+        request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ============================================================================
+    // EXCLUSIVE FU MARKET CEO VERIFICATION & SECURITY COLLECTIONS
+    // ============================================================================
+    match /platform_settings/{settingId} {
+      allow read: if settingId == 'ceo_verification' || isCeo();
+      allow create, update, delete: if isCeo() && isValidDocId(settingId);
+    }
+
+    match /ceo_verification_logs/{logId} {
+      allow read: if isCeo();
+      allow create: if isCeo() &&
+        isValidDocId(logId) &&
+        request.resource.data.keys().hasAll(['id', 'action', 'targetType', 'targetId', 'ceoEmail', 'createdAt']) &&
+        request.resource.data.id == logId;
+      allow update, delete: if false;
+    }
+
+    match /ceo_security_logs/{logId} {
+      allow read: if isCeo();
+      allow create: if isValidDocId(logId) &&
+        request.resource.data.keys().hasAll(['id', 'eventType', 'severity', 'summary', 'createdAt']) &&
+        request.resource.data.id == logId &&
+        request.resource.data.summary is string &&
+        request.resource.data.summary.size() <= 600;
+      allow update, delete: if false;
+    }
+
+    match /ceo_settings/{settingId} {
+      allow read, write: if isCeo() && isValidDocId(settingId);
     }
 
     // Connection test document

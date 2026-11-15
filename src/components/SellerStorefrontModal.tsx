@@ -12,6 +12,7 @@ import { Product, SellerProfile } from '../types.js';
 import { fetchSellerStorefront } from '../services/api.js';
 import { ProductCard } from './ProductCard.js';
 import { DirectChatTarget } from './FriendsPage.js';
+import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 
 interface SellerStorefrontModalProps {
   sellerId: string | null;
@@ -114,15 +115,16 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
               </div>
 
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-white">
                     {seller?.shopName || 'Campus Seller Store'}
                   </h1>
-                  {seller?.isVerified && (
-                    <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <ShieldCheck className="w-3 h-3" /> Verified
-                    </span>
-                  )}
+                  <CeoVerifiedBadge
+                    verified={Boolean(seller?.ceoVerified || seller?.isVerified)}
+                    entityIds={[seller?.id, seller?.userId, sellerId]}
+                    customText={seller?.verifiedBadgeText}
+                    variant="pill"
+                  />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-white/90 mt-1">

@@ -1,7 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
-  initializeFirestore,
   doc,
   getDoc,
   getDocFromServer,
@@ -65,17 +64,13 @@ const configuredDbId =
     : undefined;
 
 function initFirestoreClient(dbId?: string) {
-  try {
-    return dbId
-      ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
-      : initializeFirestore(app, { experimentalForceLongPolling: true });
-  } catch {
-    return dbId ? getFirestore(app, dbId) : getFirestore(app);
-  }
+  return dbId ? getFirestore(app, dbId) : getFirestore(app);
 }
 export const db = initFirestoreClient(configuredDbId);
-// Optional read-only handle for legacy (default) DB when rules are published there
-const legacyDefaultDb = configuredDbId ? getFirestore(app) : null;
+// Optional read-only handle for legacy (default) DB, initialized lazily only on explicit admin scan
+function getLegacyDefaultDb() {
+  return configuredDbId ? getFirestore(app) : null;
+}
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -440,7 +435,7 @@ export interface LegacyDbDiagnostic {
 let legacyDbDiagnostic: LegacyDbDiagnostic = {
   checked: false,
   accessible: false,
-  hasLegacyDb: Boolean(legacyDefaultDb),
+  hasLegacyDb: Boolean(configuredDbId),
   recoveredCount: 0,
   legacyProductsCount: 0
 };
@@ -599,7 +594,8 @@ async function fetchAllClientDocsPaginated(
 }
 
 export async function tryRecoverLegacyDefaultDb(): Promise<LegacyDbDiagnostic> {
-  if (!legacyDefaultDb) {
+  const legacyDb = getLegacyDefaultDb();
+  if (!legacyDb) {
     legacyDbDiagnostic = {
       checked: true,
       accessible: false,
@@ -614,7 +610,7 @@ export async function tryRecoverLegacyDefaultDb(): Promise<LegacyDbDiagnostic> {
   try {
     const primaryDocs = await fetchAllClientDocsPaginated(db, 'products', 300, 1500);
     const seenIds = new Set<string>(primaryDocs.map((d) => d.id));
-    const legacyDocs = await fetchAllClientDocsPaginated(legacyDefaultDb, 'products', 300, 1500);
+    const legacyDocs = await fetchAllClientDocsPaginated(legacyDb, 'products', 300, 1500);
 
     let recovered = 0;
     let totalLegacy = 0;
@@ -693,57 +689,8 @@ export async function getProductsFromFirestore(filters?: ProductQueryFilters): P
       }
     }
 
-    // Check legacy (default) database once or on forceRefresh to recover any older products
-    if (legacyDefaultDb && (!legacyDbDiagnostic.checked || filters?.forceRefresh)) {
-      try {
-        const legacyDocs = await withTimeout(
-          fetchAllClientDocsPaginated(legacyDefaultDb, path, 300, 1500),
-          2800,
-          'Legacy DB check timed out'
-        );
-        let recovered = 0;
-        let legacyTotal = 0;
-        const toMigrate: Product[] = [];
-
-        for (const docSnap of legacyDocs) {
-          if (docSnap.id.startsWith('prod_live_seed')) continue;
-          legacyTotal++;
-          if (seenIds.has(docSnap.id)) continue;
-          seenIds.add(docSnap.id);
-          const product = normalizeFirestoreProduct(docSnap.id, docSnap.data());
-          const isApproved = !product.moderationStatus || product.moderationStatus === 'approved';
-          if (product.status === 'active' && isApproved) {
-            allActive.push(product);
-          }
-          toMigrate.push(product);
-          recovered++;
-        }
-
-        legacyDbDiagnostic = {
-          checked: true,
-          accessible: true,
-          hasLegacyDb: true,
-          recoveredCount: recovered,
-          legacyProductsCount: legacyTotal,
-          lastCheckedAt: new Date().toISOString()
-        };
-
-        for (const prod of toMigrate) {
-          saveProductToFirestore(prod).catch(() => {});
-        }
-      } catch (legacyErr: any) {
-        legacyDbDiagnostic = {
-          checked: true,
-          accessible: false,
-          hasLegacyDb: true,
-          errorCode: String(legacyErr?.code || 'unknown'),
-          errorMessage: String(legacyErr?.message || legacyErr),
-          recoveredCount: 0,
-          legacyProductsCount: 0,
-          lastCheckedAt: new Date().toISOString()
-        };
-      }
-    }
+    // Legacy (default) database recovery runs only when explicitly invoked by CEO/Admin (tryRecoverLegacyDefaultDb)
+    // to prevent opening a second unconfigured Firestore client on cold homepage boot.
 
     writeProductsCache(allActive);
     return applyProductFiltersAndSort(allActive, filters);
@@ -897,8 +844,10 @@ const SESSION_SELLER_KEY = 'fu_market_seller_profile';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function sanitizeUserDoc(id: string, data: any): User {
+  const normalizedEmail = String(data?.email || '').toLowerCase().trim();
+  const isAuthorizedCeoEmail = normalizedEmail === 'stephenaleje61@gmail.com';
   const role: User['role'] =
-    data?.role === 'admin'
+    data?.role === 'admin' && isAuthorizedCeoEmail
       ? 'admin'
       : data?.role === 'seller'
       ? 'seller'
@@ -907,7 +856,7 @@ function sanitizeUserDoc(id: string, data: any): User {
   return {
     id,
     name: String(data?.name || data?.displayName || 'FUWUKARI Student').trim(),
-    email: String(data?.email || '').toLowerCase().trim(),
+    email: normalizedEmail,
     role,
     phone: data?.phone ? String(data.phone).trim() : '',
     whatsappNumber: data?.whatsappNumber ? String(data.whatsappNumber).trim() : (data?.phone ? String(data.phone).trim() : ''),
@@ -916,6 +865,11 @@ function sanitizeUserDoc(id: string, data: any): User {
     ...(data?.avatarUrl || data?.photoURL ? { avatarUrl: String(data.avatarUrl || data.photoURL) } : {}),
     ...(data?.isSuspended ? { isSuspended: true } : {}),
     ...(data?.suspensionReason ? { suspensionReason: String(data.suspensionReason) } : {}),
+    ...(data?.isVerified !== undefined ? { isVerified: Boolean(data.isVerified) } : {}),
+    ...(data?.ceoVerified !== undefined ? { ceoVerified: Boolean(data.ceoVerified) } : {}),
+    ...(data?.verifiedBadgeText ? { verifiedBadgeText: String(data.verifiedBadgeText) } : {}),
+    ...(data?.verifiedByCeoAt ? { verifiedByCeoAt: toIsoString(data.verifiedByCeoAt) } : {}),
+    ...(data?.verifiedByCeoEmail ? { verifiedByCeoEmail: String(data.verifiedByCeoEmail) } : {}),
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
   };
 }
@@ -1528,7 +1482,9 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
         whatsappNumber: u.whatsappNumber || u.phone || '',
         state: u.state || 'Taraba',
         city: u.city || 'Wukari',
-        isVerified: false,
+        isVerified: Boolean(u.ceoVerified || u.isVerified),
+        ceoVerified: Boolean(u.ceoVerified || u.isVerified),
+        ...(u.verifiedBadgeText ? { verifiedBadgeText: u.verifiedBadgeText } : {}),
         createdAt: u.createdAt
       };
     }

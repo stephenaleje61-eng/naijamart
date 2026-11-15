@@ -22,6 +22,7 @@ import { triggerWhatsAppChat, recordProductView, reportProduct } from '../servic
 import { ProductImage } from './ProductImage.js';
 import { getValidProductImages } from '../utils/productImages.js';
 import { DirectChatTarget } from './FriendsPage.js';
+import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -276,9 +277,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       {(product.sellerName || product.shopName || 'S').charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 font-black text-sm text-[#111111] truncate">
+                      <div className="flex flex-wrap items-center gap-1.5 font-black text-sm text-[#111111]">
                         <span className="truncate">{product.sellerName || product.shopName}</span>
-                        <ShieldCheck className="w-4 h-4 text-[#0B6B3A] shrink-0" />
+                        <CeoVerifiedBadge
+                          verified={Boolean(product.sellerProfile?.ceoVerified || product.sellerProfile?.isVerified)}
+                          entityIds={[product.sellerId]}
+                          variant="compact"
+                        />
                       </div>
                       <span className="text-[11px] text-[#555555] block truncate">
                         {product.shopName} • {locationDisplay}

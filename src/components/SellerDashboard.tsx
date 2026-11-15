@@ -25,6 +25,7 @@ import {
   updateSellerProfile
 } from '../services/api.js';
 import { formatNaira } from './ProductCard.js';
+import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { ProductImage } from './ProductImage.js';
 import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
@@ -165,15 +166,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-black text-white">
                   {sellerProfile?.shopName || 'FU MARKET Seller Hub'}
                 </h2>
-                {sellerProfile?.isVerified && (
-                  <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Verified Seller
-                  </span>
-                )}
+                <CeoVerifiedBadge
+                  verified={Boolean(sellerProfile?.ceoVerified || sellerProfile?.isVerified || user?.ceoVerified || user?.isVerified)}
+                  entityIds={[sellerProfile?.id, user?.id]}
+                  variant="pill"
+                />
               </div>
               <p className="text-xs text-white/85">
                 Seller: {user?.name} • WhatsApp: {sellerProfile?.whatsappNumber || user?.whatsappNumber || user?.phone || 'Not set'}

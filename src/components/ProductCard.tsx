@@ -13,6 +13,7 @@ import { triggerWhatsAppChat } from '../services/api.js';
 import { ProductImage } from './ProductImage.js';
 import { getProductDisplayImage, getValidProductImages } from '../utils/productImages.js';
 import { DirectChatTarget } from './FriendsPage.js';
+import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 
 interface ProductCardProps {
   product: Product;
@@ -164,6 +165,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 <span className="truncate">{sellerDisplay}</span>
               </button>
             </div>
+            <CeoVerifiedBadge
+              verified={Boolean(product.sellerProfile?.ceoVerified || product.sellerProfile?.isVerified)}
+              entityIds={[product.sellerId]}
+              variant="compact"
+              className="mt-1"
+            />
           </div>
         </div>
 

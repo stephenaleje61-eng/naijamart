@@ -89,7 +89,21 @@ export function getStorageInstance(bucketOverride?: string) {
   return configureStorageLimits(getStorage(app));
 }
 
-export type StorageFolder = 'products' | 'riders' | 'hub_chats' | 'hux' | 'requests';
+export type StorageFolder =
+  | 'products'
+  | 'riders'
+  | 'hub_chats'
+  | 'hux'
+  | 'requests'
+  | 'events'
+  | 'sport_updates'
+  | 'general_announcements'
+  | 'advertisements'
+  | 'ad_logos'
+  | 'services'
+  | 'emergency_reports'
+  | 'lost_and_found'
+  | 'ceo_verification_logos';
 export type UploadStage = 'compressing' | 'uploading' | 'retrying' | 'finalizing';
 
 export interface UploadOptions {
@@ -627,3 +641,127 @@ export async function uploadRequestPhoto(
   });
   return result.downloadUrl;
 }
+
+export async function uploadEventPosterPhoto(
+  file: File,
+  ceoId = 'ceo',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'events',
+    ownerId: ceoId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadAnnouncementPhoto(
+  file: File,
+  folder: 'sport_updates' | 'general_announcements',
+  userId = 'user',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder,
+    ownerId: userId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadAdvertisementImage(
+  file: File,
+  ownerId = 'advertiser',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'advertisements',
+    ownerId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadAdLogoImage(
+  file: File,
+  ownerId = 'advertiser',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'ad_logos',
+    ownerId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadServicePhoto(
+  file: File,
+  providerId = 'provider',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'services',
+    ownerId: providerId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadEmergencyAttachment(
+  file: File,
+  reporterUid = 'reporter',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'emergency_reports',
+    ownerId: reporterUid,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadLostFoundPhoto(
+  file: File,
+  reporterUid = 'reporter',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'lost_and_found',
+    ownerId: reporterUid,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadCeoVerificationLogo(
+  file: File,
+  ceoUid = 'ceo',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'ceo_verification_logos',
+    ownerId: ceoUid,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+
+

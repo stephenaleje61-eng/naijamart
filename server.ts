@@ -12,6 +12,9 @@ import categoryRoutes from './server/routes/categoryRoutes.js';
 import adminRoutes from './server/routes/adminRoutes.js';
 import uploadRoutes from './server/routes/upload.js';
 import bikeRiderRoutes from './server/routes/bikeRiderRoutes.js';
+import adsRoutes from './server/routes/adsRoutes.js';
+import servicesRoutes from './server/routes/servicesRoutes.js';
+import ceoRoutes from './server/routes/ceoRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +71,10 @@ app.use('/upload', uploadRoutes);
 
 app.use('/api/bike-riders', bikeRiderRoutes);
 app.use('/bike-riders-api', bikeRiderRoutes);
+
+app.use('/api/ads', adsRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/ceo', ceoRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({

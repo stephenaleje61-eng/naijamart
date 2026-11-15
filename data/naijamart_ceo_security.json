@@ -1,0 +1,64 @@
+{
+  "securityLogs": [
+    {
+      "id": "ceosec_1794732417944_y1gzg1",
+      "eventType": "UNAUTHORIZED_CEO_ACCESS",
+      "severity": "critical",
+      "actorEmail": "mod@fuwukari.edu.ng",
+      "actorUid": "u_admin",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "node",
+      "summary": "Blocked admin account (mod@fuwukari.edu.ng) from accessing CEO endpoint POST /api/admin/sellers/test-seller-1/toggle-verify.",
+      "createdAt": "2026-11-15T08:46:57.944Z"
+    },
+    {
+      "id": "ceosec_1794732417938_xntadv",
+      "eventType": "UNAUTHORIZED_CEO_ACCESS",
+      "severity": "critical",
+      "actorEmail": "mod@fuwukari.edu.ng",
+      "actorUid": "u_admin",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "node",
+      "summary": "Blocked admin account (mod@fuwukari.edu.ng) from accessing CEO endpoint GET /api/ceo/security-logs.",
+      "createdAt": "2026-11-15T08:46:57.938Z"
+    },
+    {
+      "id": "ceosec_1794732417933_ob8j1g",
+      "eventType": "UNAUTHORIZED_CEO_ACCESS",
+      "severity": "critical",
+      "actorEmail": "seller@fuwukari.edu.ng",
+      "actorUid": "u_seller",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "node",
+      "summary": "Blocked seller account (seller@fuwukari.edu.ng) from accessing CEO endpoint GET /api/ceo/security-logs.",
+      "createdAt": "2026-11-15T08:46:57.933Z"
+    },
+    {
+      "id": "ceosec_1794732417928_gfhdqy",
+      "eventType": "UNAUTHORIZED_CEO_ACCESS",
+      "severity": "critical",
+      "actorEmail": "buyer@fuwukari.edu.ng",
+      "actorUid": "u_buyer",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "node",
+      "summary": "Blocked buyer account (buyer@fuwukari.edu.ng) from accessing CEO endpoint GET /api/ceo/security-logs.",
+      "createdAt": "2026-11-15T08:46:57.928Z"
+    }
+  ],
+  "verificationLogs": [],
+  "verificationConfig": {
+    "logoUrl": "",
+    "badgeText": "VERIFIED BY FU MARKET CEO",
+    "updatedAt": "",
+    "updatedBy": ""
+  },
+  "ceoSettings": {
+    "sessionTimeoutMinutes": 60,
+    "requirePhoneCheckOnLogin": false,
+    "reauthWindowMinutes": 10,
+    "maxFailedLoginAttempts": 5,
+    "lockoutDurationMinutes": 15,
+    "updatedAt": "2026-11-15T08:46:22.434Z"
+  },
+  "failedAttempts": {}
+}

@@ -130,13 +130,21 @@ router.post('/sync', (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid user payload required.' });
     }
     const normalizedEmail = String(user.email).toLowerCase().trim();
+    const isCeoEmail = normalizedEmail === 'stephenaleje61@gmail.com';
+    const safeRole: 'buyer' | 'seller' | 'admin' =
+      user.role === 'admin' && isCeoEmail
+        ? 'admin'
+        : user.role === 'seller'
+        ? 'seller'
+        : 'buyer';
+
     if (!db.users.some(u => u.id === user.id || u.email === normalizedEmail)) {
       db.users.push({
         id: String(user.id),
         name: String(user.name || 'FUWUKARI Student'),
         email: normalizedEmail,
         passwordHash: '',
-        role: user.role === 'seller' ? 'seller' : user.role === 'admin' ? 'admin' : 'buyer',
+        role: safeRole,
         phone: user.phone || '',
         whatsappNumber: user.whatsappNumber || user.phone || '',
         state: user.state || 'Taraba',

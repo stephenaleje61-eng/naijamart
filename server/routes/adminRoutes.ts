@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db.js';
 import { firestoreSync } from '../firestore.js';
-import { requireAdmin, AuthenticatedRequest } from '../auth.js';
+import { requireAdmin, requireCeoAdmin, AuthenticatedRequest } from '../auth.js';
 
 const router = Router();
 
@@ -187,8 +187,8 @@ router.post('/users/:id/toggle-suspend', requireAdmin, (req: AuthenticatedReques
   });
 });
 
-// Toggle Seller Verification Badge
-router.post('/sellers/:userId/toggle-verify', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+// Toggle Seller Verification Badge (EXCLUSIVE CEO-ONLY CONTROL)
+router.post('/sellers/:userId/toggle-verify', requireCeoAdmin, (req: AuthenticatedRequest, res: Response) => {
   const profile = db.sellerProfiles.find(s => s.userId === req.params.userId);
   if (!profile) {
     return res.status(404).json({ error: 'Seller profile not found.' });

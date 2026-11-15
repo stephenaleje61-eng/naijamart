@@ -58,5 +58,81 @@ service firebase.storage {
       allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
+
+    // CEO Events posters
+    match /events/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // FU SPORT UPDATE photos & posters
+    match /sport_updates/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'stephenaleje61@gmail.com' &&
+        request.auth.token.email_verified == true;
+    }
+
+    // FU GENERAL ANNOUNCEMENTS photos & posters
+    match /general_announcements/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    // FU MARKET ADS banners & images
+    match /advertisements/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // FU MARKET ADS business logos
+    match /ad_logos/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // FU MARKET STUDENT SERVICES photos
+    match /services/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // CAMPUS EMERGENCY REPORT evidence (confidential: admin + uploader only)
+    match /emergency_reports/{ownerId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    function isCeo() {
+      return isSignedIn() &&
+        request.auth.token.email == 'stephenaleje61@gmail.com' &&
+        request.auth.token.email_verified == true &&
+        (!('ceoAdmin' in request.auth.token) || request.auth.token.ceoAdmin == true);
+    }
+
+    // LOST AND FOUND item photos
+    match /lost_and_found/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // OFFICIAL CEO VERIFICATION LOGOS (public read for verified badges; write/delete strictly CEO-only)
+    match /ceo_verification_logos/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isCeo() && isImage() && isUnder5MB();
+      allow delete: if isCeo();
+    }
   }
 }

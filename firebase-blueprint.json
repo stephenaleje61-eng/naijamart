@@ -110,6 +110,11 @@
         "matricNumber": { "type": "string" },
         "state": { "type": "string" },
         "city": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "ceoVerified": { "type": "boolean" },
+        "verifiedBadgeText": { "type": "string" },
+        "verifiedByCeoAt": { "type": "string" },
+        "verifiedByCeoEmail": { "type": "string" },
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name"]
@@ -128,6 +133,10 @@
         "state": { "type": "string" },
         "city": { "type": "string" },
         "isVerified": { "type": "boolean" },
+        "ceoVerified": { "type": "boolean" },
+        "verifiedBadgeText": { "type": "string" },
+        "verifiedByCeoAt": { "type": "string" },
+        "verifiedByCeoEmail": { "type": "string" },
         "createdAt": { "type": "string" }
       },
       "required": ["id", "userId", "shopName", "whatsappNumber"]
@@ -148,6 +157,512 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name", "photoUrl", "phoneNumber", "area"]
+    },
+    "CampusEvent": {
+      "title": "CampusEvent",
+      "description": "FU MARKET Birthday & Events Announcement published exclusively by the FU MARKET CEO",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "celebrantName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "eventType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "eventDate": { "type": "string", "minLength": 4, "maxLength": 32 },
+        "eventTime": { "type": "string", "maxLength": 60 },
+        "venue": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 3000 },
+        "additionalInfo": { "type": "string", "maxLength": 1500 },
+        "photoUrl": { "type": "string", "minLength": 1, "maxLength": 900000 },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "publishAt": { "type": "string", "maxLength": 64 },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdByEmail": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "updatedAt": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "required": ["id", "celebrantName", "eventType", "eventDate", "venue", "description", "photoUrl", "status", "createdAt", "updatedAt"]
+    },
+    "SportUpdatePost": {
+      "title": "SportUpdatePost",
+      "description": "Public FU SPORT UPDATE post published by authenticated FU MARKET users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "categoryType": { "type": "string", "enum": ["sport_update"] },
+        "sportCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "teamOrPlayer": { "type": "string", "maxLength": 160 },
+        "competitionName": { "type": "string", "maxLength": 140 },
+        "matchDate": { "type": "string", "maxLength": 32 },
+        "matchTime": { "type": "string", "maxLength": 60 },
+        "venue": { "type": "string", "maxLength": 180 },
+        "score": { "type": "string", "maxLength": 60 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "imageUrl": { "type": "string", "maxLength": 900000 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "authorAvatar": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["published", "pending", "rejected", "removed"] },
+        "moderationFlags": { "type": "array" },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "isPinned": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "isUnverifiedUserPost": { "type": "boolean" },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "views": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "categoryType", "sportCategory", "title", "description", "authorId", "authorName", "status", "isPinned", "isFeatured", "likesCount", "commentsCount", "views", "createdAt", "updatedAt"]
+    },
+    "GeneralAnnouncementPost": {
+      "title": "GeneralAnnouncementPost",
+      "description": "Public FU GENERAL ANNOUNCEMENTS post published by authenticated FU MARKET users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "categoryType": { "type": "string", "enum": ["general_announcement"] },
+        "announcementCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "eventDate": { "type": "string", "maxLength": 32 },
+        "eventTime": { "type": "string", "maxLength": 60 },
+        "location": { "type": "string", "maxLength": 180 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "imageUrl": { "type": "string", "maxLength": 900000 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "authorAvatar": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["published", "pending", "rejected", "removed"] },
+        "moderationFlags": { "type": "array" },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "isPinned": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "views": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "categoryType", "announcementCategory", "title", "description", "authorId", "authorName", "status", "isPinned", "isFeatured", "likesCount", "commentsCount", "views", "createdAt", "updatedAt"]
+    },
+    "AnnouncementComment": {
+      "title": "AnnouncementComment",
+      "description": "Comment or nested reply on a sport update or general announcement post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "postId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "postCollection": { "type": "string", "enum": ["sport_updates", "general_announcements"] },
+        "parentCommentId": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "authorAvatar": { "type": "string", "maxLength": 500 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "postId", "postCollection", "authorId", "authorName", "text", "createdAt", "updatedAt"]
+    },
+    "AnnouncementReport": {
+      "title": "AnnouncementReport",
+      "description": "Moderation report filed against a sport update or general announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "postId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "postCollection": { "type": "string", "enum": ["sport_updates", "general_announcements"] },
+        "postTitle": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "details": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "reporterId": { "type": "string", "maxLength": 128 },
+        "reporterName": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "postId", "postCollection", "postTitle", "reason", "details", "status", "createdAt"]
+    },
+    "Advertisement": {
+      "title": "Advertisement",
+      "description": "Sponsored business or event advertisement submitted to FU MARKET ADS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "ownerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "whatsappNumber": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "businessCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 900000 },
+        "logoUrl": { "type": "string", "maxLength": 900000 },
+        "location": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "packageId": { "type": "string", "enum": ["basic", "premium", "featured"] },
+        "packageName": { "type": "string", "maxLength": 80 },
+        "packagePrice": { "type": "number" },
+        "durationDays": { "type": "number" },
+        "websiteOrSocialLink": { "type": "string", "maxLength": 500 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending_approval", "active", "paused", "rejected", "expired"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "pending_verification", "paid", "failed"] },
+        "paymentReference": { "type": "string", "maxLength": 160 },
+        "isFeatured": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" },
+        "deletedAt": { "type": "string", "maxLength": 64 },
+        "deletedBy": { "type": "string", "maxLength": 160 },
+        "startDate": { "type": "string", "maxLength": 64 },
+        "expiryDate": { "type": "string", "maxLength": 64 },
+        "impressions": { "type": "number" },
+        "clicks": { "type": "number" },
+        "whatsappClicks": { "type": "number" },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "isVerified": { "type": "boolean" },
+        "ceoVerified": { "type": "boolean" },
+        "verifiedBadgeText": { "type": "string", "maxLength": 80 },
+        "verifiedByCeoAt": { "type": "string", "maxLength": 64 },
+        "verifiedByCeoEmail": { "type": "string", "maxLength": 160 },
+        "verificationNotes": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "businessName", "ownerName", "phone", "whatsappNumber", "businessCategory", "title", "description", "imageUrl", "location", "packageId", "packagePrice", "durationDays", "status", "paymentStatus", "isFeatured", "impressions", "clicks", "whatsappClicks", "createdAt", "updatedAt"]
+    },
+    "AdPayment": {
+      "title": "AdPayment",
+      "description": "Server-verified Paystack or CEO-verified advertisement payment record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "adId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "businessName": { "type": "string", "maxLength": 140 },
+        "reference": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "amountNaira": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "packageId": { "type": "string", "enum": ["basic", "premium", "featured"] },
+        "provider": { "type": "string", "enum": ["paystack", "ceo_manual"] },
+        "status": { "type": "string", "enum": ["paid", "failed", "pending"] },
+        "payerEmail": { "type": "string", "maxLength": 160 },
+        "verifiedBy": { "type": "string", "maxLength": 160 },
+        "verifiedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "adId", "reference", "amountNaira", "packageId", "provider", "status", "createdAt"]
+    },
+    "AdAnalyticsEvent": {
+      "title": "AdAnalyticsEvent",
+      "description": "Impression and click tracking events for FU MARKET ADS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "adId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventType": { "type": "string", "enum": ["impression", "click", "whatsapp_click"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "adId", "eventType", "createdAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable CEO/Admin moderation and deletion audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "contentType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "recordId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "recordTitle": { "type": "string", "maxLength": 200 },
+        "adminUid": { "type": "string", "maxLength": 128 },
+        "adminEmail": { "type": "string", "maxLength": 160 },
+        "reason": { "type": "string", "maxLength": 500 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "action", "contentType", "recordId", "adminEmail", "createdAt"]
+    },
+    "ContentArchive": {
+      "title": "ContentArchive",
+      "description": "Soft-deleted website content archive for CEO recovery or permanent purge",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceCollection": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "contentType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "originalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "ownerName": { "type": "string", "maxLength": 140 },
+        "snapshot": { "type": "object" },
+        "reason": { "type": "string", "maxLength": 500 },
+        "deletedBy": { "type": "string", "maxLength": 160 },
+        "restorable": { "type": "boolean" },
+        "restoredAt": { "type": "string", "maxLength": 64 },
+        "deletedAt": { "type": "string" }
+      },
+      "required": ["id", "sourceCollection", "contentType", "originalId", "snapshot", "deletedBy", "restorable", "deletedAt"]
+    },
+    "ServiceListing": {
+      "title": "ServiceListing",
+      "description": "FU MARKET Student Services Marketplace listing",
+      "type": "object",
+      "properties": {
+        "serviceId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "providerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "providerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "serviceName": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "price": { "type": "number" },
+        "priceMax": { "type": "number" },
+        "priceDisplay": { "type": "string", "maxLength": 80 },
+        "location": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "whatsapp": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "images": { "type": "array" },
+        "availability": { "type": "string", "enum": ["available", "busy", "unavailable"] },
+        "availabilityNote": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "enum": ["active", "pending", "rejected", "suspended", "unavailable"] },
+        "featured": { "type": "boolean" },
+        "promotionPlan": { "type": "string", "enum": ["none", "homepage", "weekly", "monthly"] },
+        "promotionStatus": { "type": "string", "enum": ["none", "pending_payment", "pending_approval", "active", "expired"] },
+        "promotionPrice": { "type": "number" },
+        "promotionReference": { "type": "string", "maxLength": 160 },
+        "promotionStartDate": { "type": "string", "maxLength": 64 },
+        "promotionExpiryDate": { "type": "string", "maxLength": 64 },
+        "views": { "type": "number" },
+        "whatsappClicks": { "type": "number" },
+        "moderationNotes": { "type": "string", "maxLength": 500 },
+        "isGuestPost": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "ceoVerified": { "type": "boolean" },
+        "verifiedBadgeText": { "type": "string", "maxLength": 80 },
+        "verifiedByCeoAt": { "type": "string", "maxLength": 64 },
+        "verifiedByCeoEmail": { "type": "string", "maxLength": 160 },
+        "verificationNotes": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["serviceId", "providerId", "providerName", "serviceName", "category", "description", "price", "location", "phone", "whatsapp", "images", "status", "featured", "createdAt", "updatedAt"]
+    },
+    "ServiceCategory": {
+      "title": "ServiceCategory",
+      "description": "Admin-managed student service categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "slug": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "isActive": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "slug", "isActive"]
+    },
+    "ServiceReport": {
+      "title": "ServiceReport",
+      "description": "Reports filed against suspicious or inappropriate service listings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "serviceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serviceName": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "providerId": { "type": "string", "maxLength": 128 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "details": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "reporterId": { "type": "string", "maxLength": 128 },
+        "reporterName": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "serviceId", "serviceName", "reason", "details", "status", "createdAt"]
+    },
+    "EmergencyContact": {
+      "title": "EmergencyContact",
+      "description": "Verified or pending campus & local emergency contact entry managed strictly by authorized administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "department": { "type": "string", "enum": ["security", "student_affairs", "health_centre", "fire_rescue", "police", "local_emergency"] },
+        "phone": { "type": "string", "minLength": 3, "maxLength": 40 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "verified": { "type": "boolean" },
+        "operatingHours": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "department", "phone", "description", "verified", "operatingHours", "createdAt", "updatedAt"]
+    },
+    "EmergencyReport": {
+      "title": "EmergencyReport",
+      "description": "Confidential emergency or security concern report accessible strictly to authorized administrators",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "kind": { "type": "string", "enum": ["emergency", "security_concern"] },
+        "reportType": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "location": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "incidentDate": { "type": "string", "minLength": 4, "maxLength": 64 },
+        "contactPhone": { "type": "string", "maxLength": 40 },
+        "reporterName": { "type": "string", "maxLength": 120 },
+        "isConfidential": { "type": "boolean" },
+        "reporterUid": { "type": "string", "maxLength": 128 },
+        "attachmentUrls": { "type": "array" },
+        "status": { "type": "string", "enum": ["Received", "Under Review", "Assigned", "Resolved", "Closed"] },
+        "adminNotes": { "type": "string", "maxLength": 1000 },
+        "trackingHash": { "type": "string", "minLength": 16, "maxLength": 128 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["reportId", "kind", "reportType", "description", "location", "incidentDate", "isConfidential", "status", "trackingHash", "createdAt", "updatedAt"]
+    },
+    "EmergencyReportTracking": {
+      "title": "EmergencyReportTracking",
+      "description": "Zero-PII status lookup record keyed by SHA-256 hash of reference number and verification PIN",
+      "type": "object",
+      "properties": {
+        "lookupHash": { "type": "string", "minLength": 32, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "reportId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "kind": { "type": "string", "enum": ["emergency", "security_concern"] },
+        "reportType": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "type": "string", "enum": ["Received", "Under Review", "Assigned", "Resolved", "Closed"] },
+        "statusMessage": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["lookupHash", "reportId", "kind", "reportType", "status", "createdAt", "updatedAt"]
+    },
+    "SafetyAnnouncement": {
+      "title": "SafetyAnnouncement",
+      "description": "Official campus safety announcement or urgent notice published by authorized administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "category": { "type": "string", "enum": ["safety_notice", "fire_safety", "security_warning", "service_update"] },
+        "severity": { "type": "string", "enum": ["info", "important", "urgent"] },
+        "publishedAt": { "type": "string" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "isActive": { "type": "boolean" },
+        "isPinned": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "category", "severity", "publishedAt", "createdBy", "isActive"]
+    },
+    "LostFoundItem": {
+      "title": "LostFoundItem",
+      "description": "Lost and Found item listing with PII/ID redaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "reportType": { "type": "string", "enum": ["lost", "found"] },
+        "itemCategory": { "type": "string", "enum": ["phone", "student_id", "wallet", "bag", "keys", "other"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "location": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "incidentDate": { "type": "string", "minLength": 4, "maxLength": 64 },
+        "recoveryInstructions": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "publicRecoveryContact": { "type": "string", "maxLength": 40 },
+        "imageUrl": { "type": "string", "maxLength": 900000 },
+        "reporterUid": { "type": "string", "maxLength": 128 },
+        "reporterLabel": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["open", "matched", "recovered", "closed"] },
+        "isHiddenByAdmin": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "reportType", "itemCategory", "title", "description", "location", "incidentDate", "recoveryInstructions", "status", "createdAt", "updatedAt"]
+    },
+    "LostFoundPrivate": {
+      "title": "LostFoundPrivate",
+      "description": "Confidential reporter contact and verification details for Lost & Found claims (Admin only)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "privatePhone": { "type": "string", "maxLength": 40 },
+        "privateIdentifierHint": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "itemId", "createdAt"]
+    },
+    "EmergencyAuditLog": {
+      "title": "EmergencyAuditLog",
+      "description": "Immutable administrative audit log for Campus Emergency & Help Centre actions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "targetType": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "adminEmail": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "action", "targetType", "targetId", "summary", "adminEmail", "createdAt"]
+    },
+    "CeoVerificationConfig": {
+      "title": "CeoVerificationConfig",
+      "description": "Official CEO verification badge logo and text configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "logoUrl": { "type": "string", "maxLength": 900000 },
+        "badgeText": { "type": "string", "maxLength": 80 },
+        "updatedBy": { "type": "string", "maxLength": 160 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "badgeText", "updatedAt"]
+    },
+    "CeoVerificationLog": {
+      "title": "CeoVerificationLog",
+      "description": "Audit trail of CEO verification grants, removals, and official verification logo updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "action": { "type": "string", "enum": ["VERIFIED", "UNVERIFIED", "LOGO_UPDATED", "LOGO_REMOVED"] },
+        "targetType": { "type": "string", "enum": ["user", "seller", "advertisement", "service", "verification_logo"] },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "targetName": { "type": "string", "maxLength": 180 },
+        "ceoEmail": { "type": "string", "maxLength": 160 },
+        "notes": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "action", "targetType", "targetId", "ceoEmail", "createdAt"]
+    },
+    "CeoSecurityLog": {
+      "title": "CeoSecurityLog",
+      "description": "Security activity logs for CEO login, failed login attempts, lockouts, reauthentication, and unauthorized access attempts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventType": { "type": "string", "maxLength": 80 },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "actorEmail": { "type": "string", "maxLength": 160 },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "targetType": { "type": "string", "maxLength": 80 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "summary": { "type": "string", "maxLength": 600 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "eventType", "severity", "summary", "createdAt"]
+    },
+    "CeoSettings": {
+      "title": "CeoSettings",
+      "description": "CEO authentication, session expiration, and reauthentication security settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "sessionTimeoutMinutes": { "type": "number" },
+        "requirePhoneCheckOnLogin": { "type": "boolean" },
+        "reauthWindowMinutes": { "type": "number" },
+        "updatedBy": { "type": "string", "maxLength": 160 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "sessionTimeoutMinutes", "updatedAt"]
     }
   },
   "firestore": {
@@ -178,6 +693,102 @@
     "/sellerProfiles/{sellerId}": {
       "schema": "SellerProfile",
       "description": "Merchant storefront profiles"
+    },
+    "/events/{eventId}": {
+      "schema": "CampusEvent",
+      "description": "FU MARKET Birthday & Events announcements published exclusively by the CEO"
+    },
+    "/sport_updates/{postId}": {
+      "schema": "SportUpdatePost",
+      "description": "Public FU SPORT UPDATE posts"
+    },
+    "/general_announcements/{postId}": {
+      "schema": "GeneralAnnouncementPost",
+      "description": "Public FU GENERAL ANNOUNCEMENTS posts"
+    },
+    "/announcement_comments/{commentId}": {
+      "schema": "AnnouncementComment",
+      "description": "Comments and replies on sport updates and general announcements"
+    },
+    "/announcement_reports/{reportId}": {
+      "schema": "AnnouncementReport",
+      "description": "Private moderation reports for sport updates and general announcements"
+    },
+    "/advertisements/{adId}": {
+      "schema": "Advertisement",
+      "description": "FU MARKET ADS sponsored business and event advertisements"
+    },
+    "/adPayments/{paymentId}": {
+      "schema": "AdPayment",
+      "description": "Protected advertisement payment verification records (Admin only)"
+    },
+    "/adAnalytics/{analyticsId}": {
+      "schema": "AdAnalyticsEvent",
+      "description": "Impression and click events for FU MARKET ADS"
+    },
+    "/adminAuditLogs/{logId}": {
+      "schema": "AdminAuditLog",
+      "description": "Immutable CEO/Admin deletion and moderation audit log"
+    },
+    "/contentManagement/{archiveId}": {
+      "schema": "ContentArchive",
+      "description": "Soft-deleted website content archive for recovery"
+    },
+    "/services/{serviceId}": {
+      "schema": "ServiceListing",
+      "description": "FU MARKET Student Services Marketplace listings"
+    },
+    "/serviceCategories/{categoryId}": {
+      "schema": "ServiceCategory",
+      "description": "Admin-managed student service categories"
+    },
+    "/serviceReports/{reportId}": {
+      "schema": "ServiceReport",
+      "description": "Moderation reports for student service listings"
+    },
+    "/emergency_contacts/{contactId}": {
+      "schema": "EmergencyContact",
+      "description": "Campus and local emergency contacts directory"
+    },
+    "/emergency_reports/{reportId}": {
+      "schema": "EmergencyReport",
+      "description": "Confidential emergency and security concern reports (Admin only)"
+    },
+    "/emergency_report_tracking/{lookupHash}": {
+      "schema": "EmergencyReportTracking",
+      "description": "Zero-PII keyed status lookup for emergency reports"
+    },
+    "/safety_announcements/{announcementId}": {
+      "schema": "SafetyAnnouncement",
+      "description": "Campus safety notices and urgent alerts published by CEO/Admin"
+    },
+    "/lost_and_found_items/{itemId}": {
+      "schema": "LostFoundItem",
+      "description": "Sanitized FU MARKET Lost and Found items"
+    },
+    "/lost_and_found_private/{itemId}": {
+      "schema": "LostFoundPrivate",
+      "description": "Private verification details for Lost & Found items (Admin only)"
+    },
+    "/emergency_audit_logs/{logId}": {
+      "schema": "EmergencyAuditLog",
+      "description": "Immutable emergency administration audit logs"
+    },
+    "/platform_settings/{settingId}": {
+      "schema": "CeoVerificationConfig",
+      "description": "Official CEO verification badge logo configuration"
+    },
+    "/ceo_verification_logs/{logId}": {
+      "schema": "CeoVerificationLog",
+      "description": "Audit log of CEO verification actions"
+    },
+    "/ceo_security_logs/{logId}": {
+      "schema": "CeoSecurityLog",
+      "description": "Security audit logs for CEO authentication and access attempts"
+    },
+    "/ceo_settings/{settingId}": {
+      "schema": "CeoSettings",
+      "description": "CEO dashboard security settings"
     }
   }
 }

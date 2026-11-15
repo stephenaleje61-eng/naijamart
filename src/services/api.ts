@@ -128,6 +128,21 @@ const getHeaders = (isJson = true): Record<string, string> => {
   return headers;
 };
 
+export const getAdminHeaders = async (isJson = true): Promise<Record<string, string>> => {
+  const headers = getHeaders(isJson);
+  try {
+    if (auth.currentUser) {
+      const idToken = await auth.currentUser.getIdToken();
+      if (idToken) {
+        headers['X-Firebase-Id-Token'] = idToken;
+      }
+    }
+  } catch {
+    // Fallback gracefully to Authorization Bearer token
+  }
+  return headers;
+};
+
 // Robust fetch utility with timeout that parses JSON safely and prevents raw HTML or 404 crashes
 export const safeFetchJson = async (
   endpoint: string,
@@ -636,53 +651,53 @@ export async function updateSellerProfile(profileData: Partial<SellerProfile>): 
 // --- ADMIN API ---
 export async function fetchAdminMetrics(): Promise<{ metrics: AdminMetrics; cleanupStats: any; recentAuditLogs: AuditLogItem[] }> {
   return safeFetchJson('/api/admin/metrics', {
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function fetchAdminProducts(): Promise<{ products: Product[] }> {
   return safeFetchJson('/api/admin/products', {
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function adminRemoveProduct(id: string): Promise<any> {
   return safeFetchJson(`/api/admin/products/${id}`, {
     method: 'DELETE',
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function adminToggleFeatured(id: string): Promise<any> {
   return safeFetchJson(`/api/admin/products/${id}/toggle-featured`, {
     method: 'POST',
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function fetchAdminUsers(): Promise<{ users: User[] }> {
   return safeFetchJson('/api/admin/users', {
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function adminToggleSellerVerification(userId: string): Promise<any> {
   return safeFetchJson(`/api/admin/sellers/${userId}/toggle-verify`, {
     method: 'POST',
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function fetchAdminReports(): Promise<{ reports: ReportItem[] }> {
   return safeFetchJson('/api/admin/reports', {
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function adminResolveReport(id: string, status: 'resolved' | 'dismissed', adminNotes?: string): Promise<any> {
   return safeFetchJson(`/api/admin/reports/${id}/resolve`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: await getAdminHeaders(),
     body: JSON.stringify({ status, adminNotes })
   });
 }
@@ -690,7 +705,7 @@ export async function adminResolveReport(id: string, status: 'resolved' | 'dismi
 export async function adminModerateProduct(id: string, status: 'approved' | 'rejected' | 'pending_review', notes?: string): Promise<any> {
   return safeFetchJson(`/api/admin/products/${id}/moderate`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: await getAdminHeaders(),
     body: JSON.stringify({ status, notes })
   });
 }
@@ -698,7 +713,7 @@ export async function adminModerateProduct(id: string, status: 'approved' | 'rej
 export async function adminToggleUserSuspension(id: string, reason?: string): Promise<any> {
   return safeFetchJson(`/api/admin/users/${id}/toggle-suspend`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: await getAdminHeaders(),
     body: JSON.stringify({ reason })
   });
 }
@@ -706,13 +721,13 @@ export async function adminToggleUserSuspension(id: string, reason?: string): Pr
 export async function adminTriggerExpirationPurge(): Promise<any> {
   return safeFetchJson('/api/admin/trigger-cleanup', {
     method: 'POST',
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
 export async function fetchLegacyRecoveryStatus(): Promise<any> {
   return safeFetchJson('/api/admin/legacy-status', {
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
@@ -720,7 +735,7 @@ export async function triggerLegacyRecovery(): Promise<any> {
   invalidateProductsCache();
   return safeFetchJson('/api/admin/migrate-legacy', {
     method: 'POST',
-    headers: getHeaders()
+    headers: await getAdminHeaders()
   });
 }
 
