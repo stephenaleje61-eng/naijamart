@@ -2,14 +2,14 @@ import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 
 export const SAFETY_ANNOUNCEMENT_TEXT =
-  'WELCOME TO FU MARKET! PLEASE MAKE SURE YOUR ORDER ARRIVES AND YOU CONFIRM THAT YOU HAVE RECEIVED IT BEFORE MAKING ANY PAYMENT. NO HALF PAYMENT. DO NOT PAY BEFORE RECEIVING YOUR ORDER. SHOP SAFELY!';
+  'WELCOME TO NIGERIA CAMPUS MARKET! PLEASE MAKE SURE YOUR ORDER ARRIVES AND YOU CONFIRM THAT YOU HAVE RECEIVED IT BEFORE MAKING ANY PAYMENT. NO HALF PAYMENT. DO NOT PAY BEFORE RECEIVING YOUR ORDER. SHOP SAFELY!';
 
 export const SafetyTickerBanner: React.FC = () => {
   return (
     <div
       role="region"
-      aria-label="FU MARKET Payment Safety Notice"
-      className="w-full overflow-hidden bg-[#111111] text-[#F2B90D] border-b-2 border-[#F2B90D] py-1.5 fu-marquee-container select-none"
+      aria-label="NIGERIA CAMPUS MARKET Payment Safety Notice"
+      className="w-full overflow-hidden bg-[#10251D] text-[#D4A62A] border-b-2 border-[#D4A62A] py-1.5 fu-marquee-container select-none"
     >
       <div className="fu-marquee-track flex items-center">
         {[0, 1].map((copyIndex) => (
@@ -19,7 +19,7 @@ export const SafetyTickerBanner: React.FC = () => {
             className="flex items-center shrink-0 gap-4 sm:gap-6 pr-6 sm:pr-10"
           >
             <span className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-black tracking-wide uppercase whitespace-nowrap">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#F2B90D] shrink-0" aria-hidden="true" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#D4A62A] shrink-0" aria-hidden="true" />
               <span>{SAFETY_ANNOUNCEMENT_TEXT}</span>
             </span>
             <span className="text-[#FFFFFF]/60 text-xs font-black" aria-hidden="true">

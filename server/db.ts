@@ -64,6 +64,8 @@ export interface Product {
   imageUrl?: string;
   state: string;
   city: string;
+  institutionId?: string;
+  campus?: string;
   quantity: number;
   status: 'active' | 'sold' | 'unavailable' | 'expired';
   moderationStatus?: 'approved' | 'pending_review' | 'rejected';
@@ -134,7 +136,18 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'food', name: 'Food', slug: 'food', icon: 'Utensils', description: 'Fresh campus meals, provisions, snacks, garri, rice, indomie & cold drinks', featured: true },
   { id: 'electronics', name: 'Electronics', slug: 'electronics', icon: 'Smartphone', description: 'Smartphones, laptops, power banks, chargers, earphones & gadgets', featured: true },
   { id: 'fashion', name: 'Fashion', slug: 'fashion', icon: 'Shirt', description: 'Clothes, sneakers, bags, wristwatches, perfumes & student outfits', featured: true },
-  { id: 'gas-cooking', name: 'Gas & Cooking', slug: 'gas-cooking', icon: 'Flame', description: 'Gas cylinders, camp gas burners, pots, electric kettles & kitchen utensils', featured: true }
+  { id: 'gas-cooking', name: 'Gas & Cooking', slug: 'gas-cooking', icon: 'Flame', description: 'Gas cylinders, camp gas burners, pots, electric kettles & kitchen utensils', featured: true },
+  { id: 'phones-accessories', name: 'Phones & Accessories', slug: 'phones-accessories', icon: 'Smartphone', description: 'Android phones, iPhones, power banks, chargers & phone accessories', featured: true },
+  { id: 'laptops-computers', name: 'Laptops & Computers', slug: 'laptops-computers', icon: 'Laptop', description: 'Laptops, MacBooks, monitors & computer accessories', featured: true },
+  { id: 'fashion-clothing', name: 'Fashion & Clothing', slug: 'fashion-clothing', icon: 'Shirt', description: 'Casual wear, corporate outfits, hoodies & native wears', featured: true },
+  { id: 'shoes-bags', name: 'Shoes & Bags', slug: 'shoes-bags', icon: 'ShoppingBag', description: 'Sneakers, slides, backpacks & bags', featured: true },
+  { id: 'food-groceries', name: 'Food & Groceries', slug: 'food-groceries', icon: 'Utensils', description: 'Cooked meals, foodstuffs, provisions & hostel groceries', featured: true },
+  { id: 'books-educational', name: 'Books & Educational Materials', slug: 'books-educational', icon: 'BookOpen', description: 'Textbooks, handouts & academic materials', featured: true },
+  { id: 'beauty-products', name: 'Beauty & Personal Care', slug: 'beauty-products', icon: 'Sparkles', description: 'Skincare, perfumes, hair products & personal care', featured: false },
+  { id: 'furniture', name: 'Furniture & Hostel Gear', slug: 'furniture', icon: 'BedDouble', description: 'Mattresses, reading tables, chairs & shelves', featured: false },
+  { id: 'home-appliances', name: 'Home Appliances', slug: 'home-appliances', icon: 'Refrigerator', description: 'Fridges, blenders, irons, hot plates & kettles', featured: false },
+  { id: 'sports-equipment', name: 'Sports Equipment', slug: 'sports-equipment', icon: 'Trophy', description: 'Jerseys, football boots, balls & sports gear', featured: false },
+  { id: 'other-products', name: 'Other Products', slug: 'other-products', icon: 'Package', description: 'Miscellaneous campus items & student listings', featured: false }
 ];
 
 export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -185,7 +198,7 @@ class Database {
   private ensureInitialData() {
     let modified = false;
 
-    // Check categories — always keep synchronized with the 6 core FU MARKET categories
+    // Check categories — always keep synchronized with the official NIGERIA UNIVERSITY HUB categories
     const expectedIds = DEFAULT_CATEGORIES.map(c => c.id).join(',');
     const currentIds = (this.data.categories || []).map(c => c.id).join(',');
     if (currentIds !== expectedIds) {
@@ -200,7 +213,7 @@ class Database {
       const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
       const adminUser: User = {
         id: 'admin-001',
-        name: 'FU MARKET Moderation Desk',
+        name: 'NIGERIA UNIVERSITY HUB Moderation Desk',
         email: 'admin@fumarket.ng',
         passwordHash: adminPasswordHash,
         role: 'admin',

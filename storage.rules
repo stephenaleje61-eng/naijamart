@@ -86,18 +86,18 @@ service firebase.storage {
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
-    // FU MARKET ADS banners & images
+    // FU MARKET ADS banners & images (CEO-ONLY publishing & storage uploads)
     match /advertisements/{ownerId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
-      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+      allow create, update: if isCeo() && isImage() && isUnder5MB();
+      allow delete: if isCeo();
     }
 
-    // FU MARKET ADS business logos
+    // FU MARKET ADS business logos (CEO-ONLY)
     match /ad_logos/{ownerId}/{fileName} {
       allow read: if true;
-      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
-      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+      allow create, update: if isCeo() && isImage() && isUnder5MB();
+      allow delete: if isCeo();
     }
 
     // FU MARKET STUDENT SERVICES photos
@@ -133,6 +133,48 @@ service firebase.storage {
       allow read: if true;
       allow create, update: if isCeo() && isImage() && isUnder5MB();
       allow delete: if isCeo();
+    }
+
+    // Accommodation photos (National Network)
+    match /accommodation/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // User profile avatars
+    match /avatars/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // Campus Food Vendors & Menu Item photos
+    match /food/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // Campus Books & Study Materials photos
+    match /books/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // Student Deals & Giveaways photos
+    match /deals/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
+    // Confidential House Agent KYC verification documents (owner, Admin, CEO read only)
+    match /agent_kyc/{ownerId}/{fileName} {
+      allow read: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
+      allow create, update: if isSignedIn() && request.auth.uid == ownerId && isImage() && isUnder5MB();
+      allow delete: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
     }
   }
 }

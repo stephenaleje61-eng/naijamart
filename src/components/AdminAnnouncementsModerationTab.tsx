@@ -125,7 +125,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
   const handleSuspendAuthor = async (authorId: string, authorName: string) => {
     if (!authorId) return;
     setSuspendingAuthorId(authorId);
-    const reason = 'Suspended by FU MARKET Administrator for community post policy violation.';
+    const reason = 'Suspended by NIGERIA CAMPUS MARKET Administrator for community post policy violation.';
     try {
       // Suspend in Firestore users/{authorId}
       const refDoc = doc(db, 'users', authorId);
@@ -182,8 +182,8 @@ export const AdminAnnouncementsModerationTab: React.FC<
   if (!verified) {
     return (
       <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 text-center space-y-3">
-        <ShieldAlert className="w-10 h-10 text-[#EA580C] mx-auto" />
-        <h3 className="font-black text-base text-[#111111]">
+        <ShieldAlert className="w-10 h-10 text-[#D4A62A] mx-auto" />
+        <h3 className="font-black text-base text-[#10251D]">
           Admin Google Verification Required
         </h3>
         <p className="text-xs text-[#555555] max-w-md mx-auto">
@@ -192,7 +192,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
         <button
           type="button"
           onClick={handleGoogleVerify}
-          className="px-5 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-black rounded-xl transition"
+          className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition"
         >
           Verify Admin Google Account
         </button>
@@ -227,14 +227,14 @@ export const AdminAnnouncementsModerationTab: React.FC<
             onClick={() => setSubTab('sports')}
             className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition ${
               subTab === 'sports'
-                ? 'bg-[#EA580C] text-white'
-                : 'bg-[#F5F5F5] text-[#333333] hover:text-[#111111]'
+                ? 'bg-[#087443] text-white'
+                : 'bg-[#F4F8F5] text-[#333333] hover:text-[#10251D]'
             }`}
           >
-            <Trophy className="w-3.5 h-3.5" />
+            <Trophy className="w-3.5 h-3.5 text-[#D4A62A]" />
             <span>Sport Updates ({sportUpdates.length})</span>
             {pendingSportsCount > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#111111] text-white rounded-full text-[10px]">
+              <span className="px-1.5 py-0.2 bg-[#10251D] text-[#D4A62A] rounded-full text-[10px]">
                 {pendingSportsCount} pending
               </span>
             )}
@@ -245,14 +245,14 @@ export const AdminAnnouncementsModerationTab: React.FC<
             onClick={() => setSubTab('general')}
             className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition ${
               subTab === 'general'
-                ? 'bg-[#EA580C] text-white'
-                : 'bg-[#F5F5F5] text-[#333333] hover:text-[#111111]'
+                ? 'bg-[#087443] text-white'
+                : 'bg-[#F4F8F5] text-[#333333] hover:text-[#10251D]'
             }`}
           >
-            <Megaphone className="w-3.5 h-3.5" />
+            <Megaphone className="w-3.5 h-3.5 text-[#D4A62A]" />
             <span>General Announcements ({generalAnnouncements.length})</span>
             {pendingGeneralCount > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#111111] text-white rounded-full text-[10px]">
+              <span className="px-1.5 py-0.2 bg-[#10251D] text-[#D4A62A] rounded-full text-[10px]">
                 {pendingGeneralCount} pending
               </span>
             )}
@@ -263,11 +263,11 @@ export const AdminAnnouncementsModerationTab: React.FC<
             onClick={() => setSubTab('reports')}
             className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition ${
               subTab === 'reports'
-                ? 'bg-[#111111] text-white'
-                : 'bg-[#F5F5F5] text-[#333333] hover:text-[#111111]'
+                ? 'bg-[#10251D] text-white'
+                : 'bg-[#F4F8F5] text-[#333333] hover:text-[#10251D]'
             }`}
           >
-            <Flag className="w-3.5 h-3.5 text-[#EA580C]" />
+            <Flag className="w-3.5 h-3.5 text-[#D4A62A]" />
             <span>Post Reports ({pendingReportsCount} pending)</span>
           </button>
         </div>
@@ -275,7 +275,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
         <button
           type="button"
           onClick={loadModerationData}
-          className="px-3 py-1.5 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl flex items-center gap-1"
+          className="px-3 py-1.5 bg-[#F4F8F5] hover:bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl flex items-center gap-1"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Reload
@@ -292,7 +292,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search posts by title or author..."
-              className="w-full pl-9 pr-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs outline-none focus:border-[#EA580C]"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs outline-none focus:border-[#087443]"
             />
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -303,7 +303,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1.5 rounded-xl text-[11px] font-bold capitalize border ${
                   statusFilter === st
-                    ? 'bg-[#111111] border-[#111111] text-white'
+                    ? 'bg-[#10251D] border-[#10251D] text-white'
                     : 'bg-white border-[#E5E7EB] text-[#555555]'
                 }`}
               >
@@ -342,7 +342,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       • By {rep.reporterName || 'Visitor'} ({formatRelativeTime(rep.createdAt)})
                     </span>
                   </div>
-                  <h4 className="font-bold text-sm text-[#111111]">{rep.postTitle}</h4>
+                  <h4 className="font-bold text-sm text-[#10251D]">{rep.postTitle}</h4>
                   <p className="text-xs text-[#555555] bg-[#F9FAFB] p-2.5 rounded-xl border border-[#E5E7EB]">
                     &ldquo;{rep.details}&rdquo;
                   </p>
@@ -361,13 +361,13 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       <button
                         type="button"
                         onClick={() => handleResolveReport(rep, 'dismissed', false)}
-                        className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl"
+                        className="px-3 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl"
                       >
                         Dismiss
                       </button>
                     </>
                   ) : (
-                    <span className="px-3 py-1 rounded-xl bg-[#F5F5F5] text-[#555555] text-xs font-black uppercase">
+                    <span className="px-3 py-1 rounded-xl bg-[#F4F8F5] text-[#555555] text-xs font-black uppercase">
                       {rep.status}
                     </span>
                   )}
@@ -401,28 +401,28 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       <span
                         className={`px-2 py-0.5 rounded-full ${
                           post.status === 'published'
-                            ? 'bg-[#0B6B3A]/10 text-[#0B6B3A]'
+                            ? 'bg-[#087443]/10 text-[#087443]'
                             : post.status === 'pending'
-                            ? 'bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA]'
-                            : 'bg-[#111111] text-white'
+                            ? 'bg-[#D4A62A]/20 text-[#10251D] border border-[#D4A62A]'
+                            : 'bg-[#10251D] text-white'
                         }`}
                       >
                         {post.status}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-[#F5F5F5] text-[#111111]">
+                      <span className="px-2 py-0.5 rounded bg-[#F4F8F5] text-[#10251D]">
                         {catLabel}
                       </span>
                       {post.isPinned && (
-                        <span className="px-2 py-0.5 rounded bg-[#111111] text-white">PINNED</span>
+                        <span className="px-2 py-0.5 rounded bg-[#10251D] text-white">PINNED</span>
                       )}
                       {post.isFeatured && (
-                        <span className="px-2 py-0.5 rounded bg-[#F2B90D] text-[#111111]">
+                        <span className="px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D]">
                           FEATURED
                         </span>
                       )}
                     </div>
 
-                    <h4 className="font-black text-sm text-[#111111]">{post.title}</h4>
+                    <h4 className="font-black text-sm text-[#10251D]">{post.title}</h4>
                     <p className="text-xs text-[#4B5563] line-clamp-2">{post.description}</p>
 
                     {post.moderationFlags && post.moderationFlags.length > 0 && (
@@ -433,7 +433,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
 
                     <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#6B7280]">
                       <span>
-                        Author: <strong className="text-[#111111]">{post.authorName}</strong>
+                        Author: <strong className="text-[#10251D]">{post.authorName}</strong>
                       </span>
                       <span>• {formatRelativeTime(post.createdAt)}</span>
                       <span className="inline-flex items-center gap-1">
@@ -456,7 +456,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                         onClick={() =>
                           handleUpdatePost(post, { status: 'published' }, 'Post approved & published.')
                         }
-                        className="px-2.5 py-1.5 rounded-xl bg-[#0B6B3A] hover:bg-[#14532D] text-white text-[11px] font-black flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-black flex items-center gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Approve
@@ -472,7 +472,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                             'Post rejected and hidden from public.'
                           )
                         }
-                        className="px-2.5 py-1.5 rounded-xl bg-[#F5F5F5] hover:bg-[#111111] hover:text-white text-[#111111] text-[11px] font-bold flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#F4F8F5] hover:bg-[#10251D] hover:text-white text-[#10251D] text-[11px] font-bold flex items-center gap-1"
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         Hide / Reject
@@ -489,8 +489,8 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       }
                       className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 border ${
                         post.isPinned
-                          ? 'bg-[#111111] border-[#111111] text-white'
-                          : 'bg-white border-[#E5E7EB] text-[#111111]'
+                          ? 'bg-[#10251D] border-[#10251D] text-white'
+                          : 'bg-white border-[#E5E7EB] text-[#10251D]'
                       }`}
                     >
                       <Pin className="w-3 h-3" />
@@ -507,8 +507,8 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       }
                       className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 border ${
                         post.isFeatured
-                          ? 'bg-[#F2B90D] border-[#F2B90D] text-[#111111]'
-                          : 'bg-white border-[#E5E7EB] text-[#111111]'
+                          ? 'bg-[#D4A62A] border-[#D4A62A] text-[#10251D]'
+                          : 'bg-white border-[#E5E7EB] text-[#10251D]'
                       }`}
                     >
                       <Star className="w-3 h-3" />
@@ -518,7 +518,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                       type="button"
                       disabled={suspendingAuthorId === post.authorId}
                       onClick={() => handleSuspendAuthor(post.authorId, post.authorName)}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#FFF7ED] hover:bg-[#EA580C] text-[#EA580C] hover:text-white border border-[#FED7AA] text-[11px] font-bold flex items-center gap-1 transition"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#FEF2F2] hover:bg-[#B91C1C] text-[#B91C1C] hover:text-white border border-[#FECACA] text-[11px] font-bold flex items-center gap-1 transition"
                       title="Suspend abusive author"
                     >
                       <UserX className="w-3 h-3" />
@@ -537,7 +537,7 @@ export const AdminAnnouncementsModerationTab: React.FC<
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
-                          className="px-2 py-1.5 bg-[#F5F5F5] text-[#555555] text-[11px] font-bold rounded-xl"
+                          className="px-2 py-1.5 bg-[#F4F8F5] text-[#555555] text-[11px] font-bold rounded-xl"
                         >
                           Cancel
                         </button>

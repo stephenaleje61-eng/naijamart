@@ -133,7 +133,7 @@ export const CAMPUS_SAFETY_TOPICS: CampusSafetyTopic[] = [
     summary: 'Extra precautions when reading late on campus or returning to hostels, Puje, or Bye Pass after dark.',
     points: [
       'Walk in groups of two or more after dark and stick to well-lit, populated campus walkways.',
-      'Use verified campus shuttle drivers or known Okada riders from the FU MARKET directory rather than unmarked rides.',
+      'Use verified campus shuttle drivers or known Okada riders from the NIGERIA CAMPUS MARKET directory rather than unmarked rides.',
       'Keep a small charged torch or power bank with you during power outages.'
     ]
   },
@@ -304,7 +304,7 @@ export function redactSensitiveIdentifiers(input: string): {
 function assertAdmin(): void {
   if (!isFirebaseCeoVerified()) {
     throw new Error(
-      `Administrator access denied: Sign in with the authorized FU MARKET CEO Google account (${CEO_EMAIL}).`
+      `Administrator access denied: Sign in with the authorized NIGERIA CAMPUS MARKET CEO Google account (${CEO_EMAIL}).`
     );
   }
 }
@@ -613,7 +613,7 @@ export async function createEmergencyReport(input: {
     reportType: input.reportType.trim().slice(0, 100),
     status: 'Received' as EmergencyReportStatus,
     statusMessage:
-      'Logged in FU MARKET Help Centre queue for administrator review. Remember to call verified emergency contacts directly for urgent danger.',
+      'Logged in NIGERIA CAMPUS MARKET Help Centre queue for administrator review. Remember to call verified emergency contacts directly for urgent danger.',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
@@ -883,7 +883,7 @@ export async function updateEmergencyReportStatus(
     if (report.trackingHash) {
       const statusMessage = cleanNotes
         ? cleanNotes.slice(0, 500)
-        : `Status updated to "${nextStatus}" by FU MARKET administrator.`;
+        : `Status updated to "${nextStatus}" by NIGERIA CAMPUS MARKET administrator.`;
       await updateDoc(doc(db, 'emergency_report_tracking', report.trackingHash), {
         status: nextStatus,
         statusMessage,
@@ -1213,7 +1213,7 @@ export async function dispatchSafetyNotification(
   announcement: SafetyAnnouncement
 ): Promise<void> {
   if (!isSafetyNotificationsOptedIn()) return;
-  const title = `FU MARKET Safety Alert: ${announcement.title}`;
+  const title = `NIGERIA CAMPUS MARKET Safety Alert: ${announcement.title}`;
   const body = announcement.description.slice(0, 180);
 
   try {

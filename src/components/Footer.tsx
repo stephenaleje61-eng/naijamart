@@ -1,22 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShieldCheck,
   MessageCircle,
-  Store,
   Download,
   Home,
   HelpCircle,
-  Bike,
-  Phone,
   MapPin,
   Briefcase,
-  Siren
+  Siren,
+  Megaphone,
+  Globe,
+  Utensils,
+  Calculator,
+  BookOpen,
+  Gift,
+  Mail,
+  CheckCircle2,
+  Loader2,
+  Share2,
+  GraduationCap,
+  FileText
 } from 'lucide-react';
-import { Category } from '../types.js';
+import { Category, Institution } from '../types.js';
 import { usePWAInstall } from '../hooks/usePWAInstall.js';
 import { AppView } from './BottomNav.js';
-import { CeoContactButton } from './CeoContactButton.js';
-import { CEO_ADS_PHONE } from '../services/ads.js';
+import { CEO_ADS_PHONE, getCeoAdsWhatsAppUrl } from '../services/ads.js';
+import { PlatformInfoTopic } from './PlatformInfoModal.js';
 
 interface FooterProps {
   categories: Category[];
@@ -31,23 +40,35 @@ interface FooterProps {
   onOpenPostServiceModal?: () => void;
   onOpenServiceProviderDashboard?: () => void;
   onOpenCeoPortal?: () => void;
+  activeInstitution?: Institution;
+  onOpenDownloadApp?: () => void;
+  onOpenNationwideSearch?: () => void;
+  onOpenSubscriptions?: () => void;
+  onOpenInstitutionSwitcher?: () => void;
+  onOpenInfoModal?: (topic: PlatformInfoTopic) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
-  categories,
-  onSelectCategory,
   onOpenSellModal,
   onOpenSafetyModal,
   onNavigateView,
   onTriggerPWAHelp,
-  onOpenAdvertiseModal,
-  onOpenServicesSection,
   onOpenEmergencySection,
-  onOpenPostServiceModal,
-  onOpenServiceProviderDashboard,
-  onOpenCeoPortal
+  onOpenCeoPortal,
+  activeInstitution,
+  onOpenDownloadApp,
+  onOpenNationwideSearch,
+  onOpenInstitutionSwitcher,
+  onOpenInfoModal
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterStatus, setNewsletterStatus] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const handleInstall = async () => {
     if (isInstallable) {
@@ -58,269 +79,384 @@ export const Footer: React.FC<FooterProps> = ({
     }
   };
 
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newsletterEmail.trim();
+    if (!trimmed) return;
+    setNewsletterLoading(true);
+    setNewsletterStatus(null);
+    try {
+      const resp = await fetch('/api/ecosystem/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, source: 'footer' })
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Could not subscribe. Please check your email.');
+      }
+      setNewsletterStatus({
+        type: 'success',
+        text: json?.message || 'Subscribed to NIGERIA CAMPUS MARKET updates!'
+      });
+      setNewsletterEmail('');
+    } catch (err: any) {
+      setNewsletterStatus({
+        type: 'error',
+        text: err?.message || 'Unable to subscribe right now.'
+      });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
+  const handleSharePlatform = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'NIGERIA CAMPUS MARKET',
+          text: 'Buy. Sell. Connect. Grow Across Nigerian Campuses.',
+          url: shareUrl
+        });
+        return;
+      }
+      if (navigator.clipboard && shareUrl) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } catch {
+      // Ignore cancelled native share
+    }
+  };
+
+  const instShort = activeInstitution?.shortName || 'NATIONWIDE';
+
   return (
-    <footer className="bg-[#14532D] text-white pt-10 pb-24 sm:pb-10 border-t-4 border-[#F2B90D] text-xs">
+    <footer className="bg-[#10251D] text-white pt-10 pb-24 sm:pb-10 border-t-4 border-[#D4A62A] text-xs">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Top Trust Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 pb-8 border-b border-white/15">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] border border-[#F2B90D]/40 text-[#F2B90D] flex items-center justify-center shrink-0">
-              <Store className="w-5 h-5" />
+        {/* 5-Column Professional Footer */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-7 pb-8 border-b border-white/15">
+          {/* Column 1: Brand Information and Social Media */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#D4A62A] flex items-center justify-center font-black text-[#10251D] text-xs shrink-0">
+                NCM
+              </div>
+              <div>
+                <span className="font-display font-black text-base tracking-tight text-[#D4A62A] block leading-none">
+                  NIGERIA CAMPUS MARKET
+                </span>
+                <span className="text-[10px] font-bold tracking-wider uppercase text-white/85 block mt-0.5">
+                  Your Campus Network
+                </span>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-sm text-white">100% Real Student Listings</h4>
-              <p className="text-white/80 text-xs mt-0.5">
-                Every product, request, lodge, and rider is submitted by real FUWUKARI users.
-              </p>
+
+            <p className="text-white/80 text-xs leading-relaxed">
+              Buy. Sell. Connect. Grow Across Nigerian Campuses. Verified student marketplace, hostels, jobs, food ordering, and academic tools across 36 states &amp; FCT.
+            </p>
+
+            <p className="text-[11px] text-white/80 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#D4A62A] shrink-0" />
+              <span className="truncate">
+                {activeInstitution
+                  ? `${activeInstitution.shortName} · ${activeInstitution.state} State`
+                  : 'All Nigerian Campuses'}
+              </span>
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <a
+                href={getCeoAdsWhatsAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#087443] hover:bg-[#065D36] text-white font-bold text-[11px] inline-flex items-center gap-1"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <span>WhatsApp</span>
+              </a>
+              <button
+                type="button"
+                onClick={handleSharePlatform}
+                className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <span>{shareCopied ? 'Link Copied' : 'Share'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => (onOpenDownloadApp ? onOpenDownloadApp() : handleInstall())}
+                className="px-2.5 py-1.5 rounded-lg bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-[11px] inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isInstalled ? 'PWA Options' : isIOS ? 'iOS App' : 'Install App'}</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] border border-[#F2B90D]/40 text-[#F2B90D] flex items-center justify-center shrink-0">
-              <MessageCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-white">Sharp Sharp WhatsApp Deal</h4>
-              <p className="text-white/80 text-xs mt-0.5">
-                Tap &ldquo;Chat on WhatsApp&rdquo; or message sellers directly inside FU MARKET.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] border border-[#F2B90D]/40 text-[#F2B90D] flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-white">Safe Campus Meetups</h4>
-              <p className="text-white/80 text-xs mt-0.5">
-                Inspect items physically on campus before paying. Zero advance transfer fees.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] border border-[#F2B90D]/40 text-[#F2B90D] flex items-center justify-center shrink-0">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-white">FU MARKET App (PWA)</h4>
-              <p className="text-white/80 text-xs mt-0.5 mb-2">
-                {isInstalled
-                  ? 'FU MARKET app is installed on your device.'
-                  : isIOS
-                  ? 'Add to Home Screen from Safari for one-tap campus access.'
-                  : 'Lightweight app built for fast loading on low campus data.'}
-              </p>
-              {!isInstalled && (
+          {/* Column 2: Quick Links */}
+          <div>
+            <h5 className="font-bold text-xs uppercase tracking-wider text-[#D4A62A] mb-3">
+              Quick Links
+            </h5>
+            <ul className="space-y-2 text-white/85">
+              <li>
                 <button
                   type="button"
-                  onClick={handleInstall}
-                  className="px-3 py-1 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black rounded-lg text-[11px] transition"
+                  onClick={() => onNavigateView('home')}
+                  className="hover:text-[#D4A62A] transition cursor-pointer"
                 >
-                  Install FU MARKET
+                  Home
                 </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Columns: About FU MARKET, Categories, Portals, Contact */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-5 gap-8 py-8 border-b border-white/15">
-          <div className="col-span-2">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#F2B90D] flex items-center justify-center font-black text-[#111111] text-sm">
-                FU
-              </div>
-              <span className="font-display font-black text-xl tracking-tight text-[#F2B90D]">
-                FU MARKET
-              </span>
-            </div>
-            <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-1">
-              About FU MARKET
-            </h5>
-            <p className="text-white/85 text-xs leading-relaxed max-w-sm mb-3">
-              FU MARKET is the dedicated student marketplace for Federal University Wukari (FUWUKARI). Buy and sell hostel items, textbooks &amp; past questions, food, electronics, fashion, and gas &amp; cooking gear safely within campus.
-            </p>
-            <div className="text-[11px] text-white/80 space-y-1">
-              <p className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#F2B90D] shrink-0" />
-                <span>Main Campus • New Site • Behind LT • Puje • Bye Pass • Wukari</span>
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-3">
-              Categories
-            </h5>
-            <ul className="space-y-2 text-white/85">
-              {categories.slice(0, 6).map((c) => (
-                <li key={c.id}>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('marketplace')}
+                  className="hover:text-[#D4A62A] transition cursor-pointer"
+                >
+                  Marketplace
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenInstitutionSwitcher?.()}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-[#D4A62A]" />
+                  <span>Explore Universities</span>
+                </button>
+              </li>
+              {onOpenNationwideSearch && (
+                <li>
                   <button
                     type="button"
-                    onClick={() => onSelectCategory(c.id)}
-                    className="hover:text-[#F2B90D] transition text-left"
+                    onClick={onOpenNationwideSearch}
+                    className="hover:text-[#D4A62A] flex items-center gap-1.5 transition cursor-pointer"
                   >
-                    {c.name}
+                    <Globe className="w-3.5 h-3.5 text-[#D4A62A]" />
+                    <span>Nationwide Search</span>
                   </button>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-3">
-              Campus Portals
-            </h5>
-            <ul className="space-y-2 text-white/85">
+              )}
               <li>
                 <button
                   type="button"
                   onClick={() => onNavigateView('requests')}
-                  className="hover:text-[#F2B90D] flex items-center gap-1.5"
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  <HelpCircle className="w-3.5 h-3.5 text-[#F2B90D]" /> What Students Need
+                  <HelpCircle className="w-3.5 h-3.5 text-[#D4A62A]" />
+                  <span>What Students Need</span>
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={onOpenSellModal}
+                  className="text-[#D4A62A] hover:text-[#E0B43B] font-black transition cursor-pointer"
+                >
+                  Start Selling for Free
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Student Services */}
+          <div>
+            <h5 className="font-bold text-xs uppercase tracking-wider text-[#D4A62A] mb-3">
+              Student Services
+            </h5>
+            <ul className="space-y-2 text-white/85">
               <li>
                 <button
                   type="button"
                   onClick={() => onNavigateView('hux')}
-                  className="hover:text-[#F2B90D] flex items-center gap-1.5"
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Home className="w-3.5 h-3.5 text-[#F2B90D]" /> Wukari Agent
+                  <Home className="w-3.5 h-3.5 text-[#D4A62A]" /> Accommodation &amp; Hostels
                 </button>
               </li>
               <li>
                 <button
                   type="button"
-                  onClick={() => onNavigateView('hub')}
-                  className="hover:text-[#F2B90D] flex items-center gap-1.5"
+                  onClick={() => onNavigateView('jobs')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" /> Single Hub
+                  <Briefcase className="w-3.5 h-3.5 text-[#D4A62A]" /> Jobs &amp; Internships
                 </button>
               </li>
               <li>
                 <button
                   type="button"
-                  onClick={() => onNavigateView('bike-riders')}
-                  className="hover:text-[#F2B90D] flex items-center gap-1.5"
+                  onClick={() => onNavigateView('food')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Bike className="w-3.5 h-3.5 text-[#F2B90D]" /> Okada Directory
+                  <Utensils className="w-3.5 h-3.5 text-[#D4A62A]" /> Campus Food Ordering
                 </button>
               </li>
-              {onOpenServicesSection && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onOpenServicesSection}
-                    className="hover:text-[#F2B90D] flex items-center gap-1.5"
-                  >
-                    <Briefcase className="w-3.5 h-3.5 text-[#F2B90D]" /> Student Services
-                  </button>
-                </li>
-              )}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('books')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-[#D4A62A]" /> Books &amp; Study Materials
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('gpa')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Calculator className="w-3.5 h-3.5 text-[#D4A62A]" /> GPA &amp; CGPA Calculator
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('deals')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Gift className="w-3.5 h-3.5 text-[#D4A62A]" /> Student Deals &amp; Giveaways
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Help and Support */}
+          <div>
+            <h5 className="font-bold text-xs uppercase tracking-wider text-[#D4A62A] mb-3">
+              Help and Support
+            </h5>
+            <ul className="space-y-2 text-white/85">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenInfoModal?.('privacy')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#D4A62A]" /> Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenInfoModal?.('terms')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#D4A62A]" /> Terms of Service
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenInfoModal?.('contact')}
+                  className="hover:text-[#D4A62A] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5 text-[#D4A62A]" /> Contact Us
+                </button>
+              </li>
               {onOpenEmergencySection && (
                 <li>
                   <button
                     type="button"
                     onClick={onOpenEmergencySection}
-                    className="text-white hover:text-[#F2B90D] font-bold flex items-center gap-1.5"
+                    className="text-[#F87171] hover:text-white font-black flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Siren className="w-3.5 h-3.5 text-[#F87171]" /> Campus Emergency &amp; Help
-                  </button>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="font-bold text-xs uppercase tracking-wider text-[#F2B90D] mb-3">
-              Advertising &amp; Support
-            </h5>
-            <ul className="space-y-2.5 text-white/85">
-              <li className="flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-[#F2B90D]" />
-                <span className="tabular-nums">FU MARKET CEO – {CEO_ADS_PHONE}</span>
-              </li>
-              <li>
-                <CeoContactButton compact showSubLabel={false} />
-              </li>
-              {onOpenAdvertiseModal && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onOpenAdvertiseModal}
-                    className="text-[#F2B90D] hover:text-[#FFC107] font-black transition"
-                  >
-                    ADVERTISE YOUR BUSINESS
-                  </button>
-                </li>
-              )}
-              {onOpenPostServiceModal && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onOpenPostServiceModal}
-                    className="text-[#F2B90D] hover:text-[#FFC107] font-black transition"
-                  >
-                    POST YOUR SERVICE
-                  </button>
-                </li>
-              )}
-              {onOpenServiceProviderDashboard && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onOpenServiceProviderDashboard}
-                    className="hover:text-[#F2B90D] font-bold transition"
-                  >
-                    Service Provider Dashboard
+                    <Siren className="w-3.5 h-3.5" /> Report Scam &amp; Emergency
                   </button>
                 </li>
               )}
               <li>
                 <button
                   type="button"
-                  onClick={onOpenSellModal}
-                  className="hover:text-[#F2B90D] font-bold transition"
+                  onClick={onOpenSafetyModal}
+                  className="hover:text-[#D4A62A] transition cursor-pointer"
                 >
-                  Post Item for FREE
-                </button>
-              </li>
-              <li>
-                <button type="button" onClick={onOpenSafetyModal} className="hover:text-[#F2B90D] transition">
                   Campus Safety Rules
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onOpenSafetyModal} className="hover:text-[#F2B90D] transition">
-                  Terms &amp; Prohibited Items
-                </button>
+                <a
+                  href={getCeoAdsWhatsAppUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#D4A62A] hover:text-[#E0B43B] font-bold inline-flex items-center gap-1.5"
+                >
+                  <Megaphone className="w-3.5 h-3.5" /> Advertise ({CEO_ADS_PHONE})
+                </a>
               </li>
             </ul>
           </div>
+
+          {/* Column 5: Stay Connected and Newsletter */}
+          <div className="space-y-3">
+            <h5 className="font-bold text-xs uppercase tracking-wider text-[#D4A62A]">
+              Stay Connected &amp; Newsletter
+            </h5>
+            <p className="text-white/80 text-xs leading-relaxed">
+              Get weekly campus deals, hostel alerts, job openings, and safety notices straight in your inbox.
+            </p>
+            <form onSubmit={handleSubscribe} className="space-y-2">
+              <input
+                type="email"
+                required
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="you@university.edu.ng"
+                aria-label="Email address for newsletter"
+                className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 focus:border-[#D4A62A] text-white placeholder-white/50 text-xs outline-none"
+              />
+              <button
+                type="submit"
+                disabled={newsletterLoading}
+                className="w-full py-2 px-3 rounded-xl bg-[#087443] hover:bg-[#065D36] border border-[#D4A62A]/50 text-white font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-60"
+              >
+                {newsletterLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Mail className="w-3.5 h-3.5 text-[#D4A62A]" />
+                )}
+                <span>{newsletterLoading ? 'Subscribing...' : 'Subscribe'}</span>
+              </button>
+            </form>
+            {newsletterStatus && (
+              <p
+                className={`text-[11px] font-semibold flex items-start gap-1.5 ${
+                  newsletterStatus.type === 'success' ? 'text-[#D4A62A]' : 'text-[#F87171]'
+                }`}
+              >
+                {newsletterStatus.type === 'success' && (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                )}
+                <span>{newsletterStatus.text}</span>
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Bottom Copyright + Made for FUWUKARI Students */}
+        {/* Bottom Copyright */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/90">
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-semibold">
-              © {new Date().getFullYear()} FU MARKET — Federal University Wukari.
+              © {new Date().getFullYear()} NIGERIA CAMPUS MARKET — Buy. Sell. Connect. Grow Across Nigerian Campuses.
             </p>
             {onOpenCeoPortal && (
               <button
                 type="button"
                 onClick={onOpenCeoPortal}
-                className="text-white/65 hover:text-[#F2B90D] font-bold underline-offset-2 hover:underline transition"
+                className="text-white/65 hover:text-[#D4A62A] font-bold underline-offset-2 hover:underline transition cursor-pointer"
               >
                 CEO Portal
               </button>
             )}
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0B6B3A] border border-[#F2B90D]/50 text-[#F2B90D] font-black">
-            Made for FUWUKARI Students
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#087443] border border-[#D4A62A]/50 text-[#D4A62A] font-black">
+            Active Scope: {instShort}
           </span>
         </div>
       </div>

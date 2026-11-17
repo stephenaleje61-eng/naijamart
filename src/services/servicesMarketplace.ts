@@ -16,6 +16,7 @@ import { getAdminHeaders, safeFetchJson } from './api.js';
 import { CEO_EMAIL, isFirebaseCeoVerified } from './events.js';
 import { recordAdminAuditLog } from './ads.js';
 import { getOrCreateGuestId } from '../utils/studentAuth.js';
+import { DEFAULT_INSTITUTION_ID } from '../constants/institutions.js';
 import {
   ServiceAvailability,
   ServiceCategory,
@@ -27,7 +28,7 @@ import {
 } from '../types.js';
 
 export const SERVICE_WHATSAPP_MESSAGE =
-  'Hello, I found your service on FU MARKET. I am interested in your service. Please provide more information.';
+  'Hello, I found your service on NIGERIA CAMPUS MARKET. I am interested in your service. Please provide more information.';
 
 export const DEFAULT_SERVICE_CATEGORIES: ServiceCategory[] = [
   { id: 'barbing-and-hair-styling', name: 'Barbing and Hair Styling', slug: 'barbing-and-hair-styling', isActive: true, sortOrder: 1 },
@@ -187,6 +188,8 @@ export function sanitizeServiceDoc(id: string, data: any): ServiceListing {
       : {}),
     ...(data?.priceDisplay ? { priceDisplay: String(data.priceDisplay).trim() } : {}),
     location: String(data?.location || '').trim(),
+    institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+    ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     phone: String(data?.phone || '').trim(),
     whatsapp: String(data?.whatsapp || data?.phone || '').trim(),
     images: rawImages,
@@ -388,6 +391,8 @@ export interface CreateOrUpdateServiceInput {
   priceMax?: number;
   priceDisplay?: string;
   location: string;
+  institutionId?: string;
+  campus?: string;
   phone: string;
   whatsapp: string;
   images: string[];
@@ -448,6 +453,8 @@ export async function createServiceListing(
     ...(priceMaxNum ? { priceMax: priceMaxNum } : {}),
     priceDisplay: computedPriceDisplay.slice(0, 80),
     location: input.location.trim().slice(0, 180),
+    institutionId: (input.institutionId || DEFAULT_INSTITUTION_ID).trim().slice(0, 128),
+    ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
     phone: input.phone.trim().slice(0, 40),
     whatsapp: input.whatsapp.trim().slice(0, 40),
     images: input.images.slice(0, 8),
@@ -506,6 +513,10 @@ export async function updateServiceListing(
       ? { priceDisplay: updates.priceDisplay.trim().slice(0, 80) }
       : {}),
     ...(updates.location !== undefined ? { location: updates.location.trim().slice(0, 180) } : {}),
+    ...(updates.institutionId !== undefined
+      ? { institutionId: updates.institutionId.trim().slice(0, 128) }
+      : {}),
+    ...(updates.campus !== undefined ? { campus: updates.campus.trim().slice(0, 120) } : {}),
     ...(updates.phone !== undefined ? { phone: updates.phone.trim().slice(0, 40) } : {}),
     ...(updates.whatsapp !== undefined ? { whatsapp: updates.whatsapp.trim().slice(0, 40) } : {}),
     ...(updates.images !== undefined && updates.images.length > 0

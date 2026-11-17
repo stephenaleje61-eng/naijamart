@@ -45,7 +45,7 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-lg bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-lg bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 flex flex-col text-[#10251D]">
         {/* Header */}
         <div className="bg-[#0F1E3D] text-white p-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
                 value={referenceNumber}
                 onChange={(e) => setReferenceNumber(e.target.value)}
                 placeholder="e.g. FUM-EMG-123456ABCD"
-                className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-mono font-bold text-[#111111] uppercase outline-none"
+                className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-mono font-bold text-[#10251D] uppercase outline-none"
               />
             </div>
 
@@ -98,7 +98,7 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
                 value={verificationPin}
                 onChange={(e) => setVerificationPin(e.target.value)}
                 placeholder="6-character PIN (e.g. A7K9M2)"
-                className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-mono font-bold text-[#111111] uppercase outline-none"
+                className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-mono font-bold text-[#10251D] uppercase outline-none"
               />
             </div>
 
@@ -131,11 +131,11 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
                   <span className="text-[11px] font-mono font-black text-[#0F1E3D] tabular-nums">
                     {result.reportId}
                   </span>
-                  <h3 className="text-sm font-black text-[#111111] mt-0.5">
+                  <h3 className="text-sm font-black text-[#10251D] mt-0.5">
                     {result.reportType}
                   </h3>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg bg-[#0B6B3A] text-white text-[11px] font-black">
+                <span className="px-2.5 py-1 rounded-lg bg-[#087443] text-white text-[11px] font-black">
                   {result.status}
                 </span>
               </div>
@@ -150,14 +150,14 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
                       key={stage}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs ${
                         active
-                          ? 'bg-[#ECFDF5] border border-[#A7F3D0] font-black text-[#0B6B3A]'
+                          ? 'bg-[#ECFDF5] border border-[#A7F3D0] font-black text-[#087443]'
                           : completed
                           ? 'text-[#0F1E3D] font-bold'
                           : 'text-[#94A3B8]'
                       }`}
                     >
                       {completed ? (
-                        <CheckCircle2 className="w-4 h-4 text-[#0B6B3A] shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0" />
                       ) : (
                         <Clock className="w-4 h-4 shrink-0" />
                       )}
@@ -179,7 +179,7 @@ export const ReportTrackingModal: React.FC<ReportTrackingModalProps> = ({ onClos
               <div className="flex items-start gap-1.5 text-[11px] text-[#475569] pt-1">
                 <ShieldCheck className="w-4 h-4 text-[#0F1E3D] shrink-0 mt-0.5" />
                 <span>
-                  This status reflects FU MARKET Help Centre administrator review—not external police or security agency dispatch.
+                  This status reflects NIGERIA CAMPUS MARKET Help Centre administrator review—not external police or security agency dispatch.
                 </span>
               </div>
 

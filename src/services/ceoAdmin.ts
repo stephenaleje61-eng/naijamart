@@ -26,22 +26,32 @@ import {
   AdPaymentRecord,
   Advertisement,
   AnnouncementReport,
+  AppSettings,
   CampusEvent,
   CeoSecurityLog,
   CeoSecuritySettings,
   CeoSessionState,
   CeoVerificationLog,
   CeoVerificationSettings,
+  ConversationReportRecord,
   GeneralAnnouncementPost,
+  HouseAgentProfile,
+  Institution,
+  PaymentTransaction,
   Product,
+  PwaEventType,
+  PwaInstallMetric,
+  RegionalModerator,
   ReportItem,
   SafetyAnnouncement,
   SellerProfile,
   ServiceListing,
   ServiceReport,
   SportUpdatePost,
+  SubscriptionPlan,
   User
 } from '../types.js';
+import { DEFAULT_INSTITUTION_ID, VERIFIED_NIGERIAN_INSTITUTIONS } from '../constants/institutions.js';
 import {
   auth,
   db,
@@ -60,7 +70,7 @@ import { sanitizeServiceDoc } from './servicesMarketplace.js';
 export const CEO_EMAIL = 'stephenaleje61@gmail.com';
 export const CEO_PHONE = '08167258121';
 export const CEO_ROLE_LABEL = 'CEO SUPER ADMINISTRATOR';
-export const CEO_VERIFIED_BADGE_TEXT = 'VERIFIED BY FU MARKET CEO';
+export const CEO_VERIFIED_BADGE_TEXT = 'VERIFIED BY NIGERIA CAMPUS MARKET CEO';
 
 const CEO_SESSION_STORAGE_KEY = 'fu_market_ceo_session_v1';
 const CEO_LOGO_CACHE_KEY = 'fu_market_ceo_verification_logo_v1';
@@ -274,12 +284,12 @@ async function exchangeFirebaseUserForCeoSession(
       severity: 'critical',
       actorEmail: emailLabel,
       actorUid: fbUser.uid,
-      summary: `Blocked unauthorized Firebase account (${emailLabel}) from FU MARKET CEO login.`
+      summary: `Blocked unauthorized Firebase account (${emailLabel}) from NIGERIA CAMPUS MARKET CEO login.`
     });
     await recordFailedLoginAttempt(emailLabel, 'Unauthorized email for CEO login');
     await signOut(auth).catch(() => {});
     throw new Error(
-      'Access Denied: This Firebase account is not authorized as FU MARKET CEO SUPER ADMINISTRATOR.'
+      'Access Denied: This Firebase account is not authorized as NIGERIA CAMPUS MARKET CEO SUPER ADMINISTRATOR.'
     );
   }
 
@@ -349,7 +359,7 @@ export async function loginCeoWithEmailPassword(params: {
       eventType: 'UNAUTHORIZED_CEO_ACCESS',
       severity: 'critical',
       actorEmail: email,
-      summary: `Blocked unauthorized email attempt (${email}) on FU MARKET CEO ADMIN LOGIN.`
+      summary: `Blocked unauthorized email attempt (${email}) on NIGERIA CAMPUS MARKET CEO ADMIN LOGIN.`
     });
     if (failRes.locked) {
       throw new Error(
@@ -357,7 +367,7 @@ export async function loginCeoWithEmailPassword(params: {
       );
     }
     throw new Error(
-      'Access Denied: Only the authorized FU MARKET CEO SUPER ADMINISTRATOR account may sign in here.'
+      'Access Denied: Only the authorized NIGERIA CAMPUS MARKET CEO SUPER ADMINISTRATOR account may sign in here.'
     );
   }
 
@@ -690,7 +700,7 @@ export async function ceoUploadAndSaveVerificationLogo(
 ): Promise<CeoVerificationSettings> {
   const fbUser = auth.currentUser;
   if (!fbUser || !isAuthorizedCeoEmail(fbUser.email)) {
-    throw new Error('Unauthorized: Only the FU MARKET CEO can update the official verification logo.');
+    throw new Error('Unauthorized: Only the NIGERIA CAMPUS MARKET CEO can update the official verification logo.');
   }
 
   const uploadRes = await uploadCeoVerificationLogo(file, fbUser.uid, onProgress);
@@ -738,7 +748,7 @@ export async function ceoUploadAndSaveVerificationLogo(
 export async function ceoRemoveVerificationLogo(): Promise<CeoVerificationSettings> {
   const fbUser = auth.currentUser;
   if (!fbUser || !isAuthorizedCeoEmail(fbUser.email)) {
-    throw new Error('Unauthorized: Only the FU MARKET CEO can remove the official verification logo.');
+    throw new Error('Unauthorized: Only the NIGERIA CAMPUS MARKET CEO can remove the official verification logo.');
   }
 
   const headers = await getCeoAuthHeaders(false);
@@ -780,7 +790,7 @@ export async function ceoRemoveVerificationLogo(): Promise<CeoVerificationSettin
 }
 
 export async function ceoVerifyOrUnverifyEntity(params: {
-  targetType: 'user' | 'seller' | 'advertisement' | 'service';
+  targetType: 'user' | 'seller' | 'advertisement' | 'service' | 'house_agent';
   targetId: string;
   targetName: string;
   verify: boolean;
@@ -789,7 +799,7 @@ export async function ceoVerifyOrUnverifyEntity(params: {
 }): Promise<void> {
   const fbUser = auth.currentUser;
   if (!fbUser || !isAuthorizedCeoEmail(fbUser.email)) {
-    throw new Error('Unauthorized: Only the FU MARKET CEO can grant or revoke verification.');
+    throw new Error('Unauthorized: Only the NIGERIA CAMPUS MARKET CEO can grant or revoke verification.');
   }
 
   const headers = await getCeoAuthHeaders(false);
@@ -852,6 +862,16 @@ export async function ceoVerifyOrUnverifyEntity(params: {
         ...stripUndefined(verificationPayload),
         updatedAt: now
       });
+    } else if (params.targetType === 'house_agent') {
+      await updateDoc(doc(db, 'houseAgents', params.targetId), {
+        ...stripUndefined(verificationPayload),
+        updatedAt: now
+      });
+      if (params.linkedUserId) {
+        await setDoc(doc(db, 'users', params.linkedUserId), stripUndefined(verificationPayload), {
+          merge: true
+        });
+      }
     }
 
     await recordVerificationAudit({
@@ -870,6 +890,16 @@ export async function ceoVerifyOrUnverifyEntity(params: {
 // ============================================================================
 // REAL-DATA LOADERS FOR ALL 14 CEO SUPER ADMIN DASHBOARD SECTIONS
 // ============================================================================
+export interface PwaAnalyticsSummary {
+  totalPromptShown: number;
+  totalInstallAccepted: number;
+  totalInstallDismissed: number;
+  totalApkDownloads: number;
+  totalPlayStoreClicks: number;
+  byPlatform: Record<string, number>;
+  recentEvents: PwaInstallMetric[];
+}
+
 export interface CeoDashboardSnapshot {
   users: User[];
   sellers: SellerProfile[];
@@ -877,11 +907,14 @@ export interface CeoDashboardSnapshot {
   advertisements: Advertisement[];
   adPayments: AdPaymentRecord[];
   services: ServiceListing[];
+  houseAgents: HouseAgentProfile[];
+  institutions: Institution[];
   reports: {
     productReports: ReportItem[];
     announcementReports: AnnouncementReport[];
     serviceReports: ServiceReport[];
     huxReports: any[];
+    conversationReports: ConversationReportRecord[];
   };
   announcements: {
     sports: SportUpdatePost[];
@@ -893,6 +926,11 @@ export interface CeoDashboardSnapshot {
   verificationLogs: CeoVerificationLog[];
   securityLogs: CeoSecurityLog[];
   settings: CeoSecuritySettings;
+  appSettings: AppSettings;
+  pwaAnalytics: PwaAnalyticsSummary;
+  moderators: RegionalModerator[];
+  subscriptionPlans: SubscriptionPlan[];
+  paymentTransactions: PaymentTransaction[];
   adminSdkConfigured: boolean;
 }
 
@@ -915,6 +953,7 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     annReportsSnap,
     svcReportsSnap,
     huxReportsSnap,
+    convReportsSnap,
     sportSnap,
     genAnnSnap,
     safetySnap,
@@ -922,7 +961,14 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     verCfgSnap,
     verLogsSnap,
     secLogsSnap,
-    backendSecRes
+    houseAgentsSnap,
+    institutionsSnap,
+    backendSecRes,
+    appSettingsRes,
+    pwaAnalyticsRes,
+    moderatorsRes,
+    plansRes,
+    txRes
   ] = await Promise.all([
     getDocs(query(collection(db, 'users'), limit(500))),
     getDocs(query(collection(db, 'sellerProfiles'), limit(500))),
@@ -934,6 +980,7 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     getDocs(query(collection(db, 'announcement_reports'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'serviceReports'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'huxReports'), limit(300))).catch(() => null),
+    getDocs(query(collection(db, 'conversationReports'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'sport_updates'), limit(150))).catch(() => null),
     getDocs(query(collection(db, 'general_announcements'), limit(150))).catch(() => null),
     getDocs(query(collection(db, 'safety_announcements'), limit(100))).catch(() => null),
@@ -941,7 +988,14 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     getDoc(doc(db, 'platform_settings', 'ceo_verification')).catch(() => null),
     getDocs(query(collection(db, 'ceo_verification_logs'), orderBy('createdAt', 'desc'), limit(200))).catch(() => null),
     getDocs(query(collection(db, 'ceo_security_logs'), orderBy('createdAt', 'desc'), limit(200))).catch(() => null),
-    fetch(buildApiUrl('/api/ceo/security-logs'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    getDocs(query(collection(db, 'houseAgents'), limit(300))).catch(() => null),
+    getDocs(query(collection(db, 'institutions'), limit(300))).catch(() => null),
+    fetch(buildApiUrl('/api/ceo/security-logs'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/ceo/app-settings')).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/ceo/analytics/installs'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/ceo/moderators'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/payments/plans')).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/payments/ceo/transactions'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
   ]);
 
   const users: User[] = usersSnap.docs.map((d) => {
@@ -1014,6 +1068,32 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
   });
 
   const services = servicesSnap.docs.map((d) => sanitizeServiceDoc(d.id, d.data()));
+  const houseAgents: HouseAgentProfile[] = (houseAgentsSnap?.docs || []).map((d) => {
+    const data = d.data() as any;
+    return {
+      id: d.id,
+      userId: String(data?.userId || d.id),
+      agentName: String(data?.agentName || 'House Agent'),
+      agencyName: data?.agencyName ? String(data.agencyName) : undefined,
+      institutionId: String(data?.institutionId || DEFAULT_INSTITUTION_ID),
+      campus: String(data?.campus || 'Main Campus (Wukari)'),
+      areaCovered: String(data?.areaCovered || 'Wukari'),
+      phone: String(data?.phone || ''),
+      whatsapp: String(data?.whatsapp || ''),
+      bio: String(data?.bio || ''),
+      photoUrl: data?.photoUrl ? String(data.photoUrl) : undefined,
+      roleType: data?.roleType === 'landlord' ? 'landlord' : 'house_agent',
+      isVerified: Boolean(data?.isVerified || data?.ceoVerified),
+      ceoVerified: Boolean(data?.ceoVerified || data?.isVerified),
+      verifiedBadgeText: data?.verifiedBadgeText ? String(data.verifiedBadgeText) : undefined,
+      verifiedByCeoAt: data?.verifiedByCeoAt ? toIsoString(data.verifiedByCeoAt) : undefined,
+      verifiedByCeoEmail: data?.verifiedByCeoEmail ? String(data.verifiedByCeoEmail) : undefined,
+      verificationNotes: data?.verificationNotes ? String(data.verificationNotes) : undefined,
+      status: data?.status === 'suspended' ? 'suspended' : 'active',
+      createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString(),
+      updatedAt: data?.updatedAt ? toIsoString(data.updatedAt) : new Date().toISOString()
+    };
+  });
 
   const productReports: ReportItem[] = (prodReportsSnap?.docs || []).map((d) => {
     const data = d.data() as any;
@@ -1132,12 +1212,71 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  const conversationReports: ConversationReportRecord[] = (convReportsSnap?.docs || []).map((d) => ({
+    id: d.id,
+    ...(d.data() as any),
+    createdAt: d.data()?.createdAt ? toIsoString(d.data().createdAt) : new Date().toISOString()
+  }));
+
+  const instMap = new Map<string, Institution>();
+  for (const inst of VERIFIED_NIGERIAN_INSTITUTIONS) {
+    instMap.set(inst.id, inst);
+  }
+  for (const d of institutionsSnap?.docs || []) {
+    const data = d.data() || {};
+    const campuses =
+      Array.isArray(data.campuses) && data.campuses.length > 0
+        ? data.campuses.map(String)
+        : [String(data.campus || `${String(data.location || 'Main')} Campus`)];
+    instMap.set(d.id, {
+      id: String(data.id || d.id),
+      name: String(data.name || d.id),
+      shortName: String(data.shortName || data.name || d.id),
+      type: data.type || 'Federal University',
+      state: String(data.state || 'Taraba'),
+      location: String(data.location || ''),
+      campuses,
+      campus: String(data.campus || campuses[0] || 'Main Campus'),
+      status: data.status === 'inactive' ? 'inactive' : 'active',
+      isDefault: Boolean(data.isDefault || d.id === DEFAULT_INSTITUTION_ID),
+      logoUrl: data.logoUrl ? String(data.logoUrl) : undefined,
+      bannerUrl: data.bannerUrl ? String(data.bannerUrl) : undefined,
+      description: data.description ? String(data.description) : undefined,
+      primaryColor: data.primaryColor ? String(data.primaryColor) : undefined,
+      secondaryColor: data.secondaryColor ? String(data.secondaryColor) : undefined
+    });
+  }
+  const institutions = Array.from(instMap.values()).sort((a, b) =>
+    a.id === DEFAULT_INSTITUTION_ID ? -1 : b.id === DEFAULT_INSTITUTION_ID ? 1 : a.name.localeCompare(b.name)
+  );
+
   const settings: CeoSecuritySettings = backendSecRes?.settings || {
     sessionTimeoutMinutes: 60,
     requirePhoneCheckOnLogin: false,
     reauthWindowMinutes: 10,
     maxFailedLoginAttempts: 5,
     lockoutDurationMinutes: 15
+  };
+
+  const appSettings: AppSettings = appSettingsRes?.settings || {
+    id: 'app_distribution',
+    apkUrl: '',
+    playStoreUrl: '',
+    apkEnabled: false,
+    appVersion: '2.0.0',
+    releaseNotes: 'NIGERIA CAMPUS MARKET PWA with nationwide campus search, notifications, and NGN subscriptions.',
+    installAnnouncement: 'Install NIGERIA CAMPUS MARKET on your Android, iPhone, or desktop for instant campus access.',
+    installInstructions: 'Tap "Install Web App" on Chrome/Android or use Share -> "Add to Home Screen" on Safari iOS.'
+  };
+
+  const pwaAnalytics: PwaAnalyticsSummary = pwaAnalyticsRes?.summary || {
+    totalPromptShown: 0,
+    totalInstallAccepted: 0,
+    totalInstallDismissed: 0,
+    totalApkDownloads: 0,
+    totalPlayStoreClicks: 0,
+    byPlatform: {},
+    recentEvents: []
   };
 
   return {
@@ -1147,11 +1286,14 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     advertisements,
     adPayments,
     services,
+    houseAgents,
+    institutions,
     reports: {
       productReports,
       announcementReports,
       serviceReports,
-      huxReports
+      huxReports,
+      conversationReports
     },
     announcements: {
       sports,
@@ -1163,6 +1305,11 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     verificationLogs,
     securityLogs,
     settings,
+    appSettings,
+    pwaAnalytics,
+    moderators: Array.isArray(moderatorsRes?.moderators) ? moderatorsRes.moderators : [],
+    subscriptionPlans: Array.isArray(plansRes?.plans) ? plansRes.plans : [],
+    paymentTransactions: Array.isArray(txRes?.transactions) ? txRes.transactions : [],
     adminSdkConfigured: Boolean(backendSecRes?.adminSdkConfigured)
   };
 }
@@ -1190,7 +1337,7 @@ export async function ceoUpdateUserSuspension(params: {
 
   await updateDoc(doc(db, 'users', params.userId), {
     isSuspended: params.suspend,
-    suspensionReason: params.suspend ? params.reason || 'Suspended by FU MARKET CEO.' : '',
+    suspensionReason: params.suspend ? params.reason || 'Suspended by NIGERIA CAMPUS MARKET CEO.' : '',
     updatedAt: new Date().toISOString()
   });
 
@@ -1231,7 +1378,7 @@ export async function ceoUpdateSecuritySettings(
 }
 
 export async function ceoResolveReport(
-  collectionName: 'reports' | 'announcement_reports' | 'serviceReports' | 'huxReports',
+  collectionName: 'reports' | 'announcement_reports' | 'serviceReports' | 'huxReports' | 'conversationReports',
   reportId: string,
   status: 'resolved' | 'dismissed',
   adminNotes?: string
@@ -1247,7 +1394,7 @@ export async function ceoResolveReport(
 }
 
 export async function ceoDeleteReport(
-  collectionName: 'reports' | 'announcement_reports' | 'serviceReports' | 'huxReports',
+  collectionName: 'reports' | 'announcement_reports' | 'serviceReports' | 'huxReports' | 'conversationReports',
   reportId: string
 ): Promise<void> {
   await deleteDoc(doc(db, collectionName, reportId));
@@ -1286,3 +1433,151 @@ export async function ceoDeleteAnnouncement(
 ): Promise<void> {
   await deleteDoc(doc(db, collectionName, id));
 }
+
+// ============================================================================
+// APP DISTRIBUTION SETTINGS & PWA TELEMETRY (PUBLIC READ / CEO WRITE)
+// ============================================================================
+export async function fetchPublicAppSettings(): Promise<AppSettings> {
+  const fallback: AppSettings = {
+    id: 'app_distribution',
+    apkUrl: '',
+    playStoreUrl: '',
+    apkEnabled: false,
+    appVersion: '2.0.0',
+    releaseNotes: 'NIGERIA CAMPUS MARKET PWA with nationwide campus search, real-time notifications, and NGN subscriptions.',
+    installAnnouncement: 'Install NIGERIA CAMPUS MARKET for faster access across Nigerian universities and polytechnics.',
+    installInstructions: 'Android/Chrome: Tap Install Web App. iOS Safari: Tap Share -> Add to Home Screen.'
+  };
+  try {
+    const res = await fetch(buildApiUrl('/api/ceo/app-settings'));
+    if (res.ok) {
+      const payload = await res.json();
+      if (payload?.settings) return payload.settings as AppSettings;
+    }
+  } catch {
+    // Fallback to Firestore
+  }
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'app_distribution'));
+    if (snap.exists()) {
+      const d = snap.data() as any;
+      return { ...fallback, ...d, id: snap.id };
+    }
+  } catch {
+    // Ignore
+  }
+  return fallback;
+}
+
+export async function ceoUpdateAppSettings(updates: Partial<AppSettings>): Promise<AppSettings> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl('/api/ceo/app-settings'), {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(updates)
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err: any = new Error(payload?.error || 'Failed to update App Settings.');
+    if (payload?.code) err.code = payload.code;
+    throw err;
+  }
+  await setDoc(
+    doc(db, 'platform_settings', 'app_distribution'),
+    stripUndefined({
+      ...payload.settings,
+      updatedBy: auth.currentUser?.email || CEO_EMAIL,
+      updatedAt: new Date().toISOString()
+    }),
+    { merge: true }
+  ).catch(() => {});
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nuh:app-settings-updated', { detail: payload.settings }));
+  }
+  return payload.settings as AppSettings;
+}
+
+export async function trackPwaInstallEvent(
+  eventType: PwaEventType,
+  platform: PwaInstallMetric['platform'],
+  institutionId?: string
+): Promise<void> {
+  try {
+    await fetch(buildApiUrl('/api/ceo/pwa-track'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, platform, institutionId })
+    });
+  } catch {
+    // Telemetry must never interrupt user flow
+  }
+}
+
+export async function ceoFetchInstallAnalytics(): Promise<PwaAnalyticsSummary> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl('/api/ceo/analytics/installs'), { headers });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload?.error || 'Failed to load PWA install analytics.');
+  }
+  return payload.summary as PwaAnalyticsSummary;
+}
+
+// ============================================================================
+// REGIONAL MODERATOR MANAGEMENT (CEO-ONLY, NON-CEO PERMISSIONS)
+// ============================================================================
+export async function ceoFetchModerators(): Promise<RegionalModerator[]> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl('/api/ceo/moderators'), { headers });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload?.error || 'Failed to load moderators.');
+  return Array.isArray(payload.moderators) ? payload.moderators : [];
+}
+
+export async function ceoSaveModerator(input: {
+  email: string;
+  name: string;
+  assignedInstitutionId?: string;
+  assignedState?: string;
+  permissions: RegionalModerator['permissions'];
+}): Promise<RegionalModerator> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl('/api/ceo/moderators'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(input)
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err: any = new Error(payload?.error || 'Failed to save moderator.');
+    if (payload?.code) err.code = payload.code;
+    throw err;
+  }
+  return payload.moderator as RegionalModerator;
+}
+
+export async function ceoUpdateModeratorStatus(
+  id: string,
+  updates: Partial<Pick<RegionalModerator, 'status' | 'assignedInstitutionId' | 'assignedState' | 'permissions'>>
+): Promise<RegionalModerator> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl(`/api/ceo/moderators/${encodeURIComponent(id)}`), {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(updates)
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload?.error || 'Failed to update moderator.');
+  return payload.moderator as RegionalModerator;
+}
+
+export async function ceoDeleteModerator(id: string): Promise<void> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl(`/api/ceo/moderators/${encodeURIComponent(id)}`), {
+    method: 'DELETE',
+    headers
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload?.error || 'Failed to delete moderator.');
+}
+

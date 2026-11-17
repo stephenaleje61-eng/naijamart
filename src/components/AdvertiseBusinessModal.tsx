@@ -76,7 +76,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
       .catch(() => {
         setPaystackConfigured(false);
         setPaystackStatusMessage(
-          `Paystack checkout status could not be reached. Please contact FU MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp for payment instructions.`
+          `Paystack checkout status could not be reached. Please contact NIGERIA CAMPUS MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp for payment instructions.`
         );
       });
   }, []);
@@ -166,13 +166,13 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
       });
       setPayRefInput(initRes.reference);
       setPayResultMsg(
-        `Transaction initialized (${initRes.reference}). Complete checkout in the Paystack window, then click "Verify Payment" below.`
+        `Transaction initialized (${initRes.reference}). Redirecting to Paystack checkout—or copy/save your reference and click "Verify Payment" below.`
       );
-      window.open(initRes.authorizationUrl, '_blank', 'noopener,noreferrer');
+      window.location.assign(initRes.authorizationUrl);
     } catch (err: any) {
       setPayErrorMsg(
         err?.message ||
-          `Unable to start Paystack checkout. Please contact FU MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp.`
+          `Unable to start Paystack checkout. Please contact NIGERIA CAMPUS MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp.`
       );
     } finally {
       setPaying(false);
@@ -209,24 +209,24 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="Advertise Your Business on FU MARKET"
+      aria-label="Advertise Your Business on NIGERIA CAMPUS MARKET"
     >
-      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden my-4 text-[#111111]">
+      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden my-4 text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#0B6B3A] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#065D36]">
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#F2B90D]">
+            <h2 className="text-base sm:text-lg font-black text-[#D4A62A]">
               ADVERTISE YOUR BUSINESS
             </h2>
             <p className="text-xs text-white/90">
-              FU MARKET ADS · Reach FUWUKARI Students Directly
+              NIGERIA CAMPUS MARKET ADS · Reach Students Nationwide
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="w-9 h-9 rounded-lg bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+            className="w-9 h-9 rounded-lg bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -239,9 +239,9 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
             <div className="space-y-5">
               <div className="p-4 sm:p-5 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl space-y-2">
                 <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-[#0B6B3A] shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-[#087443] shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="text-sm font-black text-[#14532D] leading-relaxed">
+                    <p className="text-sm font-black text-[#065D36] leading-relaxed">
                       {AD_SUBMISSION_SUCCESS_MESSAGE}
                     </p>
                     <p className="text-xs text-[#333333] tabular-nums">
@@ -264,12 +264,12 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
               <div className="p-4 sm:p-5 border border-[#E5E7EB] rounded-xl space-y-3 bg-[#F9FAFB]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-[#0B6B3A]" />
-                    <h3 className="text-sm font-black text-[#111111]">
+                    <CreditCard className="w-4 h-4 text-[#087443]" />
+                    <h3 className="text-sm font-black text-[#10251D]">
                       Paystack Online Payment ({formatNaira(submittedAd.packagePrice)})
                     </h3>
                   </div>
-                  <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
+                  <ShieldCheck className="w-4 h-4 text-[#087443]" />
                 </div>
 
                 {paystackConfigured === false ? (
@@ -292,7 +292,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                       type="button"
                       disabled={paying}
                       onClick={handlePayWithPaystack}
-                      className="px-4 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-2"
+                      className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-2"
                     >
                       {paying && <Loader2 className="w-4 h-4 animate-spin" />}
                       <span>Pay {formatNaira(submittedAd.packagePrice)} via Paystack</span>
@@ -304,13 +304,13 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                         placeholder="Enter Paystack reference to verify..."
                         value={payRefInput}
                         onChange={(e) => setPayRefInput(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-lg bg-white outline-none focus:border-[#0B6B3A]"
+                        className="flex-1 px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-lg bg-white outline-none focus:border-[#087443]"
                       />
                       <button
                         type="button"
                         disabled={paying || !payRefInput.trim()}
                         onClick={handleVerifyPaystackRef}
-                        className="px-4 py-2 bg-[#111111] hover:bg-[#14532D] disabled:opacity-50 text-white text-xs font-bold rounded-lg transition whitespace-nowrap"
+                        className="px-4 py-2 bg-[#10251D] hover:bg-[#065D36] disabled:opacity-50 text-white text-xs font-bold rounded-lg transition whitespace-nowrap"
                       >
                         Verify Payment
                       </button>
@@ -319,7 +319,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                 )}
 
                 {payResultMsg && (
-                  <p className="text-xs font-bold text-[#0B6B3A] bg-white p-2.5 rounded-lg border border-[#86EFAC]">
+                  <p className="text-xs font-bold text-[#087443] bg-white p-2.5 rounded-lg border border-[#86EFAC]">
                     {payResultMsg}
                   </p>
                 )}
@@ -334,7 +334,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 bg-[#111111] text-white text-xs font-bold rounded-xl hover:bg-[#14532D] transition"
+                  className="px-5 py-2.5 bg-[#10251D] text-white text-xs font-bold rounded-xl hover:bg-[#065D36] transition"
                 >
                   Done
                 </button>
@@ -347,7 +347,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
               <div className="p-3.5 bg-[#FFF7ED] border border-[#FDBA74] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="text-xs text-[#7C2D12]">
                   <p className="font-bold">Need direct help or custom advert rates?</p>
-                  <p className="mt-0.5 tabular-nums">FU MARKET CEO – {CEO_ADS_PHONE}</p>
+                  <p className="mt-0.5 tabular-nums">NIGERIA CAMPUS MARKET CEO – {CEO_ADS_PHONE}</p>
                 </div>
                 <CeoContactButton compact showSubLabel={false} />
               </div>
@@ -361,7 +361,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
 
               {/* Package Selector */}
               <div className="space-y-2">
-                <label className="block text-xs font-black text-[#111111]">
+                <label className="block text-xs font-black text-[#10251D]">
                   Select Advertising Package *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -374,14 +374,14 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                         onClick={() => setPackageId(pkg.id)}
                         className={`p-3 rounded-xl border text-left transition ${
                           active
-                            ? 'border-[#0B6B3A] bg-[#F0FDF4]'
-                            : 'border-[#E5E7EB] bg-white hover:border-[#0B6B3A]/60'
+                            ? 'border-[#087443] bg-[#F0FDF4]'
+                            : 'border-[#E5E7EB] bg-white hover:border-[#087443]/60'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-xs font-black text-[#111111]">{pkg.name}</span>
+                          <span className="text-xs font-black text-[#10251D]">{pkg.name}</span>
                         </div>
-                        <p className="text-base font-black text-[#0B6B3A] mt-1 tabular-nums">
+                        <p className="text-base font-black text-[#087443] mt-1 tabular-nums">
                           {formatNaira(pkg.priceNaira)}
                         </p>
                         <p className="text-[11px] text-[#555555] mt-0.5 tabular-nums">
@@ -396,7 +396,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
               {/* Business & Owner Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     Business Name *
                   </label>
                   <input
@@ -406,11 +406,11 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="e.g. Wukari Campus Kitchen"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     Owner&apos;s Name *
                   </label>
                   <input
@@ -420,11 +420,11 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
                     placeholder="Your full name"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     Phone Number *
                   </label>
                   <input
@@ -434,11 +434,11 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="e.g. 08012345678"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     WhatsApp Number *
                   </label>
                   <input
@@ -448,17 +448,17 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
                     placeholder="e.g. 08012345678"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     Business Category *
                   </label>
                   <select
                     value={businessCategory}
                     onChange={(e) => setBusinessCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none bg-white"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none bg-white"
                   >
                     {BUSINESS_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -468,7 +468,7 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
                     Business Location *
                   </label>
                   <input
@@ -478,14 +478,14 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="e.g. Behind LT, New Site, Wukari"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                   />
                 </div>
               </div>
 
               {/* Ad Content */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">
+                <label className="block text-xs font-bold text-[#10251D] mb-1">
                   Advertisement Title / Headline *
                 </label>
                 <input
@@ -495,12 +495,12 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Catchy headline for FUWUKARI students"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">
+                <label className="block text-xs font-bold text-[#10251D] mb-1">
                   Advertisement Description *
                 </label>
                 <textarea
@@ -510,12 +510,12 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe your products, prices, discounts, delivery hours, and why students should contact you..."
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">
+                <label className="block text-xs font-bold text-[#10251D] mb-1">
                   Website or Social Media Link (Optional)
                 </label>
                 <input
@@ -524,17 +524,17 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                   value={websiteOrSocialLink}
                   onChange={(e) => setWebsiteOrSocialLink(e.target.value)}
                   placeholder="https://instagram.com/yourbusiness"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
                 />
               </div>
 
               {/* Firebase Storage Uploads */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3.5 border border-[#E5E7EB] rounded-xl space-y-2 bg-[#F9FAFB]">
-                  <label className="block text-xs font-bold text-[#111111]">
+                  <label className="block text-xs font-bold text-[#10251D]">
                     Advertisement Image / Banner *
                   </label>
-                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-dashed border-[#0B6B3A] rounded-xl text-xs font-bold text-[#0B6B3A] cursor-pointer hover:bg-[#F0FDF4] transition">
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-dashed border-[#087443] rounded-xl text-xs font-bold text-[#087443] cursor-pointer hover:bg-[#F0FDF4] transition">
                     <Upload className="w-4 h-4" />
                     <span>{uploadingBanner ? `Uploading ${bannerProgress}%` : imageUrl ? 'Change Banner Image' : 'Upload Banner Image'}</span>
                     <input
@@ -554,10 +554,10 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
                 </div>
 
                 <div className="p-3.5 border border-[#E5E7EB] rounded-xl space-y-2 bg-[#F9FAFB]">
-                  <label className="block text-xs font-bold text-[#111111]">
+                  <label className="block text-xs font-bold text-[#10251D]">
                     Business Logo (Optional)
                   </label>
-                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-dashed border-[#E5E7EB] rounded-xl text-xs font-bold text-[#555555] cursor-pointer hover:border-[#0B6B3A] transition">
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-dashed border-[#E5E7EB] rounded-xl text-xs font-bold text-[#555555] cursor-pointer hover:border-[#087443] transition">
                     <Upload className="w-4 h-4" />
                     <span>{uploadingLogo ? `Uploading ${logoProgress}%` : logoUrl ? 'Change Logo' : 'Upload Business Logo'}</span>
                     <input
@@ -579,12 +579,12 @@ export const AdvertiseBusinessModal: React.FC<AdvertiseBusinessModalProps> = ({
 
               <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#E5E7EB]">
                 <p className="text-[11px] text-[#555555]">
-                  Selected: <strong className="text-[#111111]">{selectedPkg.name}</strong> ({formatNaira(selectedPkg.priceNaira)} · {selectedPkg.durationDays} days)
+                  Selected: <strong className="text-[#10251D]">{selectedPkg.name}</strong> ({formatNaira(selectedPkg.priceNaira)} · {selectedPkg.durationDays} days)
                 </p>
                 <button
                   type="submit"
                   disabled={submitting || uploadingBanner || uploadingLogo}
-                  className="px-6 py-3 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2 min-h-[44px]"
+                  className="px-6 py-3 bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>Submit Advertisement</span>

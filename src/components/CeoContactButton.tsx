@@ -25,16 +25,16 @@ export const CeoContactButton: React.FC<CeoContactButtonProps> = ({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center justify-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] text-white font-black rounded-xl transition shadow-xs whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EA580C] ${
+        className={`inline-flex items-center justify-center gap-2 bg-[#087443] hover:bg-[#065D36] text-white font-black rounded-xl transition shadow-xs whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4A62A] ${
           compact ? 'px-4 py-2.5 text-xs min-h-[40px]' : 'px-5 py-3 text-xs sm:text-sm min-h-[44px]'
         } ${fullWidth ? 'w-full' : ''}`}
       >
-        <MessageCircle className="w-4 h-4 shrink-0" />
+        <MessageCircle className="w-4 h-4 shrink-0 text-[#D4A62A]" />
         <span>MESSAGE CEO FOR ANY ADVERT</span>
       </a>
       {showSubLabel && (
         <span className="text-xs font-extrabold tracking-tight text-current/90 tabular-nums">
-          FU MARKET CEO – {CEO_ADS_PHONE}
+          NIGERIA CAMPUS MARKET CEO – {CEO_ADS_PHONE}
         </span>
       )}
     </div>

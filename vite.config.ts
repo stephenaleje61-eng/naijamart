@@ -11,17 +11,27 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'fuwukari-crest.png', 'fuwukari-logo.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
+        includeAssets: [
+          'icon.svg',
+          'fuwukari-crest.png',
+          'fuwukari-logo.png',
+          'apple-touch-icon.png',
+          'pwa-192x192.png',
+          'pwa-512x512.png',
+          'pwa-maskable-512x512.png'
+        ],
         manifest: {
           id: '/',
-          name: 'FU MARKET — FUWUKARI Student Marketplace',
-          short_name: 'FU MARKET',
-          description: 'Buy and sell sharp sharp inside FUWUKARI. Hostel items, textbooks, food, electronics, fashion, and gas & cooking essentials.',
-          theme_color: '#0B6B3A',
-          background_color: '#F5F5F5',
+          name: 'NIGERIA CAMPUS MARKET',
+          short_name: 'NG Campus Market',
+          description: "Buy. Sell. Connect. Grow Across Nigerian Campuses. Nigeria's National University & Polytechnic Marketplace, Food, Accommodation, Academic & Student Network.",
+          theme_color: '#087443',
+          background_color: '#F4F8F5',
           display: 'standalone',
+          orientation: 'portrait-primary',
           start_url: '/',
           scope: '/',
+          categories: ['shopping', 'education', 'social'],
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -46,7 +56,16 @@ export default defineConfig(() => {
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          navigateFallbackDenylist: [/^\/api\//, /^\/auth\//, /^\/uploads\//],
           runtimeCaching: [
+            {
+              urlPattern: /^.*\/api\/(ceo|payments|admin|auth)\/.*/i,
+              handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
+              handler: 'NetworkOnly',
+            },
             {
               urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',
@@ -78,7 +97,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
           type: 'module',
         },
       }),

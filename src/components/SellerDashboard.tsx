@@ -151,24 +151,24 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const buildShareHref = (prod: Product) => {
     const origin = window.location.origin;
     const text = encodeURIComponent(
-      `Check out "${prod.title}" (${formatNaira(prod.price)}) on FU MARKET: ${origin}/#product-${prod.id}`
+      `Check out "${prod.title}" (${formatNaira(prod.price)}) on NIGERIA CAMPUS MARKET: ${origin}/#product-${prod.id}`
     );
     return `https://wa.me/?text=${text}`;
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-5xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[90vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-5xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[90vh] flex flex-col text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#0B6B3A] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#065D36]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F2B90D] flex items-center justify-center text-[#111111] font-black text-lg shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-[#D4A62A] flex items-center justify-center text-[#10251D] font-black text-lg shadow-md">
               <Store className="w-5 h-5" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-black text-white">
-                  {sellerProfile?.shopName || 'FU MARKET Seller Hub'}
+                  {sellerProfile?.shopName || 'NIGERIA CAMPUS MARKET Seller Hub'}
                 </h2>
                 <CeoVerifiedBadge
                   verified={Boolean(sellerProfile?.ceoVerified || sellerProfile?.isVerified || user?.ceoVerified || user?.isVerified)}
@@ -186,15 +186,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             {user?.id && (
               <button
                 onClick={() => onOpenStorefront(user.id)}
-                className="px-3 py-1.5 bg-[#14532D] hover:bg-[#0B6B3A] border border-white/25 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+                className="px-3 py-1.5 bg-[#065D36] hover:bg-[#087443] border border-white/25 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-[#F2B90D]" />
+                <ExternalLink className="w-3.5 h-3.5 text-[#D4A62A]" />
                 <span className="hidden sm:inline">Preview Storefront</span>
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+              className="w-8 h-8 rounded-full bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -208,8 +208,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               onClick={() => setActiveTab('listings')}
               className={`py-3.5 border-b-2 transition ${
                 activeTab === 'listings'
-                  ? 'border-[#0B6B3A] text-[#0B6B3A] font-black'
-                  : 'border-transparent text-[#555555] hover:text-[#111111]'
+                  ? 'border-[#087443] text-[#087443] font-black'
+                  : 'border-transparent text-[#555555] hover:text-[#10251D]'
               }`}
             >
               My Listings ({listings.length})
@@ -218,8 +218,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               onClick={() => setActiveTab('profile')}
               className={`py-3.5 border-b-2 transition ${
                 activeTab === 'profile'
-                  ? 'border-[#0B6B3A] text-[#0B6B3A] font-black'
-                  : 'border-transparent text-[#555555] hover:text-[#111111]'
+                  ? 'border-[#087443] text-[#087443] font-black'
+                  : 'border-transparent text-[#555555] hover:text-[#10251D]'
               }`}
             >
               Storefront Settings
@@ -228,7 +228,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           <button
             onClick={onOpenSellModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs rounded-xl transition shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs rounded-xl transition shadow-sm"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>Post New Product</span>
@@ -236,14 +236,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         {/* Body Container */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-[#F5F5F5]">
+        <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-[#F4F8F5]">
           {errorMsg && (
-            <div className="p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
+            <div className="p-3 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#111111] shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#10251D] shrink-0" />
                 <span>{errorMsg}</span>
               </div>
-              <button type="button" onClick={() => setErrorMsg(null)} className="text-[#111111] hover:opacity-70">
+              <button type="button" onClick={() => setErrorMsg(null)} className="text-[#10251D] hover:opacity-70">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -255,8 +255,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                 Total Listings
               </span>
-              <span className="text-2xl font-black text-[#111111] mt-1 block flex items-center gap-1.5">
-                <Package className="w-5 h-5 text-[#0B6B3A]" />
+              <span className="text-2xl font-black text-[#10251D] mt-1 block flex items-center gap-1.5">
+                <Package className="w-5 h-5 text-[#087443]" />
                 {stats.totalProducts ?? listings.length}
               </span>
             </div>
@@ -265,7 +265,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                 Active Products
               </span>
-              <span className="text-2xl font-black text-[#0B6B3A] mt-1 block">
+              <span className="text-2xl font-black text-[#087443] mt-1 block">
                 {stats.activeCount ?? listings.filter((l) => l.status === 'active').length}
               </span>
             </div>
@@ -274,8 +274,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                 WhatsApp Leads
               </span>
-              <span className="text-2xl font-black text-[#0B6B3A] mt-1 block flex items-center gap-1.5">
-                <MessageCircle className="w-5 h-5 text-[#0B6B3A]" />
+              <span className="text-2xl font-black text-[#087443] mt-1 block flex items-center gap-1.5">
+                <MessageCircle className="w-5 h-5 text-[#087443]" />
                 {stats.totalWhatsAppClicks ?? 0}
               </span>
             </div>
@@ -284,8 +284,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                 Total Views
               </span>
-              <span className="text-2xl font-black text-[#111111] mt-1 block flex items-center gap-1.5">
-                <Eye className="w-5 h-5 text-[#0B6B3A]" />
+              <span className="text-2xl font-black text-[#10251D] mt-1 block flex items-center gap-1.5">
+                <Eye className="w-5 h-5 text-[#087443]" />
                 {stats.totalViews ?? 0}
               </span>
             </div>
@@ -300,14 +300,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
               ) : listings.length === 0 ? (
                 <div className="text-center py-12 bg-[#FFFFFF] rounded-2xl border border-dashed border-[#E5E7EB]">
-                  <Store className="w-10 h-10 text-[#0B6B3A] mx-auto mb-2" />
-                  <h4 className="font-black text-[#111111] text-sm">No Listings Yet</h4>
+                  <Store className="w-10 h-10 text-[#087443] mx-auto mb-2" />
+                  <h4 className="font-black text-[#10251D] text-sm">No Listings Yet</h4>
                   <p className="text-xs text-[#555555] max-w-sm mx-auto mt-1 mb-4">
-                    Upload your products with genuine photos and reach FUWUKARI students directly on FU MARKET.
+                    Upload your products with genuine photos and reach students directly on NIGERIA CAMPUS MARKET.
                   </p>
                   <button
                     onClick={onOpenSellModal}
-                    className="px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs rounded-xl"
+                    className="px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs rounded-xl"
                   >
                     Post Your First Product
                   </button>
@@ -320,7 +320,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#F5F5F5]">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#F4F8F5]">
                           <ProductImage
                             src={getProductDisplayImage(item.images, item.imageUrl)}
                             fallbackSrcs={getValidProductImages(item.images, item.imageUrl)}
@@ -330,32 +330,32 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                           />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-xs sm:text-sm font-black text-[#111111] line-clamp-1">
+                          <h4 className="text-xs sm:text-sm font-black text-[#10251D] line-clamp-1">
                             {item.title}
                           </h4>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <span className="text-xs font-black bg-[#0B6B3A] text-[#F2B90D] px-2 py-0.5 rounded-md">
+                            <span className="text-xs font-black bg-[#087443] text-[#D4A62A] px-2 py-0.5 rounded-md">
                               {formatNaira(item.price)}
                             </span>
                             <span className="text-xs text-[#555555] font-semibold">• Qty: {item.quantity}</span>
                             <span
                               className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
                                 item.status === 'active'
-                                  ? 'bg-[#0B6B3A]/10 text-[#0B6B3A] border border-[#0B6B3A]/30'
+                                  ? 'bg-[#087443]/10 text-[#087443] border border-[#087443]/30'
                                   : item.status === 'sold'
-                                  ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111]'
-                                  : 'bg-[#F5F5F5] text-[#555555] border border-[#E5E7EB]'
+                                  ? 'bg-[#10251D] text-[#FFFFFF] border border-[#10251D]'
+                                  : 'bg-[#F4F8F5] text-[#555555] border border-[#E5E7EB]'
                               }`}
                             >
                               {item.status}
                             </span>
                             {item.moderationStatus === 'pending_review' && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFF8DB] text-[#111111] border border-[#F2B90D] flex items-center gap-1">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFF8DB] text-[#10251D] border border-[#D4A62A] flex items-center gap-1">
                                 <AlertTriangle className="w-3 h-3" /> Pending Review
                               </span>
                             )}
                             {item.moderationStatus === 'rejected' && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#111111] text-[#F2B90D] border border-[#111111] flex items-center gap-1">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10251D] text-[#D4A62A] border border-[#10251D] flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" /> Rejected
                               </span>
                             )}
@@ -365,7 +365,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             <span className="flex items-center gap-1">
                               <Eye className="w-3 h-3" /> {item.views || 0} views
                             </span>
-                            <span className="text-[#0B6B3A] flex items-center gap-1 font-bold">
+                            <span className="text-[#087443] flex items-center gap-1 font-bold">
                               <MessageCircle className="w-3 h-3" /> {item.whatsappClicks || 0} WhatsApp clicks
                             </span>
                           </div>
@@ -377,7 +377,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                           href={buildShareHref(item)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 text-[#0B6B3A] hover:bg-[#0B6B3A] hover:text-white bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl transition"
+                          className="p-2 text-[#087443] hover:bg-[#087443] hover:text-white bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl transition"
                           title="Share to WhatsApp"
                         >
                           <Share2 className="w-4 h-4" />
@@ -385,9 +385,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                         <button
                           onClick={() => handleOpenEditProduct(item)}
-                          className="px-3 py-1.5 text-xs font-bold bg-[#F5F5F5] border border-[#E5E7EB] hover:border-[#0B6B3A] text-[#111111] rounded-xl transition flex items-center gap-1"
+                          className="px-3 py-1.5 text-xs font-bold bg-[#F4F8F5] border border-[#E5E7EB] hover:border-[#087443] text-[#10251D] rounded-xl transition flex items-center gap-1"
                         >
-                          <Edit className="w-3.5 h-3.5 text-[#0B6B3A]" />
+                          <Edit className="w-3.5 h-3.5 text-[#087443]" />
                           <span>Edit</span>
                         </button>
 
@@ -396,7 +396,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => handleDeleteProduct(item.id)}
-                              className="px-2.5 py-1.5 text-[11px] font-black bg-[#111111] hover:bg-black text-[#F2B90D] rounded-xl"
+                              className="px-2.5 py-1.5 text-[11px] font-black bg-[#10251D] hover:bg-black text-[#D4A62A] rounded-xl"
                             >
                               Confirm Delete
                             </button>
@@ -411,7 +411,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         ) : (
                           <button
                             onClick={() => setConfirmDeleteId(item.id)}
-                            className="p-2 text-[#555555] hover:text-[#111111] bg-[#F5F5F5] border border-[#E5E7EB] hover:border-[#111111] rounded-xl transition"
+                            className="p-2 text-[#555555] hover:text-[#10251D] bg-[#F4F8F5] border border-[#E5E7EB] hover:border-[#10251D] rounded-xl transition"
                             title="Delete Listing"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -429,30 +429,30 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="max-w-xl space-y-4 bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB]">
               {profileSuccess && (
-                <div className="p-3 bg-[#0B6B3A] border border-[#14532D] rounded-xl text-xs text-white flex items-center gap-2 font-bold">
-                  <CheckCircle2 className="w-4 h-4 text-[#F2B90D]" />
+                <div className="p-3 bg-[#087443] border border-[#065D36] rounded-xl text-xs text-white flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" />
                   <span>Storefront details updated successfully!</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">Shop Name</label>
+                <label className="block text-xs font-bold text-[#10251D] mb-1">Shop Name</label>
                 <input
                   type="text"
                   required
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  className="w-full p-2.5 text-xs sm:text-sm bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] focus:border-[#0B6B3A] outline-none"
+                  className="w-full p-2.5 text-xs sm:text-sm bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                 />
               </div>
 
-              <div className="p-4 bg-[#F5F5F5] border border-[#0B6B3A]/30 rounded-2xl space-y-2">
+              <div className="p-4 bg-[#F4F8F5] border border-[#087443]/30 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-[#111111] uppercase flex items-center gap-1.5">
-                    <MessageCircle className="w-4 h-4 text-[#0B6B3A]" />
+                  <label className="text-xs font-black text-[#10251D] uppercase flex items-center gap-1.5">
+                    <MessageCircle className="w-4 h-4 text-[#087443]" />
                     <span>WhatsApp Business Line *</span>
                   </label>
-                  <span className="text-[10px] font-black bg-[#0B6B3A] text-[#F2B90D] px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-black bg-[#087443] text-[#D4A62A] px-2 py-0.5 rounded-full">
                     Direct Buyer Chat
                   </span>
                 </div>
@@ -460,7 +460,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   Displayed on all your products so FUWUKARI students can reach you directly.
                 </p>
                 <div className="relative flex items-center">
-                  <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2 py-1 rounded border border-[#E5E7EB] pointer-events-none">
+                  <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-[#10251D] bg-[#F4F8F5] px-2 py-1 rounded border border-[#E5E7EB] pointer-events-none">
                     <span>+234</span>
                   </div>
                   <input
@@ -469,7 +469,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
                     placeholder="080..."
-                    className="w-full pl-20 pr-3 py-2.5 text-sm font-bold bg-[#FFFFFF] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none font-mono"
+                    className="w-full pl-20 pr-3 py-2.5 text-sm font-bold bg-[#FFFFFF] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none font-mono"
                   />
                 </div>
                 {whatsappNumber && (
@@ -478,7 +478,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       href={`https://wa.me/234${whatsappNumber.replace(/[^0-9]/g, '').replace(/^0/, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-black text-[#0B6B3A] hover:underline"
+                      className="font-black text-[#087443] hover:underline"
                     >
                       Test WhatsApp link →
                     </a>
@@ -488,11 +488,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">State</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">State</label>
                   <select
                     value={state}
                     onChange={(e) => setState(e.target.value)}
-                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] focus:border-[#0B6B3A] outline-none"
+                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                   >
                     {NIGERIA_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -503,44 +503,44 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">City / Campus Area</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">City / Campus Area</label>
                   <input
                     type="text"
                     required
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] focus:border-[#0B6B3A] outline-none"
+                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">Campus Meetup / Shop Address</label>
+                <label className="block text-xs font-bold text-[#10251D] mb-1">Campus Meetup / Shop Address</label>
                 <input
                   type="text"
                   placeholder="e.g. Hostel A, 100L or Main Gate, Wukari"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] focus:border-[#0B6B3A] outline-none"
+                  className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">About Your Shop</label>
+                <label className="block text-xs font-bold text-[#10251D] mb-1">About Your Shop</label>
                 <textarea
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] focus:border-[#0B6B3A] outline-none"
+                  className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={profileSaving}
-                className="px-6 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-black text-xs rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white font-black text-xs rounded-xl transition flex items-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4 text-[#F2B90D]" />
+                <Save className="w-4 h-4 text-[#D4A62A]" />
                 <span>{profileSaving ? 'Saving...' : 'Save Changes'}</span>
               </button>
             </form>
@@ -552,8 +552,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 p-4 flex items-center justify-center">
             <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl max-w-md w-full p-6 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-black text-base text-[#111111]">Edit Product Listing</h3>
-                <button onClick={() => setEditingProduct(null)} className="text-[#555555] hover:text-[#111111]">
+                <h3 className="font-black text-base text-[#10251D]">Edit Product Listing</h3>
+                <button onClick={() => setEditingProduct(null)} className="text-[#555555] hover:text-[#10251D]">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -562,34 +562,34 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
               <form onSubmit={handleSaveProductEdit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Price (₦)</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Price (₦)</label>
                   <input
                     type="number"
                     required
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
-                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] outline-none focus:border-[#0B6B3A]"
+                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] outline-none focus:border-[#087443]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Available Quantity</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Available Quantity</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={editQuantity}
                     onChange={(e) => setEditQuantity(e.target.value)}
-                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] outline-none focus:border-[#0B6B3A]"
+                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] outline-none focus:border-[#087443]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Status</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Status</label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as any)}
-                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#111111] outline-none focus:border-[#0B6B3A]"
+                    className="w-full p-2.5 text-xs bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-[#10251D] outline-none focus:border-[#087443]"
                   >
                     <option value="active">Active (Available)</option>
                     <option value="sold">Mark as Sold Out</option>
@@ -601,14 +601,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditingProduct(null)}
-                    className="px-4 py-2 text-xs font-semibold text-[#555555] hover:text-[#111111] rounded-xl"
+                    className="px-4 py-2 text-xs font-semibold text-[#555555] hover:text-[#10251D] rounded-xl"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingEdit}
-                    className="px-5 py-2 text-xs font-black bg-[#0B6B3A] hover:bg-[#14532D] text-white rounded-xl"
+                    className="px-5 py-2 text-xs font-black bg-[#087443] hover:bg-[#065D36] text-white rounded-xl"
                   >
                     {savingEdit ? 'Saving...' : 'Update Listing'}
                   </button>

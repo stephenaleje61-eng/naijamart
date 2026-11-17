@@ -301,7 +301,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
           <span className="text-[10px] font-bold uppercase text-[#64748B] block">
             Verified Numbers
           </span>
-          <span className="text-xl font-black text-[#0B6B3A] tabular-nums">
+          <span className="text-xl font-black text-[#087443] tabular-nums">
             {contacts.filter((c) => c.verified).length}/{contacts.length}
           </span>
         </div>
@@ -371,7 +371,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                 type="button"
                 onClick={() => exportEmergencyReportsCsv(filteredReports)}
                 disabled={filteredReports.length === 0}
-                className="min-h-[40px] px-4 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-50 text-white text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
+                className="min-h-[40px] px-4 py-1.5 bg-[#087443] hover:bg-[#065D36] disabled:opacity-50 text-white text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV ({filteredReports.length})</span>
@@ -477,7 +477,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                             · {new Date(rep.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <h4 className="font-black text-sm text-[#111111] mt-1">
+                        <h4 className="font-black text-sm text-[#10251D] mt-1">
                           {rep.reportType} — {rep.location}
                         </h4>
                       </div>
@@ -564,7 +564,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateStatus(rep, rep.status)}
-                            className="min-h-[40px] px-4 bg-[#0B6B3A] text-white text-xs font-black rounded-xl"
+                            className="min-h-[40px] px-4 bg-[#087443] text-white text-xs font-black rounded-xl"
                           >
                             Save Note
                           </button>
@@ -627,7 +627,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                     setContactPhone('');
                     setContactDesc('');
                   }}
-                  className="text-xs font-bold text-[#64748B] hover:text-[#111111]"
+                  className="text-xs font-bold text-[#64748B] hover:text-[#10251D]"
                 >
                   Cancel Edit
                 </button>
@@ -689,7 +689,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                   type="checkbox"
                   checked={contactVerified}
                   onChange={(e) => setContactVerified(e.target.checked)}
-                  className="w-4 h-4 accent-[#0B6B3A]"
+                  className="w-4 h-4 accent-[#087443]"
                 />
                 <span>Mark as Verified Emergency Contact</span>
               </label>
@@ -697,7 +697,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
               <button
                 type="submit"
                 disabled={savingContact}
-                className="min-h-[40px] px-5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl inline-flex items-center gap-1.5"
+                className="min-h-[40px] px-5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl inline-flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>
@@ -723,7 +723,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-black ${
                         c.verified
-                          ? 'bg-[#ECFDF5] text-[#0B6B3A]'
+                          ? 'bg-[#ECFDF5] text-[#087443]'
                           : 'bg-[#FFFBEB] text-[#92400E]'
                       }`}
                     >
@@ -734,7 +734,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#475569] mt-0.5">
-                    <span className="font-mono font-bold text-[#111111] tabular-nums">
+                    <span className="font-mono font-bold text-[#10251D] tabular-nums">
                       {c.phone}
                     </span>{' '}
                     · {c.operatingHours} · {c.description}
@@ -900,7 +900,7 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <span className="text-[11px] font-black uppercase text-[#0B6B3A]">
+                      <span className="text-[11px] font-black uppercase text-[#087443]">
                         {item.reportType} · {item.itemCategory} · {item.location}
                       </span>
                       <h4 className="font-black text-sm text-[#0F1E3D]">{item.title}</h4>
@@ -989,12 +989,12 @@ export const AdminEmergencyTab: React.FC<AdminEmergencyTabProps> = ({
               >
                 <div className="flex items-center justify-between text-[11px] text-[#64748B]">
                   <span className="font-bold text-[#0F1E3D] flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0B6B3A]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#087443]" />
                     {log.action} ({log.targetType})
                   </span>
                   <span className="tabular-nums">{new Date(log.createdAt).toLocaleString()}</span>
                 </div>
-                <p className="text-[#111111]">{log.summary}</p>
+                <p className="text-[#10251D]">{log.summary}</p>
               </div>
             ))
           )}

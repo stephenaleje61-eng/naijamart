@@ -148,11 +148,11 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#10251D]">
         {/* Header */}
         <div className="bg-[#0F1E3D] text-white p-5 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#0B6B3A] text-white flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-[#087443] text-white flex items-center justify-center shrink-0">
               <PackageSearch className="w-6 h-6" />
             </div>
             <div>
@@ -198,8 +198,8 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
               }}
               className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${
                 activeTab === 'submit'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'bg-white border border-[#CBD5E1] text-[#0B6B3A]'
+                  ? 'bg-[#087443] text-white'
+                  : 'bg-white border border-[#CBD5E1] text-[#087443]'
               }`}
             >
               <PlusCircle className="w-4 h-4" />
@@ -210,7 +210,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
 
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
           {successMsg && (
-            <div className="p-3 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs font-bold text-[#0B6B3A] flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs font-bold text-[#087443] flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{successMsg}</span>
             </div>
@@ -269,7 +269,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('submit')}
-                    className="min-h-[44px] px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
+                    className="min-h-[44px] px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition"
                   >
                     Report Lost / Found Item
                   </button>
@@ -296,7 +296,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                             <span
                               className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
                                 item.reportType === 'found'
-                                  ? 'bg-[#ECFDF5] border border-[#A7F3D0] text-[#0B6B3A]'
+                                  ? 'bg-[#ECFDF5] border border-[#A7F3D0] text-[#087443]'
                                   : 'bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626]'
                               }`}
                             >
@@ -353,8 +353,8 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Privacy Warning */}
-              <div className="p-3.5 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs text-[#14532D] flex items-start gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-[#0B6B3A] shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs text-[#065D36] flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-[#087443] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-black">Student Privacy Protection</p>
                   <p className="mt-0.5 leading-relaxed">
@@ -386,7 +386,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   onClick={() => setReportType('found')}
                   className={`min-h-[44px] rounded-xl text-xs font-black transition ${
                     reportType === 'found'
-                      ? 'bg-[#0B6B3A] text-white'
+                      ? 'bg-[#087443] text-white'
                       : 'text-[#334155]'
                   }`}
                 >
@@ -402,7 +402,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   <select
                     value={itemCategory}
                     onChange={(e) => setItemCategory(e.target.value as LostFoundItemCategory)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#111111] outline-none"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#10251D] outline-none"
                   >
                     {LOST_FOUND_CATEGORIES.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -421,7 +421,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                     required
                     value={incidentDate}
                     onChange={(e) => setIncidentDate(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#111111] outline-none tabular-nums"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#10251D] outline-none tabular-nums"
                   />
                 </div>
               </div>
@@ -436,7 +436,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Black Techno Camon phone / Brown leather wallet / Keys with blue tag"
-                  className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#111111] outline-none"
+                  className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#10251D] outline-none"
                 />
               </div>
 
@@ -450,7 +450,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe colour, brand, or visible non-sensitive markings..."
-                  className="w-full p-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#111111] outline-none"
+                  className="w-full p-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#10251D] outline-none"
                 />
               </div>
 
@@ -462,7 +462,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                   <select
                     value={locationPreset}
                     onChange={(e) => setLocationPreset(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#111111] outline-none"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#10251D] outline-none"
                   >
                     {FUWUKARI_EMERGENCY_LOCATIONS.map((loc) => (
                       <option key={loc} value={loc}>
@@ -493,7 +493,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                     value={recoveryInstructions}
                     onChange={(e) => setRecoveryInstructions(e.target.value)}
                     placeholder="e.g. Submitted at Student Affairs / Meet at Main Gate Security Post"
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#111111] outline-none"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#10251D] outline-none"
                   />
                 </div>
               </div>
@@ -532,7 +532,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                     type="checkbox"
                     checked={showPublicContact}
                     onChange={(e) => setShowPublicContact(e.target.checked)}
-                    className="w-4 h-4 accent-[#0B6B3A]"
+                    className="w-4 h-4 accent-[#087443]"
                   />
                   <span>
                     Show my phone number publicly as the recovery contact (otherwise kept private for admin only)
@@ -580,7 +580,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                 <button
                   type="submit"
                   disabled={submitting || uploadingPhoto}
-                  className="min-h-[44px] px-6 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition disabled:opacity-60"
+                  className="min-h-[44px] px-6 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition disabled:opacity-60"
                 >
                   {submitting ? 'Publishing...' : 'Publish Lost & Found Report'}
                 </button>

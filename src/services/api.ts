@@ -170,11 +170,11 @@ export const safeFetchJson = async (
     });
   } catch (networkErr: any) {
     if (networkErr?.name === 'AbortError') {
-      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds while contacting FU MARKET server.`);
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds while contacting NIGERIA CAMPUS MARKET server.`);
     }
     console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
     throw new Error(
-      `Unable to connect to FU MARKET backend server at ${fullUrl}. Please check your internet connection.`
+      `Unable to connect to NIGERIA CAMPUS MARKET backend server at ${fullUrl}. Please check your internet connection.`
     );
   } finally {
     clearTimeout(timeoutTimer);
@@ -233,6 +233,8 @@ export async function fetchProducts(filters: ProductFilter = {}): Promise<{ item
   if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition);
   if (filters.state && filters.state !== 'all') params.set('state', filters.state);
   if (filters.city && filters.city !== 'all') params.set('city', filters.city);
+  if (filters.institutionId && filters.institutionId !== 'all') params.set('institutionId', filters.institutionId);
+  if (filters.campus && filters.campus !== 'all') params.set('campus', filters.campus);
   if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice));
   if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice));
   if (filters.sellerId) params.set('sellerId', filters.sellerId);
@@ -251,6 +253,8 @@ export async function fetchProducts(filters: ProductFilter = {}): Promise<{ item
       condition: filters.condition,
       state: filters.state,
       city: filters.city,
+      institutionId: filters.institutionId,
+      campus: filters.campus,
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
       sort: filters.sort,
@@ -376,6 +380,8 @@ export async function createProductListing(
         description: String(payload.get('description') || ''),
         state: String(payload.get('state') || 'Taraba'),
         city: String(payload.get('city') || 'Wukari'),
+        institutionId: payload.get('institutionId') ? String(payload.get('institutionId')) : undefined,
+        campus: payload.get('campus') ? String(payload.get('campus')) : undefined,
         whatsappNumber: String(payload.get('whatsapp') || payload.get('whatsappNumber') || ''),
         categoryId: String(payload.get('categoryId') || payload.get('category') || 'hostel-items'),
         condition: (payload.get('condition') === 'used' ? 'used' : 'new') as 'new' | 'used',

@@ -377,7 +377,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
         <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mx-auto">
           <ShieldAlert className="w-6 h-6" />
         </div>
-        <h3 className="font-display text-lg font-black text-[#111111]">
+        <h3 className="font-display text-lg font-black text-[#10251D]">
           CEO Access Required
         </h3>
         <p className="text-xs text-[#4B5563]">
@@ -387,7 +387,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold"
+            className="px-4 py-2 rounded-xl bg-[#10251D] text-white text-xs font-bold"
           >
             Close
           </button>
@@ -410,16 +410,16 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
     <div className="space-y-6">
       {/* Firebase Google Session Verification Check */}
       {!firebaseVerified && (
-        <div className="bg-[#111111] text-white p-4 sm:p-5 rounded-2xl border-2 border-[#EA580C] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#10251D] text-white p-4 sm:p-5 rounded-2xl border-2 border-[#D4A62A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Lock className="w-5 h-5 text-[#EA580C] shrink-0 mt-0.5" />
+            <Lock className="w-5 h-5 text-[#D4A62A] shrink-0 mt-0.5" />
             <div>
               <h4 className="text-sm font-black text-white">
                 Verify Your CEO Google Session to Publish
               </h4>
               <p className="text-xs text-white/80 mt-0.5">
                 Firestore security rules require verified Firebase Authentication as{' '}
-                <span className="font-mono text-[#FB923C]">{CEO_EMAIL}</span> to create, edit, or delete announcements.
+                <span className="font-mono text-[#D4A62A]">{CEO_EMAIL}</span> to create, edit, or delete announcements.
               </p>
             </div>
           </div>
@@ -427,7 +427,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             type="button"
             onClick={handleVerifyGoogleCeo}
             disabled={verifyingGoogle}
-            className="px-4 py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] disabled:opacity-60 text-white text-xs font-black shrink-0 min-h-[44px]"
+            className="px-4 py-2.5 rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] disabled:opacity-60 text-[#10251D] text-xs font-black shrink-0 min-h-[44px]"
           >
             {verifyingGoogle ? 'Verifying...' : 'Verify with Google'}
           </button>
@@ -447,9 +447,9 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
       )}
 
       {successMsg && (
-        <div className="p-3.5 rounded-xl bg-[#0B6B3A] text-white text-xs font-bold flex items-center justify-between gap-2">
+        <div className="p-3.5 rounded-xl bg-[#087443] text-white text-xs font-bold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#F2B90D] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#D4A62A] shrink-0" />
             <span>{successMsg}</span>
           </span>
           <button type="button" onClick={() => setSuccessMsg(null)}>
@@ -464,13 +464,13 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
           onSubmit={handleSubmit}
           className="lg:col-span-7 bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 shadow-xs"
         >
-          <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#F3F4F6]">
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#F4F8F5]">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#EA580C] text-white flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#087443] text-[#D4A62A] flex items-center justify-center">
                 <PartyPopper className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-display text-sm sm:text-base font-black text-[#111111]">
+                <h3 className="font-display text-sm sm:text-base font-black text-[#10251D]">
                   {editingEvent ? 'Edit Event Announcement' : 'Publish New Birthday or Event'}
                 </h3>
                 <p className="text-[11px] text-[#6B7280]">
@@ -482,7 +482,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-3 py-1.5 rounded-lg bg-[#F3F4F6] hover:bg-[#E5E7EB] text-xs font-bold text-[#111111]"
+                className="px-3 py-1.5 rounded-lg bg-[#F4F8F5] hover:bg-[#E5E7EB] text-xs font-bold text-[#10251D]"
               >
                 Cancel Edit
               </button>
@@ -491,7 +491,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
 
           {/* Photo Uploader */}
           <div className="space-y-2">
-            <label className="block text-xs font-black text-[#111111]">
+            <label className="block text-xs font-black text-[#10251D]">
               Celebrant&apos;s Photograph or Event Poster *
             </label>
             <input
@@ -506,7 +506,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="px-4 py-3 rounded-xl border-2 border-dashed border-[#EA580C] bg-[#FFF7ED] hover:bg-[#FFEDD5] text-[#9A3412] text-xs font-black flex items-center justify-center gap-2 transition min-h-[48px] flex-1"
+                className="px-4 py-3 rounded-xl border-2 border-dashed border-[#087443] bg-[#F4F8F5] hover:bg-[#E8F2EC] text-[#087443] text-xs font-black flex items-center justify-center gap-2 transition min-h-[48px] flex-1"
               >
                 <Upload className="w-4 h-4" />
                 <span>
@@ -518,21 +518,21 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 </span>
               </button>
               {photoUrl && (
-                <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#111111]">
+                <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#10251D]">
                   <EventPosterImage src={photoUrl} alt="Poster preview" />
                 </div>
               )}
             </div>
             {uploadingPhoto && (
-              <div className="w-full h-2 rounded-full bg-[#F3F4F6] overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[#F4F8F5] overflow-hidden">
                 <div
-                  className="h-full bg-[#EA580C] transition-all duration-200"
+                  className="h-full bg-[#087443] transition-all duration-200"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             )}
             {uploadWarning && (
-              <p className="text-[11px] text-[#9A3412] bg-[#FFF7ED] px-2.5 py-1.5 rounded-lg border border-[#FED7AA]">
+              <p className="text-[11px] text-[#10251D] bg-[#F4F8F5] px-2.5 py-1.5 rounded-lg border border-[#D4A62A]">
                 {uploadWarning}
               </p>
             )}
@@ -540,7 +540,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-black text-[#111111] mb-1">
+              <label className="block text-xs font-black text-[#10251D] mb-1">
                 Celebrant&apos;s Full Name *
               </label>
               <input
@@ -550,18 +550,18 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 value={celebrantName}
                 onChange={(e) => setCelebrantName(e.target.value)}
                 placeholder="e.g. Aisha Mohammed Danjuma"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-black text-[#111111] mb-1">
+              <label className="block text-xs font-black text-[#10251D] mb-1">
                 Type of Event *
               </label>
               <select
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
               >
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -575,7 +575,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
 
           {eventType === '__custom__' && (
             <div>
-              <label className="block text-xs font-black text-[#111111] mb-1">
+              <label className="block text-xs font-black text-[#10251D] mb-1">
                 Custom Event Type *
               </label>
               <input
@@ -585,14 +585,14 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 value={customEventType}
                 onChange={(e) => setCustomEventType(e.target.value)}
                 placeholder="e.g. Departmental Dinner / Induction Ceremony"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
               />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-black text-[#111111] mb-1">
+              <label className="block text-xs font-black text-[#10251D] mb-1">
                 Birthday or Event Date *
               </label>
               <input
@@ -600,12 +600,12 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 required
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-black text-[#111111] mb-1">
+              <label className="block text-xs font-black text-[#10251D] mb-1">
                 Event Time (Optional)
               </label>
               <input
@@ -614,13 +614,13 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 value={eventTime}
                 onChange={(e) => setEventTime(e.target.value)}
                 placeholder="e.g. 4:00 PM Prompt"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-black text-[#111111] mb-1">
+            <label className="block text-xs font-black text-[#10251D] mb-1">
               Event Venue *
             </label>
             <input
@@ -630,12 +630,12 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
               placeholder="e.g. FUWUKARI Large Lecture Theatre / Off-Campus Hall"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-semibold text-[#111111] outline-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-semibold text-[#10251D] outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black text-[#111111] mb-1">
+            <label className="block text-xs font-black text-[#10251D] mb-1">
               Event Description *
             </label>
             <textarea
@@ -645,12 +645,12 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Write warm birthday wishes, celebration highlights, or campus event details..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-medium text-[#111111] outline-none resize-y"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-medium text-[#10251D] outline-none resize-y"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black text-[#111111] mb-1">
+            <label className="block text-xs font-black text-[#10251D] mb-1">
               Additional Information (Optional)
             </label>
             <textarea
@@ -659,13 +659,13 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               value={additionalInfo}
               onChange={(e) => setAdditionalInfo(e.target.value)}
               placeholder="Optional dress code, RSVP contact, or special notes for guests..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] text-xs sm:text-sm font-medium text-[#111111] outline-none resize-y"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] text-xs sm:text-sm font-medium text-[#10251D] outline-none resize-y"
             />
           </div>
 
           {/* Publish / Schedule / Draft Selector */}
-          <div className="p-3.5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-3">
-            <span className="block text-xs font-black text-[#111111]">
+          <div className="p-3.5 rounded-2xl bg-[#F4F8F5] border border-[#E5E7EB] space-y-3">
+            <span className="block text-xs font-black text-[#10251D]">
               Visibility &amp; Schedule
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -683,8 +683,8 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                     onClick={() => setPublishMode(opt.id)}
                     className={`px-3 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-1.5 transition ${
                       active
-                        ? 'bg-[#111111] border-[#111111] text-[#FB923C]'
-                        : 'bg-white border-[#E5E7EB] text-[#4B5563] hover:border-[#EA580C]'
+                        ? 'bg-[#087443] border-[#087443] text-[#D4A62A]'
+                        : 'bg-white border-[#E5E7EB] text-[#4B5563] hover:border-[#087443]'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -704,7 +704,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                   required
                   value={publishAtInput}
                   onChange={(e) => setPublishAtInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E5E7EB] focus:border-[#EA580C] text-xs font-bold text-[#111111] outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E5E7EB] focus:border-[#087443] text-xs font-bold text-[#10251D] outline-none"
                 />
               </div>
             )}
@@ -714,18 +714,18 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             <button
               type="button"
               onClick={() => setPreviewEvent(buildDraftPreviewObject())}
-              className="px-4 py-3 rounded-xl bg-[#111111] hover:bg-black text-white text-xs font-black flex items-center gap-2 transition min-h-[44px]"
+              className="px-4 py-3 rounded-xl bg-[#10251D] hover:bg-[#065D36] text-white text-xs font-black flex items-center gap-2 transition min-h-[44px]"
             >
-              <Eye className="w-4 h-4 text-[#FB923C]" />
+              <Eye className="w-4 h-4 text-[#D4A62A]" />
               <span>Preview Before Publishing</span>
             </button>
 
             <button
               type="submit"
               disabled={saving || uploadingPhoto}
-              className="flex-1 px-5 py-3 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] disabled:opacity-60 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-md transition min-h-[44px]"
+              className="flex-1 px-5 py-3 rounded-xl bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-md transition min-h-[44px]"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-[#D4A62A]" />
               <span>
                 {saving
                   ? 'Saving Announcement...'
@@ -744,49 +744,49 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
         {/* Live Homepage Card Preview */}
         <div className="lg:col-span-5 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-[#EA580C] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
+            <span className="text-xs font-black uppercase tracking-wider text-[#087443] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#D4A62A]" />
               Live Homepage Card Preview
             </span>
             <button
               type="button"
               onClick={() => setPreviewEvent(buildDraftPreviewObject())}
-              className="text-xs font-bold text-[#111111] hover:text-[#EA580C] underline"
+              className="text-xs font-bold text-[#10251D] hover:text-[#087443] underline"
             >
               Open Full Details View
             </button>
           </div>
 
-          <div className="bg-white border-2 border-[#EA580C]/30 rounded-2xl overflow-hidden shadow-md">
-            <div className="aspect-[4/3] bg-[#111111] relative overflow-hidden">
+          <div className="bg-white border-2 border-[#087443]/25 rounded-2xl overflow-hidden shadow-md">
+            <div className="aspect-[4/3] bg-[#10251D] relative overflow-hidden">
               <EventPosterImage
                 src={photoUrl}
                 alt={celebrantName || 'Celebrant Photo Preview'}
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-3 left-3">
-                <span className="px-2.5 py-1 rounded-lg bg-[#EA580C] text-white text-[10px] font-black uppercase tracking-wider shadow">
+                <span className="px-2.5 py-1 rounded-lg bg-[#087443] text-white text-[10px] font-black uppercase tracking-wider shadow">
                   {resolvedEventType || 'Birthday Celebration'}
                 </span>
               </div>
             </div>
             <div className="p-4 space-y-2">
-              <h4 className="font-display text-base font-black text-[#111111] line-clamp-1">
+              <h4 className="font-display text-base font-black text-[#10251D] line-clamp-1">
                 {celebrantName.trim() || "Celebrant's Full Name"}
               </h4>
               <div className="space-y-1 text-xs text-[#4B5563]">
-                <p className="flex items-center gap-1.5 font-bold text-[#111111]">
-                  <Calendar className="w-3.5 h-3.5 text-[#EA580C]" />
+                <p className="flex items-center gap-1.5 font-bold text-[#10251D]">
+                  <Calendar className="w-3.5 h-3.5 text-[#087443]" />
                   <span>{eventDate ? formatEventDate(eventDate) : 'Select Event Date'}</span>
                 </p>
                 {eventTime.trim() && (
                   <p className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-[#EA580C]" />
+                    <Clock className="w-3.5 h-3.5 text-[#087443]" />
                     <span>{eventTime}</span>
                   </p>
                 )}
                 <p className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#EA580C]" />
+                  <MapPin className="w-3.5 h-3.5 text-[#087443]" />
                   <span>{venue.trim() || 'FUWUKARI Campus Venue'}</span>
                 </p>
               </div>
@@ -799,7 +799,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
       <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-display text-sm sm:text-base font-black text-[#111111]">
+            <h3 className="font-display text-sm sm:text-base font-black text-[#10251D]">
               Manage All Announcements ({events.length})
             </h3>
             <p className="text-[11px] text-[#6B7280]">
@@ -823,8 +823,8 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                 onClick={() => setFilterScope(tab.id)}
                 className={`px-3 py-1.5 rounded-lg transition ${
                   filterScope === tab.id
-                    ? 'bg-[#EA580C] text-white'
-                    : 'bg-[#F3F4F6] text-[#4B5563] hover:text-[#111111]'
+                    ? 'bg-[#087443] text-white'
+                    : 'bg-[#F4F8F5] text-[#4B5563] hover:text-[#10251D]'
                 }`}
               >
                 {tab.label}
@@ -838,7 +838,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             Loading announcements...
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="py-8 text-center text-xs text-[#6B7280] bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
+          <div className="py-8 text-center text-xs text-[#6B7280] bg-[#F4F8F5] rounded-xl border border-[#E5E7EB]">
             No announcements match this filter yet.
           </div>
         ) : (
@@ -849,15 +849,15 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               return (
                 <div
                   key={ev.id}
-                  className="p-3.5 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="p-3.5 rounded-2xl border border-[#E5E7EB] bg-[#F4F8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#111111] shrink-0">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#10251D] shrink-0">
                       <EventPosterImage src={ev.photoUrl} alt={ev.celebrantName} />
                     </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded bg-[#EA580C] text-white text-[10px] font-black uppercase">
+                        <span className="px-2 py-0.5 rounded bg-[#087443] text-white text-[10px] font-black uppercase">
                           {ev.eventType}
                         </span>
                         {ev.status === 'draft' ? (
@@ -865,7 +865,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                             Draft
                           </span>
                         ) : scheduled ? (
-                          <span className="px-2 py-0.5 rounded bg-[#111111] text-[#FB923C] text-[10px] font-black uppercase">
+                          <span className="px-2 py-0.5 rounded bg-[#10251D] text-[#D4A62A] text-[10px] font-black uppercase">
                             Scheduled ({new Date(ev.publishAt!).toLocaleString()})
                           </span>
                         ) : past ? (
@@ -873,12 +873,12 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                             Past Event
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-[#0B6B3A] text-white text-[10px] font-black uppercase">
+                          <span className="px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
                             Live Upcoming
                           </span>
                         )}
                       </div>
-                      <h4 className="text-sm font-black text-[#111111] truncate">
+                      <h4 className="text-sm font-black text-[#10251D] truncate">
                         {ev.celebrantName}
                       </h4>
                       <p className="text-[11px] text-[#4B5563] truncate">
@@ -891,7 +891,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => setPreviewEvent(ev)}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-[#E5E7EB] hover:border-[#111111] text-xs font-bold text-[#111111] flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-white border border-[#E5E7EB] hover:border-[#10251D] text-xs font-bold text-[#10251D] flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View
@@ -902,8 +902,8 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                       onClick={() => handleTogglePublishStatus(ev)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
                         ev.status === 'published'
-                          ? 'bg-[#FFF7ED] text-[#9A3412] border border-[#FDBA74] hover:bg-[#FFEDD5]'
-                          : 'bg-[#0B6B3A] text-white hover:bg-[#14532D]'
+                          ? 'bg-[#D4A62A] text-[#10251D] hover:bg-[#E0B43B]'
+                          : 'bg-[#087443] text-white hover:bg-[#065D36]'
                       }`}
                     >
                       {ev.status === 'published' ? 'Unpublish' : 'Publish'}
@@ -912,9 +912,9 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => populateFormForEdit(ev)}
-                      className="px-3 py-1.5 rounded-lg bg-[#111111] hover:bg-black text-white text-xs font-bold flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-[#10251D] hover:bg-[#065D36] text-white text-xs font-bold flex items-center gap-1"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-[#FB923C]" />
+                      <Edit3 className="w-3.5 h-3.5 text-[#D4A62A]" />
                       Edit
                     </button>
 
@@ -930,7 +930,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
-                          className="px-2 py-1.5 rounded-lg bg-[#E5E7EB] text-[#111111] text-xs font-bold"
+                          className="px-2 py-1.5 rounded-lg bg-[#E5E7EB] text-[#10251D] text-xs font-bold"
                         >
                           Cancel
                         </button>
@@ -970,17 +970,17 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center p-2 sm:p-4">
-      <div className="relative w-full max-w-6xl bg-[#F5F5F5] rounded-3xl shadow-2xl overflow-hidden my-2 sm:my-4 max-h-[94vh] flex flex-col border border-[#E5E7EB]">
-        <div className="bg-[#111111] text-white px-5 py-4 flex items-center justify-between gap-3 shrink-0 border-b-4 border-[#EA580C]">
+      <div className="relative w-full max-w-6xl bg-[#F4F8F5] rounded-3xl shadow-2xl overflow-hidden my-2 sm:my-4 max-h-[94vh] flex flex-col border border-[#E5E7EB]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-3 shrink-0 border-b-4 border-[#D4A62A]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#EA580C] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#D4A62A] text-[#10251D] flex items-center justify-center shrink-0">
               <PartyPopper className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-display text-base sm:text-lg font-black text-white">
                 FU MARKET CEO — Birthday &amp; Events Publishing Centre
               </h2>
-              <p className="text-[11px] text-white/75">
+              <p className="text-[11px] text-white/80">
                 Authorized CEO Account ({user?.email || CEO_EMAIL})
               </p>
             </div>
@@ -989,7 +989,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#EA580C] text-white flex items-center justify-center transition"
+              className="w-9 h-9 rounded-xl bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
               aria-label="Close CEO Publishing Dashboard"
             >
               <X className="w-5 h-5" />

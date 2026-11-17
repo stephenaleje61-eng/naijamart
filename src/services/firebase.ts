@@ -36,6 +36,9 @@ import {
 import bcrypt from 'bcryptjs';
 import activeFirebaseConfig from './firebaseConfig.js';
 import { isValidImageUrl } from '../utils/productImages.js';
+export { isValidImageUrl };
+import { matchesProductCategory, normalizeProductCategoryId } from '../constants/categories.js';
+import { DEFAULT_INSTITUTION_ID, belongsToInstitution } from '../constants/institutions.js';
 import {
   Product,
   User,
@@ -131,95 +134,7 @@ export async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMes
 }
 
 export function mapLegacyCategory(raw: any): string {
-  const value = String(raw || '').toLowerCase().trim();
-  if (!value) return 'hostel-items';
-
-  if (
-    [
-      'hostel-items',
-      'textbooks-past-questions',
-      'food',
-      'electronics',
-      'fashion',
-      'gas-cooking'
-    ].includes(value)
-  ) {
-    return value;
-  }
-
-  if (
-    value.includes('gas') ||
-    value.includes('cooking') ||
-    value.includes('kitchen') ||
-    value.includes('cook') ||
-    value.includes('burner') ||
-    value.includes('cylinder') ||
-    value.includes('kettle') ||
-    value.includes('pot') ||
-    value === 'home-kitchen'
-  ) {
-    return 'gas-cooking';
-  }
-
-  if (
-    value.includes('textbook') ||
-    value.includes('past question') ||
-    value.includes('handout') ||
-    value.includes('book') ||
-    value.includes('education') ||
-    value.includes('study') ||
-    value.includes('calculator') ||
-    value === 'books-education'
-  ) {
-    return 'textbooks-past-questions';
-  }
-
-  if (
-    value.includes('food') ||
-    value.includes('grocer') ||
-    value.includes('provision') ||
-    value.includes('snack') ||
-    value.includes('meal') ||
-    value.includes('drink') ||
-    value === 'food-groceries'
-  ) {
-    return 'food';
-  }
-
-  if (
-    value.includes('phone') ||
-    value.includes('tablet') ||
-    value.includes('gadget') ||
-    value.includes('computer') ||
-    value.includes('laptop') ||
-    value.includes('pc') ||
-    value.includes('electronic') ||
-    value.includes('charger') ||
-    value === 'phones-tablets' ||
-    value === 'computers'
-  ) {
-    return 'electronics';
-  }
-
-  if (
-    value.includes('fashion') ||
-    value.includes('cloth') ||
-    value.includes('wear') ||
-    value.includes('shirt') ||
-    value.includes('shoe') ||
-    value.includes('bag') ||
-    value.includes('watch') ||
-    value.includes('beauty') ||
-    value.includes('skin') ||
-    value.includes('hair') ||
-    value.includes('perfume') ||
-    value === 'shoes-bags' ||
-    value === 'beauty-care'
-  ) {
-    return 'fashion';
-  }
-
-  return 'hostel-items';
+  return normalizeProductCategoryId(raw);
 }
 
 export function normalizeFirestoreProduct(docId: string, data: any): Product {
@@ -251,6 +166,8 @@ export function normalizeFirestoreProduct(docId: string, data: any): Product {
   const rawLocation = String(data?.location || '').trim();
   const city = String(data?.city || rawLocation || 'Wukari').trim();
   const state = String(data?.state || 'Taraba').trim();
+  const institutionId = data?.institutionId ? String(data.institutionId).trim() : DEFAULT_INSTITUTION_ID;
+  const campus = data?.campus ? String(data.campus).trim() : undefined;
   const price = Number(data?.price) || 0;
   const originalPrice =
     data?.originalPrice && Number(data.originalPrice) > price ? Number(data.originalPrice) : undefined;
@@ -271,6 +188,8 @@ export function normalizeFirestoreProduct(docId: string, data: any): Product {
     imageUrl: rawImages[0] || '',
     state,
     city,
+    institutionId,
+    ...(campus ? { campus } : {}),
     quantity: Math.max(1, Number(data?.quantity) || 1),
     status: normalizedStatus,
     moderationStatus: data?.moderationStatus || (rawStatus === 'rejected' ? 'rejected' : 'approved'),
@@ -495,6 +414,8 @@ export interface ProductQueryFilters {
   condition?: string;
   state?: string;
   city?: string;
+  institutionId?: string;
+  campus?: string;
   minPrice?: number;
   maxPrice?: number;
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular';
@@ -505,9 +426,16 @@ export interface ProductQueryFilters {
 export function applyProductFiltersAndSort(source: Product[], filters?: ProductQueryFilters): Product[] {
   let items = source.slice();
 
+  if (filters?.institutionId && filters.institutionId !== 'all') {
+    items = items.filter((p) => belongsToInstitution(p.institutionId, filters.institutionId));
+  }
+  if (filters?.campus && filters.campus !== 'all') {
+    items = items.filter(
+      (p) => !p.campus || p.campus.toLowerCase() === filters.campus!.toLowerCase()
+    );
+  }
   if (filters?.categoryId && filters.categoryId !== 'all') {
-    const normalizedTarget = mapLegacyCategory(filters.categoryId);
-    items = items.filter((p) => p.categoryId === normalizedTarget || p.categoryId === filters.categoryId);
+    items = items.filter((p) => matchesProductCategory(p.categoryId, filters.categoryId));
   }
   if (filters?.condition && (filters.condition === 'new' || filters.condition === 'used')) {
     items = items.filter((p) => p.condition === filters.condition);
@@ -811,8 +739,8 @@ export async function createProductDirectlyInFirestore(
   const product: Product = {
     id,
     sellerId: sellerUser?.id || data.sellerId || auth.currentUser?.uid || 'campus-seller',
-    sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'FUWUKARI Student',
-    shopName: data.shopName || `${sellerUser?.name || 'FU MARKET'}'s Store`,
+    sellerName: sellerUser?.name || data.sellerName || auth.currentUser?.displayName || 'University Student',
+    shopName: data.shopName || `${sellerUser?.name || 'NIGERIA UNIVERSITY HUB'}'s Store`,
     whatsappNumber: data.whatsappNumber || sellerUser?.whatsappNumber || sellerUser?.phone || '',
     title: String(data.title || '').trim(),
     description: String(data.description || '').trim(),
@@ -824,6 +752,8 @@ export async function createProductDirectlyInFirestore(
     imageUrl: cleanedImages[0],
     state: data.state || 'Taraba',
     city: data.city || 'Wukari',
+    institutionId: data.institutionId || DEFAULT_INSTITUTION_ID,
+    ...(data.campus ? { campus: data.campus } : {}),
     quantity: Math.max(1, Number(data.quantity) || 1),
     status: 'active',
     moderationStatus: 'approved',
@@ -855,9 +785,20 @@ function sanitizeUserDoc(id: string, data: any): User {
 
   return {
     id,
-    name: String(data?.name || data?.displayName || 'FUWUKARI Student').trim(),
+    name: String(data?.name || data?.displayName || 'University Student').trim(),
     email: normalizedEmail,
     role,
+    ...(data?.accountType ? { accountType: data.accountType } : {}),
+    ...(data?.department ? { department: String(data.department).trim() } : {}),
+    ...(data?.levelOfStudy ? { levelOfStudy: String(data.levelOfStudy).trim() } : {}),
+    ...(data?.bio ? { bio: String(data.bio).trim() } : {}),
+    ...(Array.isArray(data?.interests) ? { interests: data.interests.filter((x: any) => typeof x === 'string') } : {}),
+    institutionId: data?.institutionId ? String(data.institutionId).trim() : DEFAULT_INSTITUTION_ID,
+    ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
+    ...(Array.isArray(data?.joinedInstitutionIds)
+      ? { joinedInstitutionIds: data.joinedInstitutionIds.filter((x: any) => typeof x === 'string') }
+      : {}),
+    ...(data?.preferredContactMethod ? { preferredContactMethod: data.preferredContactMethod } : {}),
     phone: data?.phone ? String(data.phone).trim() : '',
     whatsappNumber: data?.whatsappNumber ? String(data.whatsappNumber).trim() : (data?.phone ? String(data.phone).trim() : ''),
     state: data?.state ? String(data.state).trim() : 'Taraba',
@@ -870,6 +811,10 @@ function sanitizeUserDoc(id: string, data: any): User {
     ...(data?.verifiedBadgeText ? { verifiedBadgeText: String(data.verifiedBadgeText) } : {}),
     ...(data?.verifiedByCeoAt ? { verifiedByCeoAt: toIsoString(data.verifiedByCeoAt) } : {}),
     ...(data?.verifiedByCeoEmail ? { verifiedByCeoEmail: String(data.verifiedByCeoEmail) } : {}),
+    ...(data?.studentVerificationStatus ? { studentVerificationStatus: data.studentVerificationStatus } : {}),
+    ...(data?.verificationMethod ? { verificationMethod: data.verificationMethod } : {}),
+    ...(data?.scamStatus ? { scamStatus: data.scamStatus } : {}),
+    ...(typeof data?.scamReportsCount === 'number' ? { scamReportsCount: data.scamReportsCount } : {}),
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
   };
 }
@@ -1124,7 +1069,7 @@ export async function registerAccountInFirebase(payload: {
         shopSlug: `${slugBase}-${uid.slice(-4)}`,
         description:
           payload.shopDescription?.trim() ||
-          `Welcome to ${cleanShopName} on FU MARKET. Chat with us for fast campus delivery!`,
+          `Welcome to ${cleanShopName} on NIGERIA CAMPUS MARKET. Chat with us for fast campus delivery!`,
         whatsappNumber: cleanWhatsapp,
         state: cleanState,
         city: cleanCity,
@@ -1478,7 +1423,7 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
         userId: u.id,
         shopName,
         shopSlug: `${slug}-${u.id.slice(-4)}`,
-        description: `Student storefront on FU MARKET (${u.city || 'Wukari'}).`,
+        description: `Student storefront on NIGERIA CAMPUS MARKET (${u.city || 'Wukari'}).`,
         whatsappNumber: u.whatsappNumber || u.phone || '',
         state: u.state || 'Taraba',
         city: u.city || 'Wukari',
@@ -1495,14 +1440,14 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
 
   if (!profile && products.length > 0) {
     const first = products[0];
-    const shopName = first.shopName || first.sellerName || 'FU MARKET Seller';
+    const shopName = first.shopName || first.sellerName || 'NIGERIA CAMPUS MARKET Seller';
     const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     profile = {
       id: `profile-${cleanId}`,
       userId: cleanId,
       shopName,
       shopSlug: `${slug}-${cleanId.slice(-4)}`,
-      description: 'Genuine FUWUKARI student seller on FU MARKET.',
+      description: 'Genuine student seller on NIGERIA CAMPUS MARKET.',
       whatsappNumber: first.whatsappNumber || '',
       state: first.state || 'Taraba',
       city: first.city || 'Wukari',
@@ -1540,7 +1485,7 @@ export async function updateSellerProfileInFirestore(
     shopSlug: `${slugBase}-${user.id.slice(-4)}`,
     description: profileData.description !== undefined
       ? profileData.description.trim()
-      : existing?.description || 'Official student storefront on FU MARKET.',
+      : existing?.description || 'Official student storefront on NIGERIA CAMPUS MARKET.',
     whatsappNumber: profileData.whatsappNumber !== undefined
       ? profileData.whatsappNumber.trim()
       : existing?.whatsappNumber || user.whatsappNumber || '',
@@ -1608,7 +1553,7 @@ export async function submitProductReportToFirestore(
     status: 'pending',
     createdAt: new Date().toISOString()
   }));
-  return { success: true, message: 'Report submitted successfully to FU MARKET safety team.' };
+  return { success: true, message: 'Report submitted successfully to NIGERIA CAMPUS MARKET safety team.' };
 }
 
 // 6. Bike Riders (Wukari Okada Directory)
@@ -1855,7 +1800,7 @@ export function subscribeToRegisteredUsers(
 ): () => void {
   const path = 'users';
   try {
-    const q = query(collection(db, path), limit(200));
+    const q = query(collection(db, path), limit(250));
     return onSnapshot(
       q,
       (snapshot) => {
@@ -1865,6 +1810,7 @@ export function subscribeToRegisteredUsers(
         snapshot.forEach((docSnap) => {
           if (docSnap.id !== currentUserId) {
             const data = docSnap.data();
+            if (data.isSuspended) return;
             const lastSeenMs =
               typeof data.lastSeen === 'number'
                 ? data.lastSeen
@@ -1874,16 +1820,23 @@ export function subscribeToRegisteredUsers(
             const actuallyOnline = lastSeenMs > 0 && now - lastSeenMs <= onlineThresholdMs;
             list.push({
               id: docSnap.id,
-              name: data.name || 'FUWUKARI Student',
+              name: data.name || data.displayName || 'Campus Member',
               matricNumber: data.matricNumber || '',
               email: data.email || '',
               phone: data.phone || data.whatsappNumber || '',
               whatsappNumber: data.whatsappNumber || data.phone || '',
-              avatarUrl: data.avatarUrl || '',
+              avatarUrl: data.avatarUrl || data.photoURL || '',
               isOnline: actuallyOnline,
               lastSeen: data.lastSeen,
+              institutionId: data.institutionId || DEFAULT_INSTITUTION_ID,
+              campus: data.campus || '',
               department: data.department || '',
+              levelOfStudy: data.levelOfStudy || '',
               bio: data.bio || '',
+              interests: Array.isArray(data.interests) ? data.interests.filter((x: any) => typeof x === 'string') : [],
+              isVerified: Boolean(data.isVerified),
+              ceoVerified: Boolean(data.ceoVerified),
+              scamStatus: data.scamStatus || 'clear',
               createdAt: data.createdAt ? toIsoString(data.createdAt) : ''
             });
           }
@@ -1901,28 +1854,102 @@ export function subscribeToRegisteredUsers(
   }
 }
 
+async function emitSocialNotification(params: {
+  userId: string;
+  type: 'friend_request' | 'friend_accepted' | 'message';
+  title: string;
+  body: string;
+  targetType?: string;
+  targetId?: string;
+}): Promise<void> {
+  if (!params.userId) return;
+  const id = `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    await setDoc(
+      doc(db, 'notifications', id),
+      stripUndefined({
+        id,
+        userId: params.userId,
+        type: params.type,
+        title: params.title.slice(0, 140),
+        body: params.body.slice(0, 400),
+        read: false,
+        ...(params.targetType ? { targetType: params.targetType } : {}),
+        ...(params.targetId ? { targetId: params.targetId } : {}),
+        createdAt: new Date().toISOString()
+      })
+    );
+  } catch {
+    // Non-blocking notification delivery
+  }
+}
+
 export async function sendFriendRequest(
   fromUser: { id: string; name: string; matricNumber?: string; avatarUrl?: string },
   toUser: { id: string; name: string }
 ): Promise<void> {
+  if (!fromUser.id || !toUser.id || fromUser.id === toUser.id) {
+    throw new Error('Cannot send a friend request to yourself.');
+  }
   const path = 'friendRequests';
-  const requestId = `req_${[fromUser.id, toUser.id].sort().join('_')}`;
+  const pairKey = [fromUser.id, toUser.id].sort().join('_');
+  const requestId = `req_${pairKey}`;
 
   try {
+    // Check already friends
+    const friendSnap = await getDoc(doc(db, 'friends', pairKey)).catch(() => null);
+    if (friendSnap && friendSnap.exists()) {
+      throw new Error(`You are already connected as friends with ${toUser.name}.`);
+    }
+
     const refDoc = doc(db, path, requestId);
-    await setDoc(refDoc, stripUndefined({
-      id: requestId,
-      fromId: fromUser.id,
-      fromName: fromUser.name,
-      fromMatric: fromUser.matricNumber || '',
-      fromAvatar: fromUser.avatarUrl || '',
-      toId: toUser.id,
-      toName: toUser.name,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    }));
-  } catch (err) {
+    const existingSnap = await getDoc(refDoc).catch(() => null);
+    if (existingSnap && existingSnap.exists()) {
+      const existingData = existingSnap.data();
+      if (existingData?.status === 'pending') {
+        if (existingData.fromId === fromUser.id) {
+          throw new Error(`Friend request already sent to ${toUser.name}.`);
+        } else {
+          throw new Error(`${toUser.name} already sent you a friend request! Check Incoming Requests.`);
+        }
+      }
+    }
+
+    await setDoc(
+      refDoc,
+      stripUndefined({
+        id: requestId,
+        fromId: fromUser.id,
+        fromName: fromUser.name,
+        fromMatric: fromUser.matricNumber || '',
+        fromAvatar: fromUser.avatarUrl || '',
+        toId: toUser.id,
+        toName: toUser.name,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      })
+    );
+
+    await emitSocialNotification({
+      userId: toUser.id,
+      type: 'friend_request',
+      title: 'New Friend Request',
+      body: `${fromUser.name} wants to connect with you on NIGERIA UNIVERSITY HUB.`,
+      targetType: 'friend_request',
+      targetId: fromUser.id
+    });
+  } catch (err: any) {
+    if (err?.message?.includes('already')) throw err;
     handleFirestoreError(err, OperationType.CREATE, path);
+  }
+}
+
+export async function cancelFriendRequest(requestId: string): Promise<void> {
+  if (!requestId) return;
+  try {
+    await deleteDoc(doc(db, 'friendRequests', requestId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `friendRequests/${requestId}`);
   }
 }
 
@@ -1930,37 +1957,66 @@ export function subscribeToFriendRequests(
   userId: string,
   callback: (requests: FriendRequest[]) => void
 ): () => void {
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
   const path = 'friendRequests';
   try {
-    const q = query(collection(db, path), limit(150));
+    const incomingQ = query(collection(db, path), where('toId', '==', userId), limit(100));
+    const outgoingQ = query(collection(db, path), where('fromId', '==', userId), limit(100));
 
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const list: FriendRequest[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.toId === userId || data.fromId === userId) {
-            list.push({
-              id: docSnap.id,
-              fromId: data.fromId,
-              fromName: data.fromName || 'Student',
-              fromMatric: data.fromMatric || '',
-              fromAvatar: data.fromAvatar || '',
-              toId: data.toId,
-              toName: data.toName || 'Student',
-              status: data.status || 'pending',
-              createdAt: toIsoString(data.createdAt)
-            });
-          }
-        });
-        callback(list);
+    const mapById = new Map<string, FriendRequest>();
+    const emit = () => {
+      const merged = Array.from(mapById.values()).sort(
+        (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+      );
+      callback(merged);
+    };
+
+    const mapDoc = (docSnap: QueryDocumentSnapshot<DocumentData>): FriendRequest => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        fromId: data.fromId,
+        fromName: data.fromName || 'Student',
+        fromMatric: data.fromMatric || '',
+        fromAvatar: data.fromAvatar || '',
+        toId: data.toId,
+        toName: data.toName || 'Student',
+        status: data.status || 'pending',
+        createdAt: toIsoString(data.createdAt)
+      };
+    };
+
+    const unsubIn = onSnapshot(
+      incomingQ,
+      (snap) => {
+        for (const [k, v] of Array.from(mapById.entries())) {
+          if (v.toId === userId) mapById.delete(k);
+        }
+        snap.forEach((d) => mapById.set(d.id, mapDoc(d)));
+        emit();
       },
-      (err) => {
-        console.error('[subscribeToFriendRequests error]:', err);
-        callback([]);
-      }
+      (err) => console.warn('[subscribeToFriendRequests incoming warn]:', err?.message || err)
     );
+
+    const unsubOut = onSnapshot(
+      outgoingQ,
+      (snap) => {
+        for (const [k, v] of Array.from(mapById.entries())) {
+          if (v.fromId === userId) mapById.delete(k);
+        }
+        snap.forEach((d) => mapById.set(d.id, mapDoc(d)));
+        emit();
+      },
+      (err) => console.warn('[subscribeToFriendRequests outgoing warn]:', err?.message || err)
+    );
+
+    return () => {
+      unsubIn();
+      unsubOut();
+    };
   } catch (err) {
     console.error('[subscribeToFriendRequests setup error]:', err);
     return () => {};
@@ -1981,16 +2037,28 @@ export async function respondToFriendRequest(
 
       const pairKey = [request.fromId, request.toId].sort().join('_');
       const friendRef = doc(db, 'friends', pairKey);
-      await setDoc(friendRef, stripUndefined({
-        id: pairKey,
-        userA: request.fromId,
-        userAName: request.fromName,
-        userAMatric: request.fromMatric || '',
-        userB: request.toId,
-        userBName: request.toName,
-        chatId: pairKey,
-        friendSince: new Date().toISOString()
-      }));
+      await setDoc(
+        friendRef,
+        stripUndefined({
+          id: pairKey,
+          userA: request.fromId,
+          userAName: request.fromName,
+          userAMatric: request.fromMatric || '',
+          userB: request.toId,
+          userBName: request.toName,
+          chatId: pairKey,
+          friendSince: new Date().toISOString()
+        })
+      );
+
+      await emitSocialNotification({
+        userId: request.fromId,
+        type: 'friend_accepted',
+        title: 'Friend Request Accepted',
+        body: `${request.toName} accepted your friend request on NIGERIA UNIVERSITY HUB.`,
+        targetType: 'friend',
+        targetId: request.toId
+      });
     } else {
       await updateDoc(reqRef, {
         status: 'rejected',
@@ -2002,71 +2070,105 @@ export async function respondToFriendRequest(
   }
 }
 
+export async function removeFriend(pairKey: string): Promise<void> {
+  if (!pairKey) return;
+  try {
+    await deleteDoc(doc(db, 'friends', pairKey));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `friends/${pairKey}`);
+  }
+}
+
 export function subscribeToFriends(
   userId: string,
   callback: (friends: Friend[]) => void
 ): () => void {
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
   const path = 'friends';
   try {
-    const q = query(collection(db, path), limit(150));
-    return onSnapshot(
-      q,
-      async (snapshot) => {
-        const now = Date.now();
-        const onlineThresholdMs = 5 * 60 * 1000;
-        const matchedDocs = snapshot.docs.filter((docSnap) => {
-          const data = docSnap.data();
-          return data.userA === userId || data.userB === userId;
-        });
+    const qA = query(collection(db, path), where('userA', '==', userId), limit(100));
+    const qB = query(collection(db, path), where('userB', '==', userId), limit(100));
 
-        const list: Friend[] = await Promise.all(
-          matchedDocs.map(async (docSnap) => {
-            const data = docSnap.data();
-            const isUserA = data.userA === userId;
-            const friendUserId = isUserA ? data.userB : data.userA;
-            const friendName = isUserA ? data.userBName : data.userAName;
-            const friendMatric = isUserA ? data.userBMatric : data.userAMatric;
+    const docsById = new Map<string, DocumentData>();
 
-            let isOnline = false;
-            let lastSeen: number | string | undefined;
-            try {
-              const userDoc = await getDoc(doc(db, 'users', friendUserId));
-              if (userDoc.exists()) {
-                const uData = userDoc.data();
-                lastSeen = uData.lastSeen;
-                const lastSeenMs =
-                  typeof uData.lastSeen === 'number'
-                    ? uData.lastSeen
-                    : uData.lastSeen
-                    ? Date.parse(String(uData.lastSeen)) || 0
-                    : 0;
-                isOnline = lastSeenMs > 0 && now - lastSeenMs <= onlineThresholdMs;
-              }
-            } catch {
-              isOnline = false;
+    const hydrate = async () => {
+      const now = Date.now();
+      const onlineThresholdMs = 5 * 60 * 1000;
+      const list: Friend[] = await Promise.all(
+        Array.from(docsById.entries()).map(async ([docId, data]) => {
+          const isUserA = data.userA === userId;
+          const friendUserId = isUserA ? data.userB : data.userA;
+          const friendName = isUserA ? data.userBName : data.userAName;
+          const friendMatric = isUserA ? data.userBMatric : data.userAMatric;
+
+          let isOnline = false;
+          let lastSeen: number | string | undefined;
+          let avatarUrl = data.avatarUrl || '';
+          try {
+            const userDoc = await getDoc(doc(db, 'users', friendUserId));
+            if (userDoc.exists()) {
+              const uData = userDoc.data();
+              if (uData.avatarUrl) avatarUrl = uData.avatarUrl;
+              lastSeen = uData.lastSeen;
+              const lastSeenMs =
+                typeof uData.lastSeen === 'number'
+                  ? uData.lastSeen
+                  : uData.lastSeen
+                  ? Date.parse(String(uData.lastSeen)) || 0
+                  : 0;
+              isOnline = lastSeenMs > 0 && now - lastSeenMs <= onlineThresholdMs;
             }
+          } catch {
+            isOnline = false;
+          }
 
-            return {
-              id: docSnap.id,
-              userId: friendUserId,
-              name: friendName || 'FUWUKARI Friend',
-              matricNumber: friendMatric || '',
-              avatarUrl: data.avatarUrl || '',
-              friendSince: toIsoString(data.friendSince),
-              isOnline,
-              lastSeen,
-              chatId: data.chatId || docSnap.id
-            };
-          })
-        );
+          return {
+            id: docId,
+            userId: friendUserId,
+            name: friendName || 'Campus Peer',
+            matricNumber: friendMatric || '',
+            avatarUrl,
+            friendSince: toIsoString(data.friendSince),
+            isOnline,
+            lastSeen,
+            chatId: data.chatId || docId
+          };
+        })
+      );
+      callback(list);
+    };
 
-        callback(list);
+    const unsubA = onSnapshot(
+      qA,
+      (snap) => {
+        for (const [k, d] of Array.from(docsById.entries())) {
+          if (d.userA === userId) docsById.delete(k);
+        }
+        snap.forEach((d) => docsById.set(d.id, d.data()));
+        hydrate().catch(() => {});
       },
-      (err) => {
-        console.error('[subscribeToFriends error]:', err);
-        callback([]);
-      }
+      (err) => console.warn('[subscribeToFriends userA warn]:', err?.message || err)
     );
+
+    const unsubB = onSnapshot(
+      qB,
+      (snap) => {
+        for (const [k, d] of Array.from(docsById.entries())) {
+          if (d.userB === userId) docsById.delete(k);
+        }
+        snap.forEach((d) => docsById.set(d.id, d.data()));
+        hydrate().catch(() => {});
+      },
+      (err) => console.warn('[subscribeToFriends userB warn]:', err?.message || err)
+    );
+
+    return () => {
+      unsubA();
+      unsubB();
+    };
   } catch (err) {
     console.error('[subscribeToFriends setup error]:', err);
     return () => {};
@@ -2079,7 +2181,7 @@ export function getPrivateChatId(userId1: string, userId2: string): string {
 
 /**
  * Ensures a direct 1-on-1 chat metadata document exists between Buyer & Seller,
- * Student & Agent, or Student & Requester so they can message immediately.
+ * Student & Agent, or Friends so they can message securely.
  */
 export async function openOrCreateDirectChat(
   currentUser: { id: string; name: string; matricNumber?: string },
@@ -2115,6 +2217,10 @@ export function subscribeToMyPrivateChats(
   userId: string,
   callback: (chats: ChatMetadata[]) => void
 ): () => void {
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
   try {
     const q = query(
       collection(db, 'privateChats'),
@@ -2143,7 +2249,7 @@ export function subscribeToMyPrivateChats(
         callback([]);
       }
     );
-  } catch (err) {
+  } catch {
     return () => {};
   }
 }
@@ -2157,7 +2263,7 @@ export function subscribeToPrivateMessages(
     const q = query(
       collection(db, path),
       orderBy('createdAt', 'asc'),
-      limit(100)
+      limit(120)
     );
 
     return onSnapshot(
@@ -2226,8 +2332,7 @@ export async function sendPrivateMessage(
   }
 
   try {
-    await setDoc(msgRef, stripUndefined(payload));
-
+    // Write/merge parent chat room BEFORE adding message so participant-scoped security rules validate immediately
     await setDoc(
       chatRef,
       stripUndefined({
@@ -2240,6 +2345,22 @@ export async function sendPrivateMessage(
       }),
       { merge: true }
     );
+
+    await setDoc(msgRef, stripUndefined(payload));
+
+    const receiverId = Array.isArray(msg.participants)
+      ? msg.participants.find((id) => id !== msg.senderId)
+      : undefined;
+    if (receiverId) {
+      await emitSocialNotification({
+        userId: receiverId,
+        type: 'message',
+        title: `New message from ${msg.senderName}`,
+        body: (payload.text || 'Sent you an image attachment').slice(0, 140),
+        targetType: 'chat',
+        targetId: msg.senderId
+      });
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, `privateChats/${chatId}/messages`);
   }
@@ -2496,6 +2617,8 @@ export async function createStudentRequest(
     description: String(data.description || '').trim(),
     budget: Number(data.budget) || 0,
     location: String(data.location || '').trim(),
+    institutionId: data.institutionId || DEFAULT_INSTITUTION_ID,
+    ...(data.campus ? { campus: data.campus } : {}),
     phone: String(data.phone || '').trim(),
     whatsapp: String(data.whatsapp || data.phone || '').trim(),
     userId: data.userId,
@@ -2567,6 +2690,8 @@ export function subscribeToStudentRequests(
             description: data.description || '',
             budget: Number(data.budget) || 0,
             location: data.location || '',
+            institutionId: data.institutionId || DEFAULT_INSTITUTION_ID,
+            ...(data.campus ? { campus: data.campus } : {}),
             phone: data.phone || '',
             whatsapp: data.whatsapp || data.phone || '',
             ...(img ? { imageUrl: img } : {}),

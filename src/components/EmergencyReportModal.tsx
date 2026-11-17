@@ -158,7 +158,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
 
   const handleCopyReceipt = async () => {
     if (!receipt) return;
-    const text = `FU MARKET Help Centre Report\nReference ID: ${receipt.reportId}\nVerification PIN: ${receipt.verificationPin}\nStatus: ${receipt.status}`;
+    const text = `NIGERIA CAMPUS MARKET Help Centre Report\nReference ID: ${receipt.reportId}\nVerification PIN: ${receipt.verificationPin}\nStatus: ${receipt.status}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopiedReceipt(true);
@@ -170,7 +170,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#10251D]">
         {/* Header */}
         <div
           className={`p-5 flex items-center justify-between gap-3 shrink-0 text-white ${
@@ -214,7 +214,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
           <div className="flex items-start gap-2 text-xs text-[#7F1D1D]">
             <AlertTriangle className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              <strong className="font-black">Important Safety Notice:</strong> Submitting an online report logs a record in the FU MARKET Help Centre queue for administrator review and{' '}
+              <strong className="font-black">Important Safety Notice:</strong> Submitting an online report logs a record in the NIGERIA CAMPUS MARKET Help Centre queue for administrator review and{' '}
               <strong>does NOT automatically contact or dispatch police, fire services, hospital staff, or university security</strong>. If someone is in immediate danger, call a verified emergency line directly.
             </p>
           </div>
@@ -225,7 +225,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                 <a
                   key={c.id}
                   href={buildEmergencyCallHref(c.phone)}
-                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-[#0B6B3A] hover:bg-[#14532D] text-white text-[11px] font-black inline-flex items-center gap-1.5 transition"
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-black inline-flex items-center gap-1.5 transition"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>
@@ -252,13 +252,13 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
           {receipt ? (
             <div className="space-y-5 py-2">
               <div className="p-5 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] space-y-3">
-                <div className="flex items-center gap-2 text-[#0B6B3A]">
+                <div className="flex items-center gap-2 text-[#087443]">
                   <CheckCircle2 className="w-6 h-6 shrink-0" />
                   <h3 className="text-base font-black">
                     Report Logged in Help Centre Queue
                   </h3>
                 </div>
-                <p className="text-xs text-[#14532D] leading-relaxed">
+                <p className="text-xs text-[#065D36] leading-relaxed">
                   Save your Reference Number and Verification PIN below. You can use them at any time in <strong>Track Report Status</strong> to check administrator review updates.
                 </p>
 
@@ -293,7 +293,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="min-h-[44px] px-4 py-2 bg-white border border-[#CBD5E1] hover:border-[#0F1E3D] text-[#111111] text-xs font-bold rounded-xl transition"
+                    className="min-h-[44px] px-4 py-2 bg-white border border-[#CBD5E1] hover:border-[#0F1E3D] text-[#10251D] text-xs font-bold rounded-xl transition"
                   >
                     Done
                   </button>
@@ -342,7 +342,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                 <select
                   value={reportType}
                   onChange={(e) => setReportType(e.target.value)}
-                  className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#111111] outline-none"
+                  className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#10251D] outline-none"
                 >
                   {categoryList.map((cat) => (
                     <option key={cat} value={cat}>
@@ -361,7 +361,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                   <select
                     value={locationPreset}
                     onChange={(e) => setLocationPreset(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#111111] outline-none"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#10251D] outline-none"
                   >
                     {FUWUKARI_EMERGENCY_LOCATIONS.map((loc) => (
                       <option key={loc} value={loc}>
@@ -377,7 +377,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                       value={customLocation}
                       onChange={(e) => setCustomLocation(e.target.value)}
                       placeholder="Enter exact landmark, street, or building..."
-                      className="w-full min-h-[44px] px-3 py-2 mt-1.5 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#111111] outline-none"
+                      className="w-full min-h-[44px] px-3 py-2 mt-1.5 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#10251D] outline-none"
                     />
                   )}
                 </div>
@@ -391,7 +391,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                     required
                     value={incidentDate}
                     onChange={(e) => setIncidentDate(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#111111] outline-none tabular-nums"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-bold text-[#10251D] outline-none tabular-nums"
                   />
                 </div>
               </div>
@@ -407,7 +407,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe clearly what happened, exact landmarks nearby, and any helpful details..."
-                  className="w-full p-3 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#111111] outline-none"
+                  className="w-full p-3 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#10251D] outline-none"
                 />
               </div>
 
@@ -426,7 +426,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                       Submit Confidentially
                     </span>
                     <span className="block text-[11px] text-[#475569] mt-0.5">
-                      Confidential reports are never displayed publicly and are visible only to the authorized FU MARKET Help Centre administrator.
+                      Confidential reports are never displayed publicly and are visible only to the authorized NIGERIA CAMPUS MARKET Help Centre administrator.
                     </span>
                   </span>
                 </label>
@@ -442,7 +442,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       placeholder="e.g. 0803..."
-                      className="w-full min-h-[44px] px-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#111111] outline-none tabular-nums"
+                      className="w-full min-h-[44px] px-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#10251D] outline-none tabular-nums"
                     />
                   </div>
 
@@ -456,7 +456,7 @@ export const EmergencyReportModal: React.FC<EmergencyReportModalProps> = ({
                         value={reporterName}
                         onChange={(e) => setReporterName(e.target.value)}
                         placeholder="Optional name"
-                        className="w-full min-h-[44px] px-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#111111] outline-none"
+                        className="w-full min-h-[44px] px-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs text-[#10251D] outline-none"
                       />
                     </div>
                   )}

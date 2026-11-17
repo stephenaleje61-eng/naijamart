@@ -1,23 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0B6B3A" />
-      <stop offset="100%" stop-color="#14532D" />
-    </linearGradient>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F2B90D" />
-      <stop offset="100%" stop-color="#FFC107" />
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bgGrad)" />
-  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#F2B90D" stroke-width="8" stroke-opacity="0.55" />
-  <!-- Shopping Bag Handle -->
-  <path d="M192 172 v-28 c0 -35.3 28.7 -64 64 -64 s64 28.7 64 64 v28" fill="none" stroke="#F2B90D" stroke-width="26" stroke-linecap="round" />
-  <!-- Shopping Bag Body -->
-  <path d="M120 172 h272 l24 236 c2 18 -12 34 -30 34 H126 c-18 0 -32 -16 -30 -34 z" fill="url(#goldGrad)" />
-  <!-- Bold FU Letters -->
-  <text x="256" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="116" letter-spacing="-4" fill="#111111">FU</text>
-  <!-- Bottom Brand Bar -->
-  <rect x="148" y="366" width="216" height="28" rx="14" fill="#0B6B3A" />
-  <text x="256" y="385" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="15" letter-spacing="3" fill="#FFFFFF">FU MARKET</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#142B50" />
+  <rect x="20" y="20" width="472" height="472" rx="96" stroke="#D4A62A" stroke-width="8" stroke-opacity="0.7" />
+  <!-- Graduation Cap -->
+  <path d="M256 96L412 162L256 228L100 162L256 96Z" fill="#087443" stroke="#D4A62A" stroke-width="10" stroke-linejoin="round" />
+  <path d="M168 194V248C168 272 208 294 256 294C304 294 344 272 344 248V194" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M394 174V250" stroke="#D4A62A" stroke-width="10" stroke-linecap="round" />
+  <circle cx="394" cy="260" r="10" fill="#D4A62A" />
+  <!-- Marketplace Bag Silhouette -->
+  <rect x="148" y="274" width="216" height="146" rx="28" fill="#087443" stroke="#FFFFFF" stroke-width="10" />
+  <path d="M204 274V250C204 221 227 198 256 198C285 198 308 221 308 250V274" stroke="#D4A62A" stroke-width="12" stroke-linecap="round" />
+  <!-- N Hub Monogram -->
+  <text x="256" y="368" text-anchor="middle" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="68" letter-spacing="2">NUH</text>
 </svg>

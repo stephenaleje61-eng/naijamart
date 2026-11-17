@@ -15,16 +15,25 @@ import {
   ShieldAlert,
   User as UserIcon,
   ArrowRight,
-  X
+  X,
+  Building2
 } from 'lucide-react';
 import {
   GENERAL_ANNOUNCEMENT_CATEGORIES,
   SPORT_CATEGORIES,
-  formatRelativeTime
+  formatRelativeTime,
+  inferSportMatchStatus
 } from '../services/announcements.js';
+import {
+  belongsToInstitution,
+  DEFAULT_INSTITUTION_ID,
+  getInstitutionById
+} from '../constants/institutions.js';
 import {
   CommunityAnnouncementPost,
   GeneralAnnouncementPost,
+  Institution,
+  SportMatchStatus,
   SportUpdatePost
 } from '../types.js';
 import { EventPosterImage } from './EventPosterImage.js';
@@ -34,6 +43,9 @@ interface SportAndAnnouncementsSectionProps {
   generalAnnouncements: GeneralAnnouncementPost[];
   loading: boolean;
   savedIds: Set<string>;
+  selectedInstitutionId?: string;
+  activeInstitution?: Institution;
+  institutions?: Institution[];
   onSelectPost: (post: CommunityAnnouncementPost) => void;
   onOpenPostModal: (defaultFeedType: 'sport_update' | 'general_announcement') => void;
   onOpenAuthorProfile: (authorId: string, authorName: string, authorAvatar?: string) => void;
@@ -41,11 +53,31 @@ interface SportAndAnnouncementsSectionProps {
 
 const PAGE_SIZE = 9;
 
+const MATCH_STATUS_TABS: { value: 'all' | SportMatchStatus; label: string }[] = [
+  { value: 'all', label: 'All Sports' },
+  { value: 'upcoming', label: 'Upcoming Matches' },
+  { value: 'live', label: 'Live Updates' },
+  { value: 'completed', label: 'Completed Results' },
+  { value: 'announcement', label: 'Campus Sports News' },
+  { value: 'other_sport', label: 'Other Campus Sports' }
+];
+
+const MATCH_STATUS_LABELS: Record<SportMatchStatus, string> = {
+  upcoming: 'Upcoming Fixture',
+  live: 'Live Update',
+  completed: 'Final Result',
+  announcement: 'Sports Notice',
+  other_sport: 'Other Sport'
+};
+
 export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSectionProps> = ({
   sportUpdates,
   generalAnnouncements,
   loading,
   savedIds,
+  selectedInstitutionId = DEFAULT_INSTITUTION_ID,
+  activeInstitution,
+  institutions,
   onSelectPost,
   onOpenPostModal,
   onOpenAuthorProfile
@@ -54,13 +86,33 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
     'sport_update'
   );
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
+  const [matchStatusFilter, setMatchStatusFilter] = useState<'all' | SportMatchStatus>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [savedOnly, setSavedOnly] = useState(false);
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
 
+  const currentInst = useMemo(
+    () => activeInstitution || getInstitutionById(selectedInstitutionId, institutions),
+    [activeInstitution, selectedInstitutionId, institutions]
+  );
+
+  const instSports = useMemo(
+    () => sportUpdates.filter((p) => belongsToInstitution(p.institutionId, selectedInstitutionId)),
+    [sportUpdates, selectedInstitutionId]
+  );
+
+  const instAnnouncements = useMemo(
+    () =>
+      generalAnnouncements.filter((p) =>
+        belongsToInstitution(p.institutionId, selectedInstitutionId)
+      ),
+    [generalAnnouncements, selectedInstitutionId]
+  );
+
   const handleSwitchFeed = (nextFeed: 'sport_update' | 'general_announcement') => {
     setActiveFeed(nextFeed);
     setSelectedSubcategory('all');
+    setMatchStatusFilter('all');
     setVisibleLimit(PAGE_SIZE);
   };
 
@@ -70,10 +122,14 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
   const filteredPosts = useMemo<CommunityAnnouncementPost[]>(() => {
     const q = searchTerm.trim().toLowerCase();
     const baseList: CommunityAnnouncementPost[] =
-      activeFeed === 'sport_update' ? sportUpdates : generalAnnouncements;
+      activeFeed === 'sport_update' ? instSports : instAnnouncements;
 
     return baseList.filter((post) => {
       if (savedOnly && !savedIds.has(post.id)) return false;
+
+      if (post.categoryType === 'sport_update' && matchStatusFilter !== 'all') {
+        if (inferSportMatchStatus(post) !== matchStatusFilter) return false;
+      }
 
       const cat =
         post.categoryType === 'sport_update' ? post.sportCategory : post.announcementCategory;
@@ -85,6 +141,7 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
           post.description,
           post.authorName,
           cat,
+          post.campus || '',
           post.categoryType === 'sport_update'
             ? `${post.teamOrPlayer || ''} ${post.competitionName || ''} ${post.venue || ''}`
             : `${post.location || ''}`
@@ -98,8 +155,9 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
     });
   }, [
     activeFeed,
-    sportUpdates,
-    generalAnnouncements,
+    instSports,
+    instAnnouncements,
+    matchStatusFilter,
     selectedSubcategory,
     searchTerm,
     savedOnly,
@@ -112,33 +170,34 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
   return (
     <section
       id="fu-sport-announcement-centre"
-      className="bg-white border border-[#E5E7EB] rounded-3xl overflow-hidden shadow-xs"
+      className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl overflow-hidden shadow-xs"
     >
-      {/* Hero Header Banner (Black + Bold Orange Sports & Campus News Design) */}
-      <div className="bg-[#111111] text-white p-5 sm:p-7 border-b-4 border-[#EA580C]">
+      {/* Official Emerald & Charcoal Sports & Announcements Header */}
+      <div className="bg-[#10251D] text-[#FFFFFF] p-5 sm:p-7 border-b-4 border-[#D4A62A]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#EA580C] text-white text-[10px] font-black uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#087443] border border-[#D4A62A]/40 text-[#D4A62A] text-[10px] font-black uppercase tracking-wider">
                 <Trophy className="w-3 h-3" />
-                Live Campus Hub
+                Campus Football &amp; Sports Centre
               </span>
-              <span className="text-[11px] font-bold text-[#FDBA74]">
-                Open to All FUWUKARI Visitors
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#F4F8F5]/90">
+                <Building2 className="w-3 h-3 text-[#D4A62A]" />
+                {selectedInstitutionId === 'all' ? 'All Nigerian Campuses' : currentInst.shortName}
               </span>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
+            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#FFFFFF]">
               FU SPORT UPDATE &amp; ANNOUNCEMENT CENTRE
             </h2>
-            <p className="text-xs sm:text-sm font-semibold text-white/80">
-              &ldquo;Stay Updated. Share Information. Connect With Everyone.&rdquo;
+            <p className="text-xs sm:text-sm font-semibold text-[#F4F8F5]/80">
+              &ldquo;Stay Updated. Follow Campus Football Fixtures &amp; Connect With Everyone.&rdquo;
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => onOpenPostModal(activeFeed)}
-            className="px-5 py-3 bg-[#EA580C] hover:bg-[#C2410C] text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
+            className="px-5 py-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs sm:text-sm rounded-2xl shadow-lg flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Post Announcement</span>
@@ -152,16 +211,16 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
             onClick={() => handleSwitchFeed('sport_update')}
             className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between gap-3 ${
               activeFeed === 'sport_update'
-                ? 'bg-[#EA580C] border-[#EA580C] text-white shadow-md'
-                : 'bg-white/5 border-white/15 text-white/85 hover:bg-white/10'
+                ? 'bg-[#087443] border-[#D4A62A] text-[#FFFFFF] shadow-md'
+                : 'bg-white/5 border-white/15 text-[#F4F8F5]/85 hover:bg-white/10'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   activeFeed === 'sport_update'
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-[#EA580C]/20 text-[#FB923C]'
+                    ? 'bg-[#10251D] text-[#D4A62A]'
+                    : 'bg-[#087443]/40 text-[#D4A62A]'
                 }`}
               >
                 <Trophy className="w-5 h-5" />
@@ -169,18 +228,18 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
               <div className="min-w-0">
                 <span className="text-xs sm:text-sm font-black block">1. FU SPORT UPDATE</span>
                 <span className="text-[11px] opacity-85 truncate block">
-                  Football fixtures, scores, tournaments, basketball &amp; athletics
+                  Football fixtures, live updates, match results &amp; athletics
                 </span>
               </div>
             </div>
             <span
               className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 ${
                 activeFeed === 'sport_update'
-                  ? 'bg-white text-[#EA580C]'
-                  : 'bg-white/10 text-white'
+                  ? 'bg-[#D4A62A] text-[#10251D]'
+                  : 'bg-white/10 text-[#FFFFFF]'
               }`}
             >
-              {sportUpdates.length}
+              {instSports.length}
             </span>
           </button>
 
@@ -189,16 +248,16 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
             onClick={() => handleSwitchFeed('general_announcement')}
             className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between gap-3 ${
               activeFeed === 'general_announcement'
-                ? 'bg-[#EA580C] border-[#EA580C] text-white shadow-md'
-                : 'bg-white/5 border-white/15 text-white/85 hover:bg-white/10'
+                ? 'bg-[#087443] border-[#D4A62A] text-[#FFFFFF] shadow-md'
+                : 'bg-white/5 border-white/15 text-[#F4F8F5]/85 hover:bg-white/10'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   activeFeed === 'general_announcement'
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-[#EA580C]/20 text-[#FB923C]'
+                    ? 'bg-[#10251D] text-[#D4A62A]'
+                    : 'bg-[#087443]/40 text-[#D4A62A]'
                 }`}
               >
                 <Megaphone className="w-5 h-5" />
@@ -215,11 +274,11 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
             <span
               className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 ${
                 activeFeed === 'general_announcement'
-                  ? 'bg-white text-[#EA580C]'
-                  : 'bg-white/10 text-white'
+                  ? 'bg-[#D4A62A] text-[#10251D]'
+                  : 'bg-white/10 text-[#FFFFFF]'
               }`}
             >
-              {generalAnnouncements.length}
+              {instAnnouncements.length}
             </span>
           </button>
         </div>
@@ -239,16 +298,16 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
               }}
               placeholder={
                 activeFeed === 'sport_update'
-                  ? 'Search football fixtures, departments, competitions, or venues...'
-                  : 'Search announcements, scholarships, lost & found, birthdays, or meetings...'
+                  ? `Search ${currentInst.shortName} football fixtures, teams, competitions, or venues...`
+                  : `Search ${currentInst.shortName} announcements, scholarships, birthdays, or meetings...`
               }
-              className="w-full pl-10 pr-9 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] rounded-2xl text-xs font-medium text-[#111111] outline-none"
+              className="w-full pl-10 pr-9 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-2xl text-xs font-medium text-[#10251D] outline-none"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-2.5 text-[#6B7280] hover:text-[#111111]"
+                className="absolute right-3 top-2.5 text-[#6B7280] hover:text-[#10251D]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -262,7 +321,7 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                 setSelectedSubcategory(e.target.value);
                 setVisibleLimit(PAGE_SIZE);
               }}
-              className="px-3 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl text-xs font-bold text-[#111111] outline-none focus:border-[#EA580C] flex-1 md:flex-initial"
+              className="px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl text-xs font-bold text-[#10251D] outline-none focus:border-[#087443] flex-1 md:flex-initial"
             >
               <option value="all">
                 All {activeFeed === 'sport_update' ? 'Sports Categories' : 'Announcements'}
@@ -280,12 +339,12 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                 onClick={() => setSavedOnly((v) => !v)}
                 className={`px-3.5 py-2.5 rounded-2xl text-xs font-black border flex items-center gap-1.5 transition ${
                   savedOnly
-                    ? 'bg-[#111111] border-[#111111] text-white'
-                    : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111111] hover:border-[#EA580C]'
+                    ? 'bg-[#10251D] border-[#10251D] text-[#FFFFFF]'
+                    : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#10251D] hover:border-[#087443]'
                 }`}
               >
                 <Bookmark
-                  className={`w-3.5 h-3.5 ${savedOnly ? 'fill-[#EA580C] text-[#EA580C]' : ''}`}
+                  className={`w-3.5 h-3.5 ${savedOnly ? 'fill-[#D4A62A] text-[#D4A62A]' : ''}`}
                 />
                 <span>Saved ({savedIds.size})</span>
               </button>
@@ -293,15 +352,41 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
           </div>
         </div>
 
-        {/* Category Filter Chips (Horizontal Scroll) */}
+        {/* Sports Match Status Tabs (Upcoming / Live / Completed / News / Other Sports) */}
+        {activeFeed === 'sport_update' && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {MATCH_STATUS_TABS.map((tab) => {
+              const active = matchStatusFilter === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => {
+                    setMatchStatusFilter(tab.value);
+                    setVisibleLimit(PAGE_SIZE);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap border transition ${
+                    active
+                      ? 'bg-[#10251D] border-[#D4A62A] text-[#D4A62A]'
+                      : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#10251D] hover:border-[#087443]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Category Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           <button
             type="button"
             onClick={() => setSelectedSubcategory('all')}
             className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap border transition ${
               selectedSubcategory === 'all'
-                ? 'bg-[#EA580C] border-[#EA580C] text-white'
-                : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#374151] hover:border-[#EA580C]'
+                ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#374151] hover:border-[#087443]'
             }`}
           >
             All Topics
@@ -316,8 +401,8 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
               }}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap border transition ${
                 selectedSubcategory === cat
-                  ? 'bg-[#EA580C] border-[#EA580C] text-white'
-                  : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#374151] hover:border-[#EA580C]'
+                  ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                  : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#374151] hover:border-[#087443]'
               }`}
             >
               {cat}
@@ -327,10 +412,10 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
 
         {/* Sports Integrity Disclaimer */}
         {activeFeed === 'sport_update' && (
-          <div className="p-3 bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl text-[11px] text-[#9A3412] flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-[#EA580C] shrink-0" />
+          <div className="p-3 bg-[#F4F8F5] border border-[#D4A62A]/50 rounded-2xl text-[11px] text-[#10251D] flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-[#087443] shrink-0" />
             <span>
-              <strong>Community Sports Feed:</strong> Match fixtures, results, and live scores are posted directly by FUWUKARI students and are labeled as user-submitted unless confirmed by tournament officials.
+              <strong>Community Sports Feed:</strong> Match fixtures, results, and live scores are posted directly by students and sports organizers and are labeled &ldquo;User-Submitted • Unverified&rdquo; unless confirmed by officials.
             </span>
           </div>
         )}
@@ -341,51 +426,52 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-64 rounded-2xl bg-[#F3F4F6] animate-pulse border border-[#E5E7EB]"
+                className="h-64 rounded-2xl bg-[#F4F8F5] animate-pulse border border-[#E5E7EB]"
               />
             ))}
           </div>
         ) : visiblePosts.length === 0 ? (
-          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-3xl p-8 sm:p-10 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#EA580C]/15 text-[#EA580C] flex items-center justify-center mx-auto">
+          <div className="bg-[#F4F8F5] border border-[#E5E7EB] rounded-3xl p-8 sm:p-10 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#087443]/10 text-[#087443] flex items-center justify-center mx-auto">
               {activeFeed === 'sport_update' ? (
                 <Trophy className="w-6 h-6" />
               ) : (
                 <Megaphone className="w-6 h-6" />
               )}
             </div>
-            <h3 className="text-base font-black text-[#111111]">
-              {searchTerm || selectedSubcategory !== 'all' || savedOnly
+            <h3 className="text-base font-black text-[#10251D]">
+              {searchTerm || selectedSubcategory !== 'all' || matchStatusFilter !== 'all' || savedOnly
                 ? 'No matching posts found'
                 : activeFeed === 'sport_update'
-                ? 'No FU Sport Updates posted yet'
-                : 'No FU General Announcements posted yet'}
+                ? `No sports updates posted yet for ${currentInst.shortName}`
+                : `No announcements posted yet for ${currentInst.shortName}`}
             </h3>
             <p className="text-xs text-[#6B7280] max-w-md mx-auto">
-              {searchTerm || selectedSubcategory !== 'all' || savedOnly
+              {searchTerm || selectedSubcategory !== 'all' || matchStatusFilter !== 'all' || savedOnly
                 ? 'Try clearing your filters or search keyword to see all campus posts.'
                 : activeFeed === 'sport_update'
-                ? 'Share upcoming FUWUKARI football fixtures, live scores, departmental tournaments, or athletics trials.'
+                ? 'Share real upcoming campus football fixtures, live updates, departmental tournaments, or athletics trials.'
                 : 'Share student meetings, birthday shoutouts, scholarships, lost & found notices, or campus programmes.'}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => onOpenPostModal(activeFeed)}
-                className="px-5 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-black rounded-xl transition flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-xs font-black rounded-xl transition flex items-center gap-1.5"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-4 h-4 text-[#D4A62A]" />
                 <span>Be the First to Post</span>
               </button>
-              {(searchTerm || selectedSubcategory !== 'all' || savedOnly) && (
+              {(searchTerm || selectedSubcategory !== 'all' || matchStatusFilter !== 'all' || savedOnly) && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchTerm('');
                     setSelectedSubcategory('all');
+                    setMatchStatusFilter('all');
                     setSavedOnly(false);
                   }}
-                  className="px-4 py-2.5 bg-white border border-[#E5E7EB] hover:border-[#EA580C] text-[#111111] text-xs font-bold rounded-xl"
+                  className="px-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] hover:border-[#087443] text-[#10251D] text-xs font-bold rounded-xl"
                 >
                   Clear Filters
                 </button>
@@ -398,6 +484,7 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
               {visiblePosts.map((post) => {
                 const isSport = post.categoryType === 'sport_update';
                 const catLabel = isSport ? post.sportCategory : post.announcementCategory;
+                const statusBadge = isSport ? MATCH_STATUS_LABELS[inferSportMatchStatus(post)] : null;
                 const dateVal = isSport ? post.matchDate : post.eventDate;
                 const venueVal = isSport ? post.venue : post.location;
                 const isBookmarked = savedIds.has(post.id);
@@ -405,15 +492,14 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                 return (
                   <article
                     key={post.id}
-                    className="group bg-white border border-[#E5E7EB] hover:border-[#EA580C] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                    className="group bg-[#FFFFFF] border border-[#E5E7EB] hover:border-[#087443] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between"
                   >
                     <div
                       onClick={() => onSelectPost(post)}
                       className="cursor-pointer flex-1 flex flex-col"
                     >
-                      {/* Media Header if Poster exists */}
                       {post.imageUrl ? (
-                        <div className="relative h-44 bg-[#111111] overflow-hidden">
+                        <div className="relative h-44 bg-[#10251D] overflow-hidden">
                           <EventPosterImage
                             src={post.imageUrl}
                             alt={post.title}
@@ -421,33 +507,33 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                           />
                           <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
                             {post.isPinned && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#111111]/90 text-white text-[10px] font-black uppercase">
-                                <Pin className="w-2.5 h-2.5 text-[#EA580C]" /> Pinned
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#10251D]/90 text-[#FFFFFF] text-[10px] font-black uppercase">
+                                <Pin className="w-2.5 h-2.5 text-[#D4A62A]" /> Pinned
                               </span>
                             )}
                             {post.isFeatured && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F2B90D] text-[#111111] text-[10px] font-black uppercase">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
                                 <Star className="w-2.5 h-2.5" /> Featured
                               </span>
                             )}
                           </div>
-                          <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 rounded-lg bg-[#EA580C] text-white text-[10px] font-black uppercase shadow">
+                          <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 rounded-lg bg-[#087443] text-[#FFFFFF] text-[10px] font-black uppercase shadow">
                             {catLabel}
                           </span>
                         </div>
                       ) : (
-                        <div className="bg-[#111111] px-4 py-3 border-b-2 border-[#EA580C] flex items-center justify-between gap-2">
-                          <span className="px-2 py-0.5 rounded bg-[#EA580C] text-white text-[10px] font-black uppercase truncate">
+                        <div className="bg-[#10251D] px-4 py-3 border-b-2 border-[#D4A62A] flex items-center justify-between gap-2">
+                          <span className="px-2 py-0.5 rounded bg-[#087443] text-[#FFFFFF] text-[10px] font-black uppercase truncate">
                             {catLabel}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             {post.isPinned && (
-                              <span className="px-1.5 py-0.5 rounded bg-white text-[#111111] text-[9px] font-black uppercase">
+                              <span className="px-1.5 py-0.5 rounded bg-[#FFFFFF] text-[#10251D] text-[9px] font-black uppercase">
                                 PINNED
                               </span>
                             )}
                             {post.isFeatured && (
-                              <span className="px-1.5 py-0.5 rounded bg-[#F2B90D] text-[#111111] text-[9px] font-black uppercase">
+                              <span className="px-1.5 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[9px] font-black uppercase">
                                 FEATURED
                               </span>
                             )}
@@ -456,22 +542,27 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                       )}
 
                       <div className="p-4 space-y-2.5 flex-1 flex flex-col">
-                        {isSport && (post.score || post.isUnverifiedUserPost !== false) && (
+                        {isSport && (
                           <div className="flex flex-wrap items-center gap-1.5">
+                            {statusBadge && (
+                              <span className="px-2 py-0.5 rounded bg-[#087443]/10 text-[#087443] text-[10px] font-black">
+                                {statusBadge}
+                              </span>
+                            )}
                             {post.score && (
-                              <span className="px-2.5 py-0.5 rounded-lg bg-[#111111] text-white text-[11px] font-black">
+                              <span className="px-2.5 py-0.5 rounded-lg bg-[#10251D] text-[#D4A62A] text-[11px] font-black">
                                 {post.score}
                               </span>
                             )}
                             {post.isUnverifiedUserPost !== false && (
-                              <span className="px-2 py-0.5 rounded bg-[#FFF7ED] border border-[#FED7AA] text-[#C2410C] text-[10px] font-bold">
-                                User-Submitted
+                              <span className="px-2 py-0.5 rounded bg-[#F4F8F5] border border-[#D4A62A]/50 text-[#10251D] text-[10px] font-bold">
+                                User-Submitted • Unverified
                               </span>
                             )}
                           </div>
                         )}
 
-                        <h3 className="font-display text-sm sm:text-base font-black text-[#111111] group-hover:text-[#EA580C] line-clamp-2 leading-snug transition">
+                        <h3 className="font-display text-sm sm:text-base font-black text-[#10251D] group-hover:text-[#087443] line-clamp-2 leading-snug transition">
                           {post.title}
                         </h3>
 
@@ -490,13 +581,13 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6B7280] pt-1">
                             {dateVal && (
                               <span className="inline-flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-[#EA580C]" />
+                                <Calendar className="w-3 h-3 text-[#087443]" />
                                 {dateVal}
                               </span>
                             )}
                             {venueVal && (
                               <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
-                                <MapPin className="w-3 h-3 text-[#EA580C]" />
+                                <MapPin className="w-3 h-3 text-[#087443]" />
                                 {venueVal}
                               </span>
                             )}
@@ -505,16 +596,16 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                       </div>
                     </div>
 
-                    {/* Card Footer: Author + Engagement */}
-                    <div className="px-4 py-2.5 bg-[#F9FAFB] border-t border-[#E5E7EB] flex items-center justify-between gap-2 text-[11px]">
+                    {/* Card Footer */}
+                    <div className="px-4 py-2.5 bg-[#F4F8F5] border-t border-[#E5E7EB] flex items-center justify-between gap-2 text-[11px]">
                       <button
                         type="button"
                         onClick={() =>
                           onOpenAuthorProfile(post.authorId, post.authorName, post.authorAvatar)
                         }
-                        className="flex items-center gap-1.5 min-w-0 hover:text-[#EA580C] transition"
+                        className="flex items-center gap-1.5 min-w-0 hover:text-[#087443] transition"
                       >
-                        <div className="w-5 h-5 rounded-full bg-[#111111] text-white flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="w-5 h-5 rounded-full bg-[#10251D] text-[#FFFFFF] flex items-center justify-center overflow-hidden shrink-0">
                           {post.authorAvatar ? (
                             <img
                               src={post.authorAvatar}
@@ -525,7 +616,7 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                             <UserIcon className="w-3 h-3" />
                           )}
                         </div>
-                        <span className="font-bold text-[#111111] truncate">{post.authorName}</span>
+                        <span className="font-bold text-[#10251D] truncate">{post.authorName}</span>
                         <span className="text-[#9CA3AF] shrink-0">
                           • {formatRelativeTime(post.createdAt)}
                         </span>
@@ -534,10 +625,10 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                       <button
                         type="button"
                         onClick={() => onSelectPost(post)}
-                        className="flex items-center gap-2.5 text-[#4B5563] font-bold shrink-0 hover:text-[#EA580C]"
+                        className="flex items-center gap-2.5 text-[#4B5563] font-bold shrink-0 hover:text-[#087443]"
                       >
                         <span className="inline-flex items-center gap-0.5">
-                          <Heart className="w-3 h-3 text-[#EA580C]" />
+                          <Heart className="w-3 h-3 text-[#087443]" />
                           {post.likesCount}
                         </span>
                         <span className="inline-flex items-center gap-0.5">
@@ -549,9 +640,9 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                           {post.views}
                         </span>
                         {isBookmarked && (
-                          <Bookmark className="w-3 h-3 fill-[#EA580C] text-[#EA580C]" />
+                          <Bookmark className="w-3 h-3 fill-[#D4A62A] text-[#D4A62A]" />
                         )}
-                        <ArrowRight className="w-3.5 h-3.5 text-[#EA580C]" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[#087443]" />
                       </button>
                     </div>
                   </article>
@@ -564,7 +655,7 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
                 <button
                   type="button"
                   onClick={() => setVisibleLimit((prev) => prev + PAGE_SIZE)}
-                  className="px-6 py-2.5 bg-[#111111] hover:bg-[#EA580C] text-white text-xs font-black rounded-xl transition shadow-xs"
+                  className="px-6 py-2.5 bg-[#10251D] hover:bg-[#087443] text-[#FFFFFF] text-xs font-black rounded-xl transition shadow-xs"
                 >
                   Load More ({filteredPosts.length - visiblePosts.length} more)
                 </button>

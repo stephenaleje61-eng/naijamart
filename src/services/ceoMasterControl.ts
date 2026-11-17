@@ -89,6 +89,8 @@ export async function fetchAllWebsiteContent(): Promise<{
     emergencyReportsRes,
     safetyAnnouncementsRes,
     lostFoundRes,
+    accommodationRes,
+    houseAgentsRes,
     uploadsRes
   ] = await Promise.allSettled([
     getDocs(collection(db, 'products')),
@@ -117,6 +119,8 @@ export async function fetchAllWebsiteContent(): Promise<{
     getDocs(collection(db, 'emergency_reports')),
     getDocs(collection(db, 'safety_announcements')),
     getDocs(collection(db, 'lost_and_found_items')),
+    getDocs(collection(db, 'accommodation')),
+    getDocs(collection(db, 'houseAgents')),
     headersPromise.then((headers) =>
       safeFetchJson('/api/ads/admin/uploaded-files', { headers, timeoutMs: 5000 })
     )
@@ -221,7 +225,7 @@ export async function fetchAllWebsiteContent(): Promise<{
         sectionTag: 'Service Category',
         title: safeStr(data.name, d.id),
         subtitle: safeStr(data.slug, d.id),
-        ownerName: 'FU MARKET CEO',
+        ownerName: 'NIGERIA CAMPUS MARKET CEO',
         categoryLabel: 'Service Categories',
         statusLabel: data.isActive === false ? 'hidden' : 'active',
         createdAt: toIsoString(data.updatedAt || data.createdAt),
@@ -493,7 +497,7 @@ export async function fetchAllWebsiteContent(): Promise<{
     }
   }
 
-  // 14. Accommodation Listings (Wukari Agent / hux)
+  // 14. Accommodation Listings (Wukari Agent / hux & National / accommodation)
   if (huxRes.status === 'fulfilled') {
     for (const d of huxRes.value.docs) {
       const data = d.data() || {};
@@ -513,6 +517,57 @@ export async function fetchAllWebsiteContent(): Promise<{
         imageUrl: imgs[0],
         createdAt: toIsoString(data.createdAt),
         supportsApproval: false,
+        supportsEdit: true,
+        supportsSoftDelete: true,
+        rawData: { ...data, id: d.id }
+      });
+    }
+  }
+
+  if (accommodationRes.status === 'fulfilled') {
+    for (const d of accommodationRes.value.docs) {
+      const data = d.data() || {};
+      const imgs = Array.isArray(data.images) ? data.images : data.imageUrl ? [data.imageUrl] : [];
+      records.push({
+        compositeKey: `accommodation::${d.id}`,
+        sourceCollection: 'accommodation',
+        sourceId: d.id,
+        filterGroup: 'other',
+        sectionTag: 'Accommodation Listing',
+        title: safeStr(data.title, 'Accommodation'),
+        subtitle: `₦${Number(data.price || 0).toLocaleString()} / ${safeStr(data.pricePer, 'year')} · ${safeStr(data.location)} (${safeStr(data.institutionId, 'fuwukari')})`,
+        ownerName: safeStr(data.userName || data.agentName, 'Agent'),
+        ownerContact: safeStr(data.whatsapp || data.phone),
+        categoryLabel: safeStr(data.type || data.category, 'rent'),
+        statusLabel: data.isAvailable === false ? 'unavailable' : 'available',
+        imageUrl: imgs[0],
+        createdAt: toIsoString(data.createdAt),
+        supportsApproval: false,
+        supportsEdit: true,
+        supportsSoftDelete: true,
+        rawData: { ...data, id: d.id }
+      });
+    }
+  }
+
+  if (houseAgentsRes.status === 'fulfilled') {
+    for (const d of houseAgentsRes.value.docs) {
+      const data = d.data() || {};
+      records.push({
+        compositeKey: `houseAgents::${d.id}`,
+        sourceCollection: 'houseAgents',
+        sourceId: d.id,
+        filterGroup: 'business_listings',
+        sectionTag: 'House Agent Profile',
+        title: safeStr(data.agentName || data.agencyName, 'House Agent'),
+        subtitle: `${safeStr(data.areaCovered)} · ${safeStr(data.campus)} (${safeStr(data.institutionId, 'fuwukari')})`,
+        ownerName: safeStr(data.agentName, 'House Agent'),
+        ownerContact: safeStr(data.whatsapp || data.phone),
+        categoryLabel: safeStr(data.roleType, 'house_agent'),
+        statusLabel: data.status === 'suspended' ? 'suspended' : data.isVerified ? 'verified' : 'active',
+        imageUrl: safeStr(data.photoUrl),
+        createdAt: toIsoString(data.createdAt),
+        supportsApproval: true,
         supportsEdit: true,
         supportsSoftDelete: true,
         rawData: { ...data, id: d.id }
@@ -586,7 +641,7 @@ export async function fetchAllWebsiteContent(): Promise<{
         sectionTag: 'Emergency Contact',
         title: safeStr(data.name, 'Emergency Contact'),
         subtitle: `${safeStr(data.department)} · ${safeStr(data.phone)}`,
-        ownerName: 'FU MARKET CEO',
+        ownerName: 'NIGERIA CAMPUS MARKET CEO',
         ownerContact: safeStr(data.phone),
         categoryLabel: safeStr(data.department, 'emergency'),
         statusLabel: data.verified ? 'verified' : 'unverified',
@@ -949,14 +1004,25 @@ export async function editUnifiedContentRecord(
         updatedAt: serverTimestamp()
       })
     );
-  } else if (col === 'hux') {
+  } else if (col === 'hux' || col === 'accommodation') {
     await updateDoc(
-      doc(db, 'hux', id),
+      doc(db, col, id),
       stripUndefined({
         ...(updates.title !== undefined ? { title: updates.title.trim() } : {}),
         ...(updates.description !== undefined ? { description: updates.description.trim() } : {}),
         ...(updates.price !== undefined && !isNaN(updates.price) ? { price: Number(updates.price) } : {}),
         ...(updates.location !== undefined ? { location: updates.location.trim() } : {}),
+        updatedAt: nowIso
+      })
+    );
+  } else if (col === 'houseAgents') {
+    await updateDoc(
+      doc(db, 'houseAgents', id),
+      stripUndefined({
+        ...(updates.title !== undefined ? { agentName: updates.title.trim() } : {}),
+        ...(updates.description !== undefined ? { bio: updates.description.trim() } : {}),
+        ...(updates.location !== undefined ? { areaCovered: updates.location.trim() } : {}),
+        ...(updates.status !== undefined ? { status: updates.status } : {}),
         updatedAt: nowIso
       })
     );
@@ -1075,6 +1141,13 @@ export async function approveOrRejectUnifiedRecord(
     await updateDoc(doc(db, 'sellerProfiles', id), {
       isVerified: decision === 'approve',
       isSuspended: decision === 'reject'
+    });
+  } else if (col === 'houseAgents') {
+    await updateDoc(doc(db, 'houseAgents', id), {
+      isVerified: decision === 'approve',
+      ceoVerified: decision === 'approve',
+      status: decision === 'reject' ? 'suspended' : 'active',
+      updatedAt: new Date().toISOString()
     });
   } else if (col === 'reports' || col === 'huxReports' || col === 'announcement_reports' || col === 'serviceReports') {
     await updateDoc(doc(db, col, id), {

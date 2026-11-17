@@ -108,7 +108,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
     } catch (err: any) {
       setErrorMsg(
         err?.message?.includes('permission-denied')
-          ? 'Only signed-in service owners or FU MARKET CEO can delete this listing.'
+          ? 'Only signed-in service owners or NIGERIA CAMPUS MARKET CEO can delete this listing.'
           : err?.message || 'Could not delete service listing.'
       );
     } finally {
@@ -123,11 +123,11 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
       aria-modal="true"
       aria-label="Service Provider Dashboard"
     >
-      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#111111]">
+      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#0B6B3A] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#065D36]">
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#F2B90D]">
+            <h2 className="text-base sm:text-lg font-black text-[#D4A62A]">
               SERVICE PROVIDER DASHBOARD
             </h2>
             <p className="text-xs text-white/90">
@@ -141,7 +141,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                 onClose();
                 onPostNew();
               }}
-              className="px-3.5 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl flex items-center gap-1.5 transition"
+              className="px-3.5 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl flex items-center gap-1.5 transition"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Post Service</span>
@@ -150,7 +150,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
               type="button"
               onClick={onClose}
               aria-label="Close dashboard"
-              className="w-9 h-9 rounded-lg bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+              className="w-9 h-9 rounded-lg bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -162,20 +162,20 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
               <p className="text-[11px] font-bold text-[#555555]">My Services</p>
-              <p className="text-2xl font-black text-[#111111] tabular-nums mt-0.5">
+              <p className="text-2xl font-black text-[#10251D] tabular-nums mt-0.5">
                 {services.length}
               </p>
             </div>
             <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
               <p className="text-[11px] font-bold text-[#555555]">Active Listings</p>
-              <p className="text-2xl font-black text-[#0B6B3A] tabular-nums mt-0.5">
+              <p className="text-2xl font-black text-[#087443] tabular-nums mt-0.5">
                 {activeCount}
               </p>
             </div>
             <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
               <p className="text-[11px] font-bold text-[#555555]">Service Views</p>
-              <p className="text-2xl font-black text-[#111111] tabular-nums mt-0.5 flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-[#0B6B3A]" />
+              <p className="text-2xl font-black text-[#10251D] tabular-nums mt-0.5 flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-[#087443]" />
                 <span>{totalViews}</span>
               </p>
             </div>
@@ -200,8 +200,8 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
             </div>
           ) : services.length === 0 ? (
             <div className="bg-white border border-[#E5E7EB] rounded-xl p-8 text-center space-y-3">
-              <Briefcase className="w-10 h-10 text-[#0B6B3A] mx-auto" />
-              <h3 className="text-sm font-black text-[#111111]">
+              <Briefcase className="w-10 h-10 text-[#087443] mx-auto" />
+              <h3 className="text-sm font-black text-[#10251D]">
                 You haven&apos;t posted any service yet
               </h3>
               <p className="text-xs text-[#555555] max-w-md mx-auto">
@@ -213,7 +213,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                   onClose();
                   onPostNew();
                 }}
-                className="px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
+                className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition"
               >
                 POST YOUR SERVICE
               </button>
@@ -238,11 +238,11 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                         src={service.images?.[0] || ''}
                         alt={service.serviceName}
                         loading="lazy"
-                        className="w-20 h-16 rounded-lg object-cover border border-[#E5E7EB] bg-[#F5F5F5] shrink-0"
+                        className="w-20 h-16 rounded-lg object-cover border border-[#E5E7EB] bg-[#F4F8F5] shrink-0"
                       />
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#555555]">
-                          <span className="font-bold text-[#0B6B3A]">{service.category}</span>
+                          <span className="font-bold text-[#087443]">{service.category}</span>
                           <span aria-hidden="true">·</span>
                           <span className="font-bold capitalize">{service.status}</span>
                           {service.featured && (
@@ -255,12 +255,12 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                         <button
                           type="button"
                           onClick={() => onViewService(service)}
-                          className="text-sm font-black text-[#111111] hover:text-[#0B6B3A] text-left truncate block max-w-full"
+                          className="text-sm font-black text-[#10251D] hover:text-[#087443] text-left truncate block max-w-full"
                         >
                           {service.serviceName}
                         </button>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#444444] tabular-nums">
-                          <span className="font-black text-[#0B6B3A]">{priceLabel}</span>
+                          <span className="font-black text-[#087443]">{priceLabel}</span>
                           <span>Views: <strong>{service.views}</strong></span>
                           <span>WhatsApp Clicks: <strong>{service.whatsappClicks}</strong></span>
                         </div>
@@ -269,7 +269,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {/* Availability Switcher */}
-                      <div className="flex items-center gap-1 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl p-1 text-[11px] font-bold">
+                      <div className="flex items-center gap-1 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl p-1 text-[11px] font-bold">
                         {(
                           [
                             { id: 'available', label: 'Available', Icon: CheckCircle2 },
@@ -284,8 +284,8 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                             onClick={() => handleAvailabilityChange(service, id)}
                             className={`px-2 py-1 rounded-lg flex items-center gap-1 transition ${
                               service.availability === id
-                                ? 'bg-[#0B6B3A] text-white'
-                                : 'text-[#555555] hover:text-[#111111]'
+                                ? 'bg-[#087443] text-white'
+                                : 'text-[#555555] hover:text-[#10251D]'
                             }`}
                           >
                             <Icon className="w-3 h-3" />
@@ -297,7 +297,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                       <button
                         type="button"
                         onClick={() => onEditService(service)}
-                        className="px-3 py-2 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl flex items-center gap-1 transition"
+                        className="px-3 py-2 bg-[#F4F8F5] hover:bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl flex items-center gap-1 transition"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit</span>
@@ -306,7 +306,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                       <button
                         type="button"
                         onClick={() => onPromoteService(service)}
-                        className="px-3 py-2 bg-[#FFF7ED] hover:bg-[#EA580C] text-[#9A3412] hover:text-white border border-[#FDBA74] text-xs font-black rounded-xl flex items-center gap-1 transition"
+                        className="px-3 py-2 bg-[#F4F8F5] hover:bg-[#D4A62A] text-[#087443] hover:text-[#10251D] border border-[#D4A62A] text-xs font-black rounded-xl flex items-center gap-1 transition"
                       >
                         <Star className="w-3.5 h-3.5" />
                         <span>Promote</span>
@@ -325,7 +325,7 @@ export const ServiceProviderDashboardModal: React.FC<ServiceProviderDashboardMod
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteId(null)}
-                            className="px-2.5 py-2 bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl"
+                            className="px-2.5 py-2 bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl"
                           >
                             Cancel
                           </button>

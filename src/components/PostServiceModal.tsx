@@ -6,9 +6,11 @@ import {
   AlertCircle,
   Loader2,
   MapPin,
-  CheckCircle2
+  CheckCircle2,
+  Building2
 } from 'lucide-react';
 import {
+  Institution,
   ServiceAvailability,
   ServiceCategory,
   ServiceListing
@@ -21,10 +23,19 @@ import {
 import { uploadServicePhoto } from '../services/imageStorage.js';
 import { useAuth } from '../context/AuthContext.js';
 import { getOrCreateGuestId } from '../utils/studentAuth.js';
+import {
+  DEFAULT_INSTITUTION_CAMPUS,
+  DEFAULT_INSTITUTION_ID,
+  VERIFIED_NIGERIAN_INSTITUTIONS,
+  getInstitutionById
+} from '../constants/institutions.js';
 
 interface PostServiceModalProps {
   categories: ServiceCategory[];
   editingService?: ServiceListing | null;
+  selectedInstitutionId?: string;
+  selectedCampus?: string;
+  institutions?: Institution[];
   onClose: () => void;
   onSuccess: (service: ServiceListing, isEdit: boolean) => void;
 }
@@ -32,11 +43,28 @@ interface PostServiceModalProps {
 export const PostServiceModal: React.FC<PostServiceModalProps> = ({
   categories,
   editingService = null,
+  selectedInstitutionId,
+  selectedCampus,
+  institutions = VERIFIED_NIGERIAN_INSTITUTIONS,
   onClose,
   onSuccess
 }) => {
   const { user } = useAuth();
   const isEdit = Boolean(editingService);
+
+  const initialInstId =
+    editingService?.institutionId ||
+    (selectedInstitutionId && selectedInstitutionId !== 'all'
+      ? selectedInstitutionId
+      : DEFAULT_INSTITUTION_ID);
+
+  const [institutionId, setInstitutionId] = useState(initialInstId);
+  const [campus, setCampus] = useState(
+    editingService?.campus ||
+      selectedCampus ||
+      getInstitutionById(initialInstId, institutions).campus ||
+      DEFAULT_INSTITUTION_CAMPUS
+  );
 
   const [serviceName, setServiceName] = useState(editingService?.serviceName || '');
   const [category, setCategory] = useState(
@@ -76,6 +104,8 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const activeInst = getInstitutionById(institutionId, institutions);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -148,6 +178,8 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
           priceMax: parsedMax,
           priceDisplay: computedPriceDisplay,
           location,
+          institutionId,
+          campus,
           phone,
           whatsapp: whatsapp.trim() || phone.trim(),
           images,
@@ -165,6 +197,8 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
             ...(parsedMax ? { priceMax: parsedMax } : {}),
             priceDisplay: computedPriceDisplay,
             location: location.trim(),
+            institutionId,
+            campus,
             phone: phone.trim(),
             whatsapp: (whatsapp.trim() || phone.trim()),
             images,
@@ -185,6 +219,8 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
             priceMax: parsedMax,
             priceDisplay: computedPriceDisplay,
             location,
+            institutionId,
+            campus,
             phone,
             whatsapp: whatsapp.trim() || phone.trim(),
             images,
@@ -209,24 +245,24 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
       aria-modal="true"
       aria-label={isEdit ? 'Edit Service Listing' : 'Post Your Service'}
     >
-      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden my-4 text-[#111111]">
+      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden my-4 text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#0B6B3A] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#065D36]">
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#F2B90D]">
+            <h2 className="text-base sm:text-lg font-black text-[#D4A62A]">
               {isEdit ? 'EDIT SERVICE LISTING' : 'POST YOUR SERVICE'}
             </h2>
             <p className="text-xs text-white/90">
               {user
                 ? `Posting as ${user.name}`
-                : 'Guest Posting Supported · Saved Permanently to FU MARKET'}
+                : 'Guest Posting Supported · Saved Permanently to NIGERIA CAMPUS MARKET'}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="w-9 h-9 rounded-lg bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+            className="w-9 h-9 rounded-lg bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -240,9 +276,56 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
             </div>
           )}
 
+          {/* Institution & Campus Selector */}
+          <div className="bg-[#F4F8F5] border border-[#087443]/20 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-black text-[#087443] uppercase tracking-wider">
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Institution &amp; Campus</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-[#10251D] mb-1">
+                  University / Polytechnic *
+                </label>
+                <select
+                  value={institutionId}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setInstitutionId(nextId);
+                    const inst = getInstitutionById(nextId, institutions);
+                    setCampus(inst.campus || inst.campuses[0] || DEFAULT_INSTITUTION_CAMPUS);
+                  }}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#087443] outline-none"
+                >
+                  {(institutions.length > 0 ? institutions : VERIFIED_NIGERIAN_INSTITUTIONS).map((inst) => (
+                    <option key={inst.id} value={inst.id}>
+                      {inst.shortName} — {inst.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#10251D] mb-1">
+                  Campus *
+                </label>
+                <select
+                  value={campus}
+                  onChange={(e) => setCampus(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#087443] outline-none"
+                >
+                  {activeInst.campuses.map((camp) => (
+                    <option key={camp} value={camp}>
+                      {camp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-[#111111] mb-1">
+              <label className="block text-xs font-bold text-[#10251D] mb-1">
                 Service Name *
               </label>
               <input
@@ -252,18 +335,18 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                 value={serviceName}
                 onChange={(e) => setServiceName(e.target.value)}
                 placeholder="e.g. Classic Student Haircut & Fade"
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#111111] mb-1">
+              <label className="block text-xs font-bold text-[#10251D] mb-1">
                 Service Category *
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none bg-white"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none bg-white"
               >
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.name}>
@@ -274,7 +357,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#111111] mb-1">
+              <label className="block text-xs font-bold text-[#10251D] mb-1">
                 Provider / Business Name *
               </label>
               <input
@@ -284,18 +367,18 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                 value={providerName}
                 onChange={(e) => setProviderName(e.target.value)}
                 placeholder="Your full name or brand name"
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#111111] mb-1">
+              <label className="block text-xs font-bold text-[#10251D] mb-1">
                 Availability *
               </label>
               <select
                 value={availability}
                 onChange={(e) => setAvailability(e.target.value as ServiceAvailability)}
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none bg-white"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none bg-white"
               >
                 <option value="available">Available Now</option>
                 <option value="busy">Busy / By Appointment</option>
@@ -305,8 +388,8 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
           </div>
 
           {/* Pricing / Price Range */}
-          <div className="p-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl space-y-2.5">
-            <p className="text-xs font-black text-[#111111]">Service Price or Price Range (₦)</p>
+          <div className="p-3.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl space-y-2.5">
+            <p className="text-xs font-black text-[#10251D]">Service Price or Price Range (₦)</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold text-[#555555] mb-1">
@@ -320,7 +403,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="e.g. 1500"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#0B6B3A] outline-none tabular-nums"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#087443] outline-none tabular-nums"
                 />
               </div>
               <div>
@@ -334,7 +417,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
                   placeholder="e.g. 5000"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#0B6B3A] outline-none tabular-nums"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#087443] outline-none tabular-nums"
                 />
               </div>
               <div>
@@ -347,7 +430,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                   value={priceDisplayNote}
                   onChange={(e) => setPriceDisplayNote(e.target.value)}
                   placeholder="e.g. From ₦1,500 / wash"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#0B6B3A] outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl bg-white focus:border-[#087443] outline-none"
                 />
               </div>
             </div>
@@ -355,19 +438,19 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
 
           {/* Location + Chips */}
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-[#111111]">
-              Service Location around FUWUKARI *
+            <label className="block text-xs font-bold text-[#10251D]">
+              Service Location around {activeInst.shortName} *
             </label>
             <div className="relative">
-              <MapPin className="w-3.5 h-3.5 text-[#0B6B3A] absolute left-3 top-2.5" />
+              <MapPin className="w-3.5 h-3.5 text-[#087443] absolute left-3 top-2.5" />
               <input
                 type="text"
                 required
                 maxLength={180}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Behind LT, New Site, Main Gate, Wukari"
-                className="w-full pl-8 pr-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+                placeholder="e.g. Behind LT, New Site, Main Gate, Campus Area"
+                className="w-full pl-8 pr-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -376,10 +459,10 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                   key={loc}
                   type="button"
                   onClick={() => setLocation(loc)}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition ${
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
                     location === loc
-                      ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
-                      : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#444444] hover:border-[#0B6B3A]'
+                      ? 'bg-[#087443] border-[#087443] text-white'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#444444] hover:border-[#087443]'
                   }`}
                 >
                   {loc}
@@ -391,7 +474,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
           {/* Contact Phone + WhatsApp */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-[#111111] mb-1">
+              <label className="block text-xs font-bold text-[#10251D] mb-1">
                 Contact Phone Number *
               </label>
               <input
@@ -405,20 +488,20 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                   if (!whatsapp) setWhatsapp(val);
                 }}
                 placeholder="e.g. 08012345678"
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none tabular-nums"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none tabular-nums"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-[#111111]">
+                <label className="text-xs font-bold text-[#10251D]">
                   WhatsApp Number *
                 </label>
                 {phone && whatsapp !== phone && (
                   <button
                     type="button"
                     onClick={() => setWhatsapp(phone)}
-                    className="text-[11px] font-bold text-[#0B6B3A] hover:underline"
+                    className="text-[11px] font-bold text-[#087443] hover:underline"
                   >
                     Same as phone
                   </button>
@@ -431,14 +514,14 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 placeholder="e.g. 08012345678"
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none tabular-nums"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none tabular-nums"
               />
             </div>
           </div>
 
           {/* Service Description & Schedule */}
           <div>
-            <label className="block text-xs font-bold text-[#111111] mb-1">
+            <label className="block text-xs font-bold text-[#10251D] mb-1">
               Service Description *
             </label>
             <textarea
@@ -448,12 +531,12 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what your service includes, turnaround time, home/hostel service availability, and student discounts..."
-              className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+              className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#111111] mb-1">
+            <label className="block text-xs font-bold text-[#10251D] mb-1">
               Availability Hours / Note (Optional)
             </label>
             <input
@@ -462,14 +545,14 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
               value={availabilityNote}
               onChange={(e) => setAvailabilityNote(e.target.value)}
               placeholder="e.g. Mon – Sat, 8am – 8pm · Hostel visits available"
-              className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#0B6B3A] outline-none"
+              className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
             />
           </div>
 
           {/* Service Pictures Upload */}
-          <div className="p-4 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl space-y-3">
+          <div className="p-4 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-black text-[#111111]">
+              <label className="text-xs font-black text-[#10251D]">
                 Service Pictures * (Up to 6 compressed photos)
               </label>
               <span className="text-[11px] text-[#555555] tabular-nums">
@@ -477,7 +560,7 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
               </span>
             </div>
 
-            <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-dashed border-[#0B6B3A] rounded-xl text-xs font-bold text-[#0B6B3A] cursor-pointer hover:bg-[#F0FDF4] transition">
+            <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-dashed border-[#087443] rounded-xl text-xs font-bold text-[#087443] cursor-pointer hover:bg-[#F0FDF4] transition">
               <Upload className="w-4 h-4" />
               <span>
                 {uploading
@@ -524,19 +607,19 @@ export const PostServiceModal: React.FC<PostServiceModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl transition min-h-[42px]"
+              className="px-4 py-2.5 bg-[#F4F8F5] hover:bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl transition min-h-[42px] cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || uploading}
-              className="px-6 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs sm:text-sm font-black rounded-xl transition flex items-center gap-2 min-h-[42px]"
+              className="px-6 py-2.5 bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs sm:text-sm font-black rounded-xl transition flex items-center gap-2 min-h-[42px] cursor-pointer"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <CheckCircle2 className="w-4 h-4 text-[#F2B90D]" />
+                <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" />
               )}
               <span>{isEdit ? 'Save Changes' : 'Publish Service'}</span>
             </button>

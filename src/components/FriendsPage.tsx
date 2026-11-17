@@ -13,7 +13,10 @@ import {
   CheckCheck,
   RefreshCw,
   GraduationCap,
-  AlertCircle
+  AlertCircle,
+  Ban,
+  Flag,
+  ShieldCheck
 } from 'lucide-react';
 import { UploadTask } from 'firebase/storage';
 import {
@@ -21,7 +24,8 @@ import {
   FriendRequest,
   Friend,
   PrivateMessage,
-  ChatMetadata
+  ChatMetadata,
+  BlockedUserRecord
 } from '../types.js';
 import {
   subscribeToRegisteredUsers,
@@ -43,6 +47,12 @@ import { isValidImageFormat } from '../utils/imagePersistence.js';
 import { getLocalStudentSession, isGuestModeActive, activateGuestMode } from '../utils/studentAuth.js';
 import { StudentLoginModal } from './StudentLoginModal.js';
 import { useAuth } from '../context/AuthContext.js';
+import {
+  subscribeToBlockedUsers,
+  blockUserInChat,
+  unblockUserInChat,
+  reportPrivateConversation
+} from '../services/messagingSafety.js';
 
 export interface DirectChatTarget {
   id: string;
@@ -104,6 +114,13 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   const [showChatEmoji, setShowChatEmoji] = useState(false);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUserRecord[]>([]);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('Scam / Suspicious Payment Demand');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [safetyFeedback, setSafetyFeedback] = useState<string | null>(null);
 
   const activeTaskRef = useRef<UploadTask | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -111,7 +128,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    document.title = 'Student Messaging & Friends | FU MARKET';
+    document.title = 'Student Messaging & Friends | NIGERIA CAMPUS MARKET';
   }, []);
 
   useEffect(() => {
@@ -182,12 +199,16 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     const unsubChats = subscribeToMyPrivateChats(student.id, (chats) => {
       setDirectChats(chats);
     });
+    const unsubBlocked = subscribeToBlockedUsers(student.id, (records) => {
+      setBlockedUsers(records);
+    });
 
     return () => {
       unsubUsers();
       unsubRequests();
       unsubFriends();
       unsubChats();
+      unsubBlocked();
     };
   }, [student?.id]);
 
@@ -331,9 +352,68 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const isActivePeerBlocked = Boolean(
+    activePeer && blockedUsers.some((b) => b.blockedUserId === activePeer.userId)
+  );
+
+  const handleToggleBlockPeer = async () => {
+    if (!student || !activePeer || blockBusy) return;
+    setBlockBusy(true);
+    setChatError(null);
+    setSafetyFeedback(null);
+    try {
+      if (isActivePeerBlocked) {
+        await unblockUserInChat(student.id, activePeer.userId);
+        setSafetyFeedback(`${activePeer.name} has been unblocked.`);
+      } else {
+        await blockUserInChat({
+          blockerId: student.id,
+          blockedUserId: activePeer.userId,
+          blockedUserName: activePeer.name,
+          reason: 'Blocked via direct campus messaging'
+        });
+        setSafetyFeedback(`${activePeer.name} has been blocked. You can unblock anytime.`);
+      }
+    } catch (err: any) {
+      setChatError(err?.message || 'Could not update block status.');
+    } finally {
+      setBlockBusy(false);
+    }
+  };
+
+  const handleSubmitConversationReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student || !activePeer || reportSubmitting) return;
+    setReportSubmitting(true);
+    setChatError(null);
+    try {
+      const chatId = activePeer.chatId || getPrivateChatId(student.id, activePeer.userId);
+      await reportPrivateConversation({
+        chatId,
+        reporterId: student.id,
+        reporterName: student.name,
+        reportedUserId: activePeer.userId,
+        reportedUserName: activePeer.name,
+        reason: reportReason,
+        details: reportDetails
+      });
+      setShowReportModal(false);
+      setReportDetails('');
+      setSafetyFeedback('Conversation reported to NIGERIA CAMPUS MARKET moderation desk.');
+    } catch (err: any) {
+      setChatError(err?.message || 'Could not submit conversation report.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   const handleSendPrivateMsg = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!student || !activePeer) return;
+    if (isActivePeerBlocked) {
+      setChatError(`You blocked ${activePeer.name}. Unblock them first to send a message.`);
+      return;
+    }
 
     const text = chatInputText.trim();
     if (!text && !chatSelectedFile) return;
@@ -409,14 +489,17 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     Date.now() - chatMetadata.typing[activePeer.userId] < 3500;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col font-sans pb-20 sm:pb-0">
+    <div className="min-h-screen bg-[#F4F8F5] text-[#10251D] flex flex-col font-sans pb-20 sm:pb-0">
       {/* Header */}
-      <div className="bg-[#0B6B3A] border-b border-[#14532D] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between text-white">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="bg-[#10251D] border-b-2 border-[#D4A62A] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between text-white gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {activePeer ? (
             <button
-              onClick={() => setActivePeer(null)}
-              className="p-2 rounded-xl bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white transition"
+              onClick={() => {
+                setActivePeer(null);
+                setSafetyFeedback(null);
+              }}
+              className="p-2 rounded-xl bg-[#087443] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] text-white transition shrink-0"
               title="Back to Conversations"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -424,27 +507,29 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           ) : (
             <button
               onClick={onBackToHome}
-              className="p-2 rounded-xl bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white transition"
-              title="Back to FU MARKET"
+              className="p-2 rounded-xl bg-[#087443] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] text-white transition shrink-0"
+              title="Back to NIGERIA CAMPUS MARKET"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
           {activePeer ? (
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-[#F2B90D] text-[#111111] font-black flex items-center justify-center text-sm uppercase">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-[#D4A62A] text-[#10251D] font-black flex items-center justify-center text-sm uppercase shrink-0">
                 {activePeer.name.charAt(0)}
               </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-black text-[#F2B90D] line-clamp-1">
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-black text-[#D4A62A] line-clamp-1">
                   {activePeer.name}
                 </h2>
                 <p className="text-[11px] text-white/85 flex items-center gap-1.5">
-                  {isPeerTyping ? (
-                    <span className="text-[#F2B90D] font-bold animate-pulse">Typing...</span>
+                  {isActivePeerBlocked ? (
+                    <span className="text-red-300 font-bold">Blocked</span>
+                  ) : isPeerTyping ? (
+                    <span className="text-[#D4A62A] font-bold animate-pulse">Typing...</span>
                   ) : (
-                    <span>{activePeer.matricNumber || 'FUWUKARI Peer / Seller'}</span>
+                    <span>{activePeer.matricNumber || 'Campus Peer / Seller'}</span>
                   )}
                 </p>
               </div>
@@ -452,11 +537,11 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           ) : (
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-black text-[#F2B90D]">
+                <h1 className="text-sm sm:text-base font-black text-[#D4A62A]">
                   Student Messaging &amp; Friends
                 </h1>
                 {pendingIncoming.length > 0 && (
-                  <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full">
+                  <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-full">
                     {pendingIncoming.length} req
                   </span>
                 )}
@@ -468,12 +553,39 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {activePeer && student && (
+            <>
+              <button
+                type="button"
+                onClick={handleToggleBlockPeer}
+                disabled={blockBusy}
+                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition whitespace-nowrap shrink-0 cursor-pointer ${
+                  isActivePeerBlocked
+                    ? 'bg-[#087443] border-[#D4A62A] text-[#D4A62A]'
+                    : 'bg-white/10 hover:bg-red-600/80 border-white/20 text-white'
+                }`}
+                title={isActivePeerBlocked ? 'Unblock user' : 'Block user'}
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isActivePeerBlocked ? 'Unblock' : 'Block'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(true)}
+                className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 hover:bg-[#D4A62A] hover:text-[#10251D] border border-white/20 text-white flex items-center gap-1 transition whitespace-nowrap shrink-0 cursor-pointer"
+                title="Report conversation"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Report</span>
+              </button>
+            </>
+          )}
           {!activePeer && (
             <button
               type="button"
               onClick={onNavigateToHub}
-              className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-xs font-bold text-white rounded-xl transition"
+              className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-[#087443] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] text-xs font-bold text-white rounded-xl transition whitespace-nowrap shrink-0"
             >
               <span>Open Group Hub</span>
             </button>
@@ -481,15 +593,15 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           {student ? (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#14532D] border border-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              className="bg-[#087443] border border-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <span className="hidden sm:inline max-w-[100px] truncate">{student.name}</span>
-              <span className="font-mono text-[10px] text-[#F2B90D]">{student.matricNumber}</span>
+              <span className="font-mono text-[10px] text-[#D4A62A]">{student.matricNumber}</span>
             </button>
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] px-3 py-1.5 rounded-xl text-xs font-black"
+              className="bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap shrink-0"
             >
               Sign In
             </button>
@@ -500,9 +612,33 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       {activePeer ? (
         <div className="flex-1 flex flex-col justify-between max-w-3xl w-full mx-auto">
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
+            {safetyFeedback && (
+              <div className="p-2.5 bg-emerald-50 border border-[#087443]/30 text-[#087443] text-xs font-bold rounded-xl flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  {safetyFeedback}
+                </span>
+                <button type="button" onClick={() => setSafetyFeedback(null)} className="underline text-[11px]">
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {isActivePeerBlocked && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs font-bold rounded-xl flex items-center justify-between gap-2">
+                <span>You blocked {activePeer.name}. Unblock to resume messaging.</span>
+                <button
+                  type="button"
+                  onClick={handleToggleBlockPeer}
+                  disabled={blockBusy}
+                  className="px-3 py-1 rounded-lg bg-[#087443] text-white text-[11px] font-black shrink-0"
+                >
+                  Unblock
+                </button>
+              </div>
+            )}
             {chatLoading ? (
               <div className="py-20 text-center">
-                <Loader2 className="w-8 h-8 text-[#0B6B3A] animate-spin mx-auto mb-2" />
+                <Loader2 className="w-8 h-8 text-[#087443] animate-spin mx-auto mb-2" />
                 <p className="text-xs font-bold text-[#555555]">Loading conversation...</p>
               </div>
             ) : chatMessages.length === 0 ? (
@@ -510,15 +646,15 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <div className="w-14 h-14 rounded-2xl bg-[#FFFFFF] border border-[#E5E7EB] text-2xl flex items-center justify-center mx-auto mb-3 shadow-xs">
                   🤝
                 </div>
-                <h4 className="text-sm font-black text-[#111111]">
+                <h4 className="text-sm font-black text-[#10251D]">
                   Direct Chat with {activePeer.name}
                 </h4>
                 <p className="text-xs text-[#555555] mt-1 mb-4 leading-relaxed">
                   Send a real message about products, campus requests, or accommodation.
                 </p>
                 <button
-                  onClick={() => setChatInputText('Hello, I am reaching out from FU MARKET!')}
-                  className="px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl shadow-sm"
+                  onClick={() => setChatInputText('Hello, I am reaching out from NIGERIA CAMPUS MARKET!')}
+                  className="px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl shadow-sm"
                 >
                   Say Hello
                 </button>
@@ -534,12 +670,12 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                     <div
                       className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 border shadow-xs ${
                         isOwn
-                          ? 'bg-[#0B6B3A] border-[#14532D] text-white rounded-br-xs'
-                          : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#111111] rounded-bl-xs'
+                          ? 'bg-[#087443] border-[#065D36] text-white rounded-br-xs'
+                          : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#10251D] rounded-bl-xs'
                       }`}
                     >
                       {msg.imageUrl && (
-                        <div className="rounded-xl overflow-hidden mb-2 bg-[#F5F5F5] max-h-72 border border-[#E5E7EB]">
+                        <div className="rounded-xl overflow-hidden mb-2 bg-[#F4F8F5] max-h-72 border border-[#E5E7EB]">
                           <img
                             src={msg.imageUrl}
                             alt="Chat attachment"
@@ -569,7 +705,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                             : ''}
                         </span>
                         {isOwn && (
-                          <span className={msg.seen ? 'text-[#F2B90D]' : 'text-white/75'}>
+                          <span className={msg.seen ? 'text-[#D4A62A]' : 'text-white/75'}>
                             <CheckCheck className="w-3.5 h-3.5" />
                           </span>
                         )}
@@ -581,8 +717,8 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             )}
 
             {isPeerTyping && (
-              <div className="flex items-center gap-2 p-2 max-w-[120px] bg-[#FFFFFF] rounded-xl border border-[#E5E7EB] text-xs text-[#0B6B3A] font-bold">
-                <span className="w-2 h-2 rounded-full bg-[#0B6B3A] animate-ping" />
+              <div className="flex items-center gap-2 p-2 max-w-[120px] bg-[#FFFFFF] rounded-xl border border-[#E5E7EB] text-xs text-[#087443] font-bold">
+                <span className="w-2 h-2 rounded-full bg-[#087443] animate-ping" />
                 <span>Typing...</span>
               </div>
             )}
@@ -593,30 +729,30 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           <div className="bg-[#FFFFFF] border-t border-[#E5E7EB] p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20">
             <div className="max-w-3xl mx-auto">
               {chatFilePreview && (
-                <div className="relative mb-2.5 p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-3">
+                <div className="relative mb-2.5 p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-3">
                   <img
                     src={chatFilePreview}
                     alt="Preview"
                     className="w-14 h-14 object-cover rounded-xl border border-[#E5E7EB]"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-[#111111] truncate">
+                    <p className="text-xs font-bold text-[#10251D] truncate">
                       {chatSelectedFile?.name || 'Attachment'}
                     </p>
                     {chatIsUploading ? (
                       <div className="mt-1 space-y-1">
                         <div className="w-full bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
                           <div
-                            className="bg-[#0B6B3A] h-1.5 transition-all duration-200"
+                            className="bg-[#087443] h-1.5 transition-all duration-200"
                             style={{ width: `${chatUploadProgress}%` }}
                           />
                         </div>
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="font-bold text-[#0B6B3A]">Uploading {chatUploadProgress}%</span>
+                          <span className="font-bold text-[#087443]">Uploading {chatUploadProgress}%</span>
                           <button
                             type="button"
                             onClick={handleCancelChatUpload}
-                            className="text-[#111111] underline font-bold"
+                            className="text-[#10251D] underline font-bold"
                           >
                             Cancel
                           </button>
@@ -629,7 +765,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                   <button
                     type="button"
                     onClick={removeChatFile}
-                    className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#111111] flex items-center justify-center"
+                    className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#10251D] flex items-center justify-center"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -637,14 +773,14 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               )}
 
               {chatError && (
-                <div className="mb-2 p-2.5 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
+                <div className="mb-2 p-2.5 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
                   <span>{chatError}</span>
                   <div className="flex items-center gap-2">
                     {chatSelectedFile && (
                       <button
                         type="button"
                         onClick={() => handleSendPrivateMsg()}
-                        className="px-2 py-0.5 bg-[#0B6B3A] text-white font-black rounded flex items-center gap-1"
+                        className="px-2 py-0.5 bg-[#087443] text-white font-black rounded flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Retry</span>
@@ -658,7 +794,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               )}
 
               {showChatEmoji && (
-                <div className="p-2 mb-2 bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-2 overflow-x-auto">
+                <div className="p-2 mb-2 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-2 overflow-x-auto">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -676,7 +812,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowChatEmoji(!showChatEmoji)}
-                  className="p-2 text-[#555555] hover:text-[#0B6B3A] hover:bg-[#F5F5F5] rounded-full shrink-0"
+                  className="p-2 text-[#555555] hover:text-[#087443] hover:bg-[#F4F8F5] rounded-full shrink-0"
                 >
                   <Smile className="w-5 h-5" />
                 </button>
@@ -691,7 +827,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-[#555555] hover:text-[#0B6B3A] hover:bg-[#F5F5F5] rounded-full shrink-0"
+                  className="p-2 text-[#555555] hover:text-[#087443] hover:bg-[#F4F8F5] rounded-full shrink-0"
                 >
                   <ImageIcon className="w-5 h-5" />
                 </button>
@@ -701,13 +837,13 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                   value={chatInputText}
                   onChange={(e) => handleInputChange(e.target.value)}
                   placeholder={`Message ${activePeer.name}...`}
-                  className="flex-1 py-2.5 px-4 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-[#111111] placeholder-[#6B7280] outline-none"
+                  className="flex-1 py-2.5 px-4 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-[#10251D] placeholder-[#6B7280] outline-none"
                 />
 
                 <button
                   type="submit"
                   disabled={isSendingMsg || (!chatInputText.trim() && !chatSelectedFile)}
-                  className="w-10 h-10 rounded-full bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-40 text-[#F2B90D] flex items-center justify-center shrink-0 transition"
+                  className="w-10 h-10 rounded-full bg-[#087443] hover:bg-[#065D36] disabled:opacity-40 text-[#D4A62A] flex items-center justify-center shrink-0 transition"
                 >
                   {isSendingMsg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
@@ -718,9 +854,9 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       ) : (
         <div className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-5">
           {actionError && (
-            <div className="mb-4 p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
+            <div className="mb-4 p-3 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#111111] shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#10251D] shrink-0" />
                 <span>{actionError}</span>
               </div>
               <button onClick={() => setActionError(null)} className="font-bold underline">
@@ -734,7 +870,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             <button
               onClick={() => setActiveTab('chats')}
               className={`py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'chats' ? 'bg-[#0B6B3A] text-white font-black' : 'text-[#555555] hover:text-[#111111]'
+                activeTab === 'chats' ? 'bg-[#087443] text-white font-black' : 'text-[#555555] hover:text-[#10251D]'
               }`}
             >
               Direct Chats ({directChats.length})
@@ -742,7 +878,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             <button
               onClick={() => setActiveTab('friends')}
               className={`py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'friends' ? 'bg-[#0B6B3A] text-white font-black' : 'text-[#555555] hover:text-[#111111]'
+                activeTab === 'friends' ? 'bg-[#087443] text-white font-black' : 'text-[#555555] hover:text-[#10251D]'
               }`}
             >
               Friends ({friends.length})
@@ -750,12 +886,12 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             <button
               onClick={() => setActiveTab('requests')}
               className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
-                activeTab === 'requests' ? 'bg-[#0B6B3A] text-white font-black' : 'text-[#555555] hover:text-[#111111]'
+                activeTab === 'requests' ? 'bg-[#087443] text-white font-black' : 'text-[#555555] hover:text-[#10251D]'
               }`}
             >
               <span>Requests</span>
               {pendingIncoming.length > 0 && (
-                <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-1.5 rounded-full">
+                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full">
                   {pendingIncoming.length}
                 </span>
               )}
@@ -763,7 +899,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             <button
               onClick={() => setActiveTab('discover')}
               className={`py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'discover' ? 'bg-[#0B6B3A] text-white font-black' : 'text-[#555555] hover:text-[#111111]'
+                activeTab === 'discover' ? 'bg-[#087443] text-white font-black' : 'text-[#555555] hover:text-[#10251D]'
               }`}
             >
               Find Students
@@ -772,14 +908,14 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
 
           {!student ? (
             <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-md mx-auto my-6 shadow-sm">
-              <GraduationCap className="w-12 h-12 text-[#0B6B3A] mx-auto mb-3" />
-              <h3 className="text-base font-black text-[#111111]">Sign in to message students &amp; sellers</h3>
+              <GraduationCap className="w-12 h-12 text-[#087443] mx-auto mb-3" />
+              <h3 className="text-base font-black text-[#10251D]">Sign in to message students &amp; sellers</h3>
               <p className="text-xs text-[#555555] mt-1 mb-5">
                 Enter your FUWUKARI name and matric number to view your direct chats, friend requests, and campus peers.
               </p>
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl"
+                className="px-5 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl"
               >
                 Sign In with Campus ID
               </button>
@@ -790,14 +926,14 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <div>
                   {directChats.length === 0 ? (
                     <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-md mx-auto my-6 shadow-sm">
-                      <MessageCircle className="w-12 h-12 text-[#0B6B3A] mx-auto mb-3" />
-                      <h3 className="text-base font-black text-[#111111]">No direct chats yet</h3>
+                      <MessageCircle className="w-12 h-12 text-[#087443] mx-auto mb-3" />
+                      <h3 className="text-base font-black text-[#10251D]">No direct chats yet</h3>
                       <p className="text-xs text-[#555555] mt-1 mb-5">
                         Tap &quot;Chat&quot; on any product, housing listing, student request, or campus peer to start a private conversation.
                       </p>
                       <button
                         onClick={() => setActiveTab('discover')}
-                        className="px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl"
+                        className="px-5 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl"
                       >
                         Browse FUWUKARI Students
                       </button>
@@ -819,17 +955,17 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                                 chatId: chat.chatId
                               })
                             }
-                            className="bg-[#FFFFFF] hover:border-[#0B6B3A] border border-[#E5E7EB] rounded-2xl p-4 cursor-pointer flex items-center justify-between gap-3 transition shadow-xs"
+                            className="bg-[#FFFFFF] hover:border-[#087443] border border-[#E5E7EB] rounded-2xl p-4 cursor-pointer flex items-center justify-between gap-3 transition shadow-xs"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-11 h-11 rounded-full bg-[#0B6B3A] text-[#F2B90D] font-black flex items-center justify-center uppercase shrink-0">
+                              <div className="w-11 h-11 rounded-full bg-[#087443] text-[#D4A62A] font-black flex items-center justify-center uppercase shrink-0">
                                 {peerName.charAt(0)}
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-black text-[#111111] truncate">{peerName}</h4>
+                                  <h4 className="text-sm font-black text-[#10251D] truncate">{peerName}</h4>
                                   {peerMatric && (
-                                    <span className="text-[10px] font-mono text-[#555555] bg-[#F5F5F5] border border-[#E5E7EB] px-1.5 rounded">
+                                    <span className="text-[10px] font-mono text-[#555555] bg-[#F4F8F5] border border-[#E5E7EB] px-1.5 rounded">
                                       {peerMatric}
                                     </span>
                                   )}
@@ -839,7 +975,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                                 </p>
                               </div>
                             </div>
-                            <span className="px-3 py-1.5 bg-[#0B6B3A] text-[#F2B90D] text-xs font-black rounded-xl shrink-0">
+                            <span className="px-3 py-1.5 bg-[#087443] text-[#D4A62A] text-xs font-black rounded-xl shrink-0">
                               Open
                             </span>
                           </div>
@@ -854,13 +990,13 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                 <div>
                   {friends.length === 0 ? (
                     <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-md mx-auto my-6 shadow-sm">
-                      <h3 className="text-base font-black text-[#111111]">No friends connected yet</h3>
+                      <h3 className="text-base font-black text-[#10251D]">No friends connected yet</h3>
                       <p className="text-xs text-[#555555] mt-1 mb-5">
                         Find course mates in Find Students or message sellers directly in Direct Chats.
                       </p>
                       <button
                         onClick={() => setActiveTab('discover')}
-                        className="px-5 py-2.5 bg-[#F2B90D] text-[#111111] text-xs font-black rounded-xl"
+                        className="px-5 py-2.5 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl"
                       >
                         Find Students
                       </button>
@@ -879,27 +1015,27 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                               isOnline: f.isOnline
                             })
                           }
-                          className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#E5E7EB] hover:border-[#0B6B3A] cursor-pointer flex items-center justify-between shadow-xs"
+                          className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#E5E7EB] hover:border-[#087443] cursor-pointer flex items-center justify-between shadow-xs"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="relative">
-                              <div className="w-11 h-11 rounded-full bg-[#0B6B3A]/10 border border-[#0B6B3A] text-[#0B6B3A] font-black flex items-center justify-center uppercase">
+                              <div className="w-11 h-11 rounded-full bg-[#087443]/10 border border-[#087443] text-[#087443] font-black flex items-center justify-center uppercase">
                                 {f.name.charAt(0)}
                               </div>
                               <span
                                 className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-[#FFFFFF] rounded-full ${
-                                  f.isOnline ? 'bg-[#0B6B3A]' : 'bg-[#9CA3AF]'
+                                  f.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
                                 }`}
                               />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-sm font-black text-[#111111] truncate">{f.name}</h4>
+                              <h4 className="text-sm font-black text-[#10251D] truncate">{f.name}</h4>
                               <p className="text-[11px] text-[#555555]">
                                 {f.isOnline ? 'Online' : 'Offline'} {f.matricNumber ? `• ${f.matricNumber}` : ''}
                               </p>
                             </div>
                           </div>
-                          <span className="px-3 py-1.5 bg-[#F2B90D] text-[#111111] text-xs font-black rounded-xl">
+                          <span className="px-3 py-1.5 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl">
                             Chat
                           </span>
                         </div>
@@ -925,11 +1061,11 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                         className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#E5E7EB] flex items-center justify-between gap-3 shadow-xs"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-[#0B6B3A] text-[#F2B90D] font-black flex items-center justify-center uppercase">
+                          <div className="w-10 h-10 rounded-full bg-[#087443] text-[#D4A62A] font-black flex items-center justify-center uppercase">
                             {req.fromName.charAt(0)}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-black text-[#111111] truncate">{req.fromName}</h4>
+                            <h4 className="text-xs sm:text-sm font-black text-[#10251D] truncate">{req.fromName}</h4>
                             {req.fromMatric && (
                               <span className="text-[10px] text-[#555555] font-mono">{req.fromMatric}</span>
                             )}
@@ -939,15 +1075,15 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                           <button
                             onClick={() => handleRespondRequest(req, 'accepted')}
                             disabled={actionLoading[req.id]}
-                            className="px-3 py-1.5 bg-[#0B6B3A] text-white text-xs font-black rounded-xl flex items-center gap-1"
+                            className="px-3 py-1.5 bg-[#087443] text-white text-xs font-black rounded-xl flex items-center gap-1"
                           >
-                            <Check className="w-3.5 h-3.5 text-[#F2B90D]" />
+                            <Check className="w-3.5 h-3.5 text-[#D4A62A]" />
                             <span>Accept</span>
                           </button>
                           <button
                             onClick={() => handleRespondRequest(req, 'rejected')}
                             disabled={actionLoading[req.id]}
-                            className="px-2.5 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl"
+                            className="px-2.5 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -967,21 +1103,21 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search students by name, matric number, or department..."
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-2xl text-xs font-semibold text-[#111111] outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] focus:border-[#087443] rounded-2xl text-xs font-semibold text-[#10251D] outline-none"
                     />
                   </div>
 
                   {loading ? (
                     <div className="py-16 text-center">
-                      <Loader2 className="w-8 h-8 text-[#0B6B3A] animate-spin mx-auto mb-2" />
+                      <Loader2 className="w-8 h-8 text-[#087443] animate-spin mx-auto mb-2" />
                       <p className="text-xs font-bold text-[#555555]">Loading campus students...</p>
                     </div>
                   ) : filteredDiscoverUsers.length === 0 ? (
                     <div className="bg-[#FFFFFF] rounded-3xl p-8 text-center border border-[#E5E7EB] max-w-md mx-auto my-6">
-                      <GraduationCap className="w-12 h-12 text-[#0B6B3A] mx-auto mb-2" />
-                      <h4 className="text-sm font-bold text-[#111111]">No other registered students found yet</h4>
+                      <GraduationCap className="w-12 h-12 text-[#087443] mx-auto mb-2" />
+                      <h4 className="text-sm font-bold text-[#10251D]">No other registered students found yet</h4>
                       <p className="text-xs text-[#555555] mt-1">
-                        Invite fellow FUWUKARI students to sign in on FU MARKET.
+                        Invite fellow students to sign in on NIGERIA CAMPUS MARKET.
                       </p>
                     </div>
                   ) : (
@@ -995,20 +1131,20 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative">
-                                <div className="w-11 h-11 rounded-full bg-[#0B6B3A]/10 border border-[#0B6B3A]/30 text-[#0B6B3A] font-black flex items-center justify-center uppercase">
+                                <div className="w-11 h-11 rounded-full bg-[#087443]/10 border border-[#087443]/30 text-[#087443] font-black flex items-center justify-center uppercase">
                                   {target.name.charAt(0)}
                                 </div>
                                 <span
                                   className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-[#FFFFFF] ${
-                                    target.isOnline ? 'bg-[#0B6B3A]' : 'bg-[#9CA3AF]'
+                                    target.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
                                   }`}
                                 />
                               </div>
                               <div className="min-w-0">
-                                <h4 className="text-xs sm:text-sm font-black text-[#111111] truncate">{target.name}</h4>
+                                <h4 className="text-xs sm:text-sm font-black text-[#10251D] truncate">{target.name}</h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   {target.matricNumber && (
-                                    <span className="text-[10px] text-[#0B6B3A] font-mono font-bold">
+                                    <span className="text-[10px] text-[#087443] font-mono font-bold">
                                       {target.matricNumber}
                                     </span>
                                   )}
@@ -1030,19 +1166,19 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                                     matricNumber: target.matricNumber
                                   })
                                 }
-                                className="px-2.5 py-1.5 bg-[#0B6B3A] text-white text-xs font-bold rounded-xl"
+                                className="px-2.5 py-1.5 bg-[#087443] text-white text-xs font-bold rounded-xl"
                               >
                                 Message
                               </button>
                               {isPending ? (
-                                <span className="text-[10px] font-bold text-[#111111] bg-[#FFF8DB] px-2 py-1.5 rounded-xl border border-[#F2B90D]">
+                                <span className="text-[10px] font-bold text-[#10251D] bg-[#FFF8DB] px-2 py-1.5 rounded-xl border border-[#D4A62A]">
                                   Requested
                                 </span>
                               ) : (
                                 <button
                                   onClick={() => handleSendFriendRequest(target)}
                                   disabled={actionLoading[target.id]}
-                                  className="px-2.5 py-1.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl flex items-center gap-1"
+                                  className="px-2.5 py-1.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl flex items-center gap-1"
                                 >
                                   <UserPlus className="w-3.5 h-3.5" />
                                   <span>Add</span>
@@ -1068,7 +1204,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         >
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#0B6B3A] border border-[#F2B90D] text-white flex items-center justify-center"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#087443] border border-[#D4A62A] text-white flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1080,13 +1216,81 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         </div>
       )}
 
+      {showReportModal && activePeer && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md border border-[#10251D]/20 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#10251D] text-white px-5 py-4 flex items-center justify-between border-b-2 border-[#D4A62A]">
+              <div>
+                <h3 className="font-black text-sm text-[#D4A62A]">Report Conversation</h3>
+                <p className="text-[11px] text-white/80">Reporting chat with {activePeer.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitConversationReport} className="p-5 space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-[#10251D] mb-1">Reason</label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-[#F4F8F5] text-[#10251D] font-semibold outline-none focus:border-[#087443]"
+                >
+                  <option value="Scam / Suspicious Payment Demand">Scam / Suspicious Payment Demand</option>
+                  <option value="Harassment or Abusive Language">Harassment or Abusive Language</option>
+                  <option value="Fake Listing / Impersonation">Fake Listing / Impersonation</option>
+                  <option value="Spam or Prohibited Item">Spam or Prohibited Item</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-bold text-[#10251D] mb-1">Details</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="Describe what happened so our moderation team can investigate..."
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-[#10251D] outline-none focus:border-[#087443]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 font-bold text-[#10251D] hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black disabled:opacity-50"
+                >
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <StudentLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="Connect on FU MARKET"
-        subtitle="Set your name and matric number to message sellers, agents, and fellow FUWUKARI students."
+        title="Connect on NIGERIA CAMPUS MARKET"
+        subtitle="Set your name and matric number to message sellers, agents, and fellow campus students."
       />
     </div>
   );

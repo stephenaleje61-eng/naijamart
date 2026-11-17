@@ -9,7 +9,12 @@ import {
   Grid,
   Bike,
   BedDouble,
-  Flame
+  Flame,
+  ShoppingBag,
+  Tv,
+  Sparkles,
+  Refrigerator,
+  Trophy
 } from 'lucide-react';
 import { Category } from '../types.js';
 
@@ -36,6 +41,16 @@ export const getCategoryIcon = (iconName: string) => {
       return <Shirt className="w-4 h-4" />;
     case 'Flame':
       return <Flame className="w-4 h-4" />;
+    case 'ShoppingBag':
+      return <ShoppingBag className="w-4 h-4" />;
+    case 'Tv':
+      return <Tv className="w-4 h-4" />;
+    case 'Sparkles':
+      return <Sparkles className="w-4 h-4" />;
+    case 'Refrigerator':
+      return <Refrigerator className="w-4 h-4" />;
+    case 'Trophy':
+      return <Trophy className="w-4 h-4" />;
     default:
       return <Package className="w-4 h-4" />;
   }
@@ -48,7 +63,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onOpenBikeRiders
 }) => {
   return (
-    <div className="bg-white border-b border-[#E5E7EB]">
+    <div className="bg-[#FFFFFF] border-b border-[#E5E7EB]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none scroll-smooth">
           <button
@@ -56,11 +71,15 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             onClick={() => onSelectCategory('all')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
               selectedCategory === 'all'
-                ? 'bg-[#0B6B3A] text-white font-black shadow-sm'
-                : 'bg-[#F5F5F5] text-[#111111] border border-[#E5E7EB] hover:border-[#0B6B3A]'
+                ? 'bg-[#087443] text-[#FFFFFF] font-black shadow-sm'
+                : 'bg-[#F4F8F5] text-[#10251D] border border-[#E5E7EB] hover:border-[#087443]'
             }`}
           >
-            <Grid className={`w-3.5 h-3.5 ${selectedCategory === 'all' ? 'text-[#F2B90D]' : 'text-[#0B6B3A]'}`} />
+            <Grid
+              className={`w-3.5 h-3.5 ${
+                selectedCategory === 'all' ? 'text-[#D4A62A]' : 'text-[#087443]'
+              }`}
+            />
             <span>All Items</span>
           </button>
 
@@ -73,18 +92,20 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
                   isSelected
-                    ? 'bg-[#0B6B3A] text-white font-black shadow-sm'
-                    : 'bg-[#F5F5F5] text-[#111111] hover:border-[#0B6B3A] border border-[#E5E7EB]'
+                    ? 'bg-[#087443] text-[#FFFFFF] font-black shadow-sm'
+                    : 'bg-[#F4F8F5] text-[#10251D] hover:border-[#087443] border border-[#E5E7EB]'
                 }`}
               >
-                <span className={isSelected ? 'text-[#F2B90D]' : 'text-[#0B6B3A]'}>
+                <span className={isSelected ? 'text-[#D4A62A]' : 'text-[#087443]'}>
                   {getCategoryIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {cat.productCount !== undefined && cat.productCount > 0 && (
                   <span
                     className={`text-[10px] px-1.5 rounded-full font-mono font-black ${
-                      isSelected ? 'bg-[#F2B90D] text-[#111111]' : 'bg-white text-[#0B6B3A] border border-[#E5E7EB]'
+                      isSelected
+                        ? 'bg-[#D4A62A] text-[#10251D]'
+                        : 'bg-[#FFFFFF] text-[#087443] border border-[#E5E7EB]'
                     }`}
                   >
                     {cat.productCount}
@@ -98,8 +119,8 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             <button
               type="button"
               onClick={onOpenBikeRiders}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111]"
-              title="Wukari Okada Directory"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D]"
+              title="Campus Dispatch & Okada Riders Directory"
             >
               <Bike className="w-3.5 h-3.5" />
               <span>Okada Riders</span>

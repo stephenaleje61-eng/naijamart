@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, SellerProfile } from '../types.js';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { User, SellerProfile, AppNotification } from '../types.js';
 import {
   fetchCurrentUser,
   loginUser,
@@ -9,17 +10,21 @@ import {
   toggleProductFavourite
 } from '../services/api.js';
 import {
+  auth,
   getCachedSessionInfo,
   getUserSessionFromFirestore,
   signOutFromFirebase,
   subscribeToFirebaseAuthChanges,
   toggleFavouriteInFirestore
 } from '../services/firebase.js';
+import { subscribeToUserNotifications } from '../services/notifications.js';
 
 interface AuthContextType {
   user: User | null;
+  firebaseUser: FirebaseUser | null;
   sellerProfile: SellerProfile | null;
   favourites: string[];
+  notifications: AppNotification[];
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   loginWithGoogle: () => Promise<User>;
@@ -34,8 +39,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(() => auth.currentUser);
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
   const [favourites, setFavourites] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   const loadUser = useCallback(async () => {
@@ -73,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
 
     const unsubscribe = subscribeToFirebaseAuthChanges(async (fbUser) => {
+      setFirebaseUser(fbUser);
       if (fbUser && !fbUser.isAnonymous) {
         try {
           const session = await getUserSessionFromFirestore(fbUser.uid);
@@ -92,6 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => unsubscribe();
   }, [loadUser]);
+
+  useEffect(() => {
+    const targetUid = firebaseUser?.uid || user?.id;
+    if (!targetUid || firebaseUser?.isAnonymous) {
+      setNotifications([]);
+      return;
+    }
+    const unsub = subscribeToUserNotifications(targetUid, setNotifications);
+    return () => unsub();
+  }, [firebaseUser?.uid, firebaseUser?.isAnonymous, user?.id]);
 
   const login = async (email: string, password: string): Promise<User> => {
     const data = await loginUser(email, password);
@@ -124,8 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthToken(null);
     signOutFromFirebase();
     setUser(null);
+    setFirebaseUser(null);
     setSellerProfile(null);
     setFavourites([]);
+    setNotifications([]);
   };
 
   const refreshUser = async () => {
@@ -134,13 +154,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleFavourite = async (productId: string): Promise<boolean> => {
     if (!user) {
-      // Local fallback for guests
-      setFavourites(prev => {
+      setFavourites((prev) => {
         if (prev.includes(productId)) {
-          return prev.filter(id => id !== productId);
-        } else {
-          return [...prev, productId];
+          return prev.filter((id) => id !== productId);
         }
+        return [...prev, productId];
       });
       return !favourites.includes(productId);
     }
@@ -150,9 +168,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? await toggleFavouriteInFirestore(user.id, productId)
         : await toggleProductFavourite(productId);
       if (res.favourited) {
-        setFavourites(prev => [...prev.filter(id => id !== productId), productId]);
+        setFavourites((prev) => [...prev.filter((id) => id !== productId), productId]);
       } else {
-        setFavourites(prev => prev.filter(id => id !== productId));
+        setFavourites((prev) => prev.filter((id) => id !== productId));
       }
       return res.favourited;
     } catch {
@@ -168,8 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        firebaseUser,
         sellerProfile,
         favourites,
+        notifications,
         loading,
         login,
         loginWithGoogle,

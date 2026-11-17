@@ -50,7 +50,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
       .catch(() => {
         setPaystackConfigured(false);
         setStatusMessage(
-          `Paystack gateway could not be reached. Please contact FU MARKET CEO (${CEO_ADS_PHONE}) for payment instructions.`
+          `Paystack gateway could not be reached. Please contact NIGERIA CAMPUS MARKET CEO (${CEO_ADS_PHONE}) for payment instructions.`
         );
       });
   }, []);
@@ -72,13 +72,13 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
       });
       setRefInput(res.reference);
       setResultMsg(
-        `Paystack payment initialized (${res.reference}). Complete payment in the Paystack window, then click "Verify Payment" below.`
+        `Paystack payment initialized (${res.reference}). Redirecting to checkout—save your reference or return here to verify.`
       );
-      window.open(res.authorizationUrl, '_blank', 'noopener,noreferrer');
+      window.location.assign(res.authorizationUrl);
     } catch (err: any) {
       setErrorMsg(
         err?.message ||
-          `Unable to start Paystack checkout. Please contact FU MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp.`
+          `Unable to start Paystack checkout. Please contact NIGERIA CAMPUS MARKET CEO (${CEO_ADS_PHONE}) on WhatsApp.`
       );
     } finally {
       setLoading(false);
@@ -116,12 +116,12 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
       aria-modal="true"
       aria-label="Promote Your Service"
     >
-      <div className="relative w-full max-w-xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#111111]">
-        <div className="bg-[#0B6B3A] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#14532D]">
+      <div className="relative w-full max-w-xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#065D36]">
           <div className="flex items-center gap-2 min-w-0">
-            <Star className="w-5 h-5 text-[#F2B90D] shrink-0" />
+            <Star className="w-5 h-5 text-[#D4A62A] shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-base font-black text-[#F2B90D] truncate">
+              <h2 className="text-base font-black text-[#D4A62A] truncate">
                 FEATURED SERVICES – PROMOTE YOUR BUSINESS
               </h2>
               <p className="text-xs text-white/90 truncate">{service.serviceName}</p>
@@ -131,7 +131,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="w-9 h-9 rounded-lg bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition shrink-0"
+            className="w-9 h-9 rounded-lg bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -139,7 +139,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
 
         <div className="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
           <div className="space-y-2">
-            <label className="block text-xs font-black text-[#111111]">
+            <label className="block text-xs font-black text-[#10251D]">
               Select Promotion Plan
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -152,12 +152,12 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
                     onClick={() => setSelectedPlanId(p.id)}
                     className={`p-3.5 rounded-xl border text-left transition ${
                       active
-                        ? 'border-[#0B6B3A] bg-[#F0FDF4]'
-                        : 'border-[#E5E7EB] bg-white hover:border-[#0B6B3A]/60'
+                        ? 'border-[#087443] bg-[#F0FDF4]'
+                        : 'border-[#E5E7EB] bg-white hover:border-[#087443]/60'
                     }`}
                   >
-                    <p className="text-xs font-black text-[#111111]">{p.name}</p>
-                    <p className="text-lg font-black text-[#0B6B3A] mt-1 tabular-nums">
+                    <p className="text-xs font-black text-[#10251D]">{p.name}</p>
+                    <p className="text-lg font-black text-[#087443] mt-1 tabular-nums">
                       {formatNaira(p.priceNaira)}
                     </p>
                     <p className="text-[11px] text-[#555555] mt-0.5 tabular-nums">
@@ -172,12 +172,12 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
           <div className="p-4 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-[#0B6B3A]" />
-                <h3 className="text-sm font-black text-[#111111]">
+                <CreditCard className="w-4 h-4 text-[#087443]" />
+                <h3 className="text-sm font-black text-[#10251D]">
                   Verified Payment ({formatNaira(plan.priceNaira)})
                 </h3>
               </div>
-              <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
+              <ShieldCheck className="w-4 h-4 text-[#087443]" />
             </div>
 
             <p className="text-[11px] text-[#555555]">
@@ -192,7 +192,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
                 </p>
                 <div className="p-3 bg-[#FFF7ED] border border-[#FDBA74] rounded-xl space-y-2">
                   <p className="text-xs font-bold text-[#9A3412]">
-                    Contact FU MARKET CEO ({CEO_ADS_PHONE}) for payment instructions and instant featured activation:
+                    Contact NIGERIA CAMPUS MARKET CEO ({CEO_ADS_PHONE}) for payment instructions and instant featured activation:
                   </p>
                   <CeoContactButton businessName={`${service.serviceName} (${plan.name})`} compact />
                 </div>
@@ -203,7 +203,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
                   type="button"
                   disabled={loading}
                   onClick={handleStartPaystack}
-                  className="px-4 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-2"
+                  className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-2"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>Pay {formatNaira(plan.priceNaira)} via Paystack</span>
@@ -215,13 +215,13 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
                     value={refInput}
                     onChange={(e) => setRefInput(e.target.value)}
                     placeholder="Enter Paystack reference..."
-                    className="flex-1 px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-lg bg-white outline-none focus:border-[#0B6B3A]"
+                    className="flex-1 px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-lg bg-white outline-none focus:border-[#087443]"
                   />
                   <button
                     type="button"
                     disabled={loading || !refInput.trim()}
                     onClick={handleVerifyPayment}
-                    className="px-4 py-2 bg-[#111111] hover:bg-[#14532D] disabled:opacity-50 text-white text-xs font-bold rounded-lg transition whitespace-nowrap"
+                    className="px-4 py-2 bg-[#10251D] hover:bg-[#065D36] disabled:opacity-50 text-white text-xs font-bold rounded-lg transition whitespace-nowrap"
                   >
                     Verify Payment
                   </button>
@@ -230,7 +230,7 @@ export const ServicePromotionModal: React.FC<ServicePromotionModalProps> = ({
             )}
 
             {resultMsg && (
-              <div className="p-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-lg text-xs font-bold text-[#14532D] flex items-start gap-2">
+              <div className="p-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-lg text-xs font-bold text-[#065D36] flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{resultMsg}</span>
               </div>

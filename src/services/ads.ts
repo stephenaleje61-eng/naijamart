@@ -15,11 +15,14 @@ import {
 import { auth, db, stripUndefined, toIsoString } from './firebase.js';
 import { getAdminHeaders, safeFetchJson } from './api.js';
 import { CEO_EMAIL, isFirebaseCeoVerified } from './events.js';
+import { DEFAULT_INSTITUTION_ID, belongsToInstitution } from '../constants/institutions.js';
 import {
   AdAnalyticsEvent,
   AdPackageId,
   AdPaymentRecord,
+  AdPlacement,
   AdStatus,
+  AdVisibilityScope,
   Advertisement,
   AdvertisingPackage
 } from '../types.js';
@@ -27,7 +30,7 @@ import {
 export const CEO_ADS_PHONE = '08167258121';
 export const CEO_ADS_WHATSAPP_INTL = '2348167258121';
 export const CEO_ADS_WHATSAPP_MESSAGE =
-  'Hello FU MARKET CEO, I want to advertise my business on FU MARKET. Please provide the available advertising packages, prices and payment instructions.';
+  'Hello NIGERIA CAMPUS MARKET CEO, I want to advertise my business across campuses. Please provide the available advertising packages, prices and payment instructions.';
 
 export function getCeoAdsWhatsAppUrl(businessName?: string): string {
   const text = businessName
@@ -37,7 +40,7 @@ export function getCeoAdsWhatsAppUrl(businessName?: string): string {
 }
 
 export const AD_SUBMISSION_SUCCESS_MESSAGE =
-  'YOUR ADVERTISEMENT HAS BEEN SUBMITTED SUCCESSFULLY. PLEASE CONTACT FU MARKET CEO FOR ADVERTISING APPROVAL AND PAYMENT INFORMATION.';
+  'YOUR ADVERTISEMENT HAS BEEN SUBMITTED SUCCESSFULLY. PLEASE CONTACT NIGERIA CAMPUS MARKET CEO FOR ADVERTISING APPROVAL AND PAYMENT INFORMATION.';
 
 export const ADVERTISING_PACKAGES: AdvertisingPackage[] = [
   {
@@ -145,6 +148,23 @@ function makeDocId(prefix: string): string {
 
 export function sanitizeAdDoc(id: string, data: any): Advertisement {
   const pkg = getPackageById(String(data?.packageId || 'basic'));
+  const visibilityScope: AdVisibilityScope =
+    data?.visibilityScope === 'all_institutions' ? 'all_institutions' : 'specific_institution';
+  const placement: AdPlacement = [
+    'ads_section',
+    'homepage_hero',
+    'category_feed',
+    'institution_spotlight'
+  ].includes(data?.placement)
+    ? data.placement
+    : 'ads_section';
+  const institutionId =
+    visibilityScope === 'all_institutions'
+      ? data?.institutionId
+        ? String(data.institutionId)
+        : undefined
+      : String(data?.institutionId || DEFAULT_INSTITUTION_ID);
+
   return {
     id: String(data?.id || id),
     businessName: String(data?.businessName || '').trim(),
@@ -157,6 +177,11 @@ export function sanitizeAdDoc(id: string, data: any): Advertisement {
     imageUrl: String(data?.imageUrl || '').trim(),
     ...(data?.logoUrl ? { logoUrl: String(data.logoUrl).trim() } : {}),
     location: String(data?.location || '').trim(),
+    ...(institutionId ? { institutionId } : {}),
+    ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
+    placement,
+    visibilityScope,
+    ...(data?.createdByCeoEmail ? { createdByCeoEmail: String(data.createdByCeoEmail) } : {}),
     packageId: pkg.id,
     packageName: String(data?.packageName || pkg.name).trim(),
     packagePrice: Number(data?.packagePrice) || pkg.priceNaira,
@@ -191,6 +216,18 @@ export function sanitizeAdDoc(id: string, data: any): Advertisement {
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString(),
     updatedAt: data?.updatedAt ? toIsoString(data.updatedAt) : new Date().toISOString()
   };
+}
+
+export function filterAdsForInstitution(
+  ads: Advertisement[],
+  institutionId?: string
+): Advertisement[] {
+  if (!institutionId || institutionId === 'all') return ads;
+  return ads.filter(
+    (ad) =>
+      ad.visibilityScope === 'all_institutions' ||
+      belongsToInstitution(ad.institutionId, institutionId)
+  );
 }
 
 export function isAdCurrentlyLive(ad: Advertisement, nowMs = Date.now()): boolean {
@@ -290,50 +327,103 @@ export interface SubmitAdvertisementInput {
   location: string;
   packageId: AdPackageId;
   websiteOrSocialLink?: string;
+  institutionId?: string;
+  campus?: string;
+  placement?: AdPlacement;
+  visibilityScope?: AdVisibilityScope;
 }
 
 export async function submitAdvertisement(input: SubmitAdvertisementInput): Promise<Advertisement> {
+  if (!isFirebaseCeoVerified()) {
+    throw new Error(
+      `Only the NIGERIA CAMPUS MARKET CEO (${CEO_EMAIL}) can publish official advertisements. Contact CEO on WhatsApp (${CEO_ADS_PHONE}) to advertise your business.`
+    );
+  }
+  return ceoCreateOfficialAd({
+    ...input,
+    status: 'active',
+    isFeatured: input.packageId === 'featured'
+  });
+}
+
+export interface CeoOfficialAdInput extends SubmitAdvertisementInput {
+  durationDays?: number;
+  status?: 'active' | 'paused';
+  isFeatured?: boolean;
+  startDate?: string;
+  expiryDate?: string;
+  adminNotes?: string;
+  paymentReference?: string;
+}
+
+export async function ceoCreateOfficialAd(input: CeoOfficialAdInput): Promise<Advertisement> {
+  assertCeoSignedIn();
   if (!input.businessName.trim()) throw new Error('Business name is required.');
-  if (!input.ownerName.trim()) throw new Error("Owner's name is required.");
-  if (input.phone.trim().length < 5) throw new Error('Valid phone number is required.');
-  if (input.whatsappNumber.trim().length < 5) throw new Error('Valid WhatsApp number is required.');
-  if (!input.businessCategory.trim()) throw new Error('Business category is required.');
   if (!input.title.trim()) throw new Error('Advertisement title is required.');
   if (!input.description.trim()) throw new Error('Advertisement description is required.');
-  if (!input.imageUrl.trim()) throw new Error('Advertisement banner/image is required.');
+  if (!input.imageUrl.trim()) throw new Error('Advertisement banner image is required.');
   if (!input.location.trim()) throw new Error('Business location is required.');
 
-  const pkg = getPackageById(input.packageId);
+  const pkg = getPackageById(input.packageId || 'basic');
+  const durationDays = Math.max(1, Number(input.durationDays) || pkg.durationDays);
+  const visibilityScope: AdVisibilityScope =
+    input.visibilityScope === 'all_institutions' ? 'all_institutions' : 'specific_institution';
+  const placement: AdPlacement = input.placement || 'ads_section';
+  const institutionId =
+    visibilityScope === 'specific_institution'
+      ? (input.institutionId || DEFAULT_INSTITUTION_ID).trim()
+      : undefined;
+
   const adId = makeDocId('ad');
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const startIso = input.startDate ? toIsoString(input.startDate) : nowIso;
+  const expiryIso = input.expiryDate
+    ? toIsoString(input.expiryDate)
+    : new Date(Date.parse(startIso) + durationDays * 24 * 60 * 60 * 1000).toISOString();
+  const ceoEmail = auth.currentUser?.email || CEO_EMAIL;
 
   const firestorePayload: Record<string, any> = stripUndefined({
     id: adId,
     businessName: input.businessName.trim().slice(0, 140),
-    ownerName: input.ownerName.trim().slice(0, 120),
-    phone: input.phone.trim().slice(0, 40),
-    whatsappNumber: input.whatsappNumber.trim().slice(0, 40),
-    businessCategory: input.businessCategory.trim().slice(0, 80),
+    ownerName: (input.ownerName.trim() || 'NIGERIA CAMPUS MARKET Official Advertiser').slice(0, 120),
+    phone: (input.phone.trim() || CEO_ADS_PHONE).slice(0, 40),
+    whatsappNumber: (input.whatsappNumber.trim() || input.phone.trim() || CEO_ADS_PHONE).slice(0, 40),
+    businessCategory: (input.businessCategory.trim() || 'Other Business').slice(0, 80),
     title: input.title.trim().slice(0, 180),
     description: input.description.trim().slice(0, 4000),
     imageUrl: input.imageUrl.trim(),
     ...(input.logoUrl?.trim() ? { logoUrl: input.logoUrl.trim() } : {}),
     location: input.location.trim().slice(0, 180),
+    ...(institutionId ? { institutionId } : {}),
+    ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
+    placement,
+    visibilityScope,
+    createdByCeoEmail: ceoEmail,
     packageId: pkg.id,
     packageName: pkg.name,
     packagePrice: pkg.priceNaira,
-    durationDays: pkg.durationDays,
+    durationDays,
     ...(input.websiteOrSocialLink?.trim()
       ? { websiteOrSocialLink: input.websiteOrSocialLink.trim().slice(0, 500) }
       : {}),
     ...(auth.currentUser?.uid ? { ownerUid: auth.currentUser.uid } : {}),
-    status: 'pending_approval',
-    paymentStatus: 'unpaid',
-    isFeatured: false,
+    status: input.status === 'paused' ? 'paused' : 'active',
+    paymentStatus: 'paid',
+    paymentReference: input.paymentReference?.trim() || `CEO_OFFICIAL_${Date.now()}`,
+    isFeatured: input.isFeatured ?? pkg.id === 'featured',
     isDeleted: false,
+    startDate: startIso,
+    expiryDate: expiryIso,
     impressions: 0,
     clicks: 0,
     whatsappClicks: 0,
+    ...(input.adminNotes?.trim() ? { adminNotes: input.adminNotes.trim().slice(0, 500) } : {}),
+    isVerified: true,
+    ceoVerified: true,
+    verifiedBadgeText: 'VERIFIED BY NIGERIA CAMPUS MARKET CEO',
+    verifiedByCeoAt: nowIso,
+    verifiedByCeoEmail: ceoEmail,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
@@ -345,6 +435,13 @@ export async function submitAdvertisement(input: SubmitAdvertisementInput): Prom
 
   try {
     await setDoc(doc(db, 'advertisements', adId), firestorePayload);
+    await recordAdminAuditLog({
+      action: 'approve',
+      contentType: 'advertisements',
+      recordId: adId,
+      recordTitle: `${firestorePayload.businessName} — ${firestorePayload.title}`,
+      reason: `CEO published official ad (${placement}, ${visibilityScope})`
+    });
     return sanitizeAdDoc(adId, { ...firestorePayload, createdAt: nowIso, updatedAt: nowIso });
   } catch (err: any) {
     if (String(err?.code || '') === 'permission-denied') {
@@ -352,6 +449,71 @@ export async function submitAdvertisement(input: SubmitAdvertisementInput): Prom
     }
     throw err;
   }
+}
+
+export async function ceoUpdateOfficialAd(
+  ad: Advertisement,
+  updates: Partial<CeoOfficialAdInput>
+): Promise<void> {
+  assertCeoSignedIn();
+  const pkg = updates.packageId ? getPackageById(updates.packageId) : null;
+  const visibilityScope: AdVisibilityScope =
+    updates.visibilityScope || ad.visibilityScope || 'specific_institution';
+
+  const payload = stripUndefined({
+    ...(updates.businessName !== undefined ? { businessName: updates.businessName.trim().slice(0, 140) } : {}),
+    ...(updates.ownerName !== undefined ? { ownerName: updates.ownerName.trim().slice(0, 120) } : {}),
+    ...(updates.phone !== undefined ? { phone: updates.phone.trim().slice(0, 40) } : {}),
+    ...(updates.whatsappNumber !== undefined
+      ? { whatsappNumber: updates.whatsappNumber.trim().slice(0, 40) }
+      : {}),
+    ...(updates.businessCategory !== undefined
+      ? { businessCategory: updates.businessCategory.trim().slice(0, 80) }
+      : {}),
+    ...(updates.title !== undefined ? { title: updates.title.trim().slice(0, 180) } : {}),
+    ...(updates.description !== undefined
+      ? { description: updates.description.trim().slice(0, 4000) }
+      : {}),
+    ...(updates.imageUrl !== undefined ? { imageUrl: updates.imageUrl.trim() } : {}),
+    ...(updates.logoUrl !== undefined ? { logoUrl: updates.logoUrl.trim() || '' } : {}),
+    ...(updates.location !== undefined ? { location: updates.location.trim().slice(0, 180) } : {}),
+    ...(updates.placement !== undefined ? { placement: updates.placement } : {}),
+    visibilityScope,
+    institutionId:
+      visibilityScope === 'all_institutions'
+        ? ''
+        : (updates.institutionId || ad.institutionId || DEFAULT_INSTITUTION_ID).trim(),
+    ...(updates.campus !== undefined ? { campus: updates.campus.trim().slice(0, 120) } : {}),
+    ...(updates.websiteOrSocialLink !== undefined
+      ? { websiteOrSocialLink: updates.websiteOrSocialLink.trim().slice(0, 500) }
+      : {}),
+    ...(pkg
+      ? {
+          packageId: pkg.id,
+          packageName: pkg.name,
+          packagePrice: pkg.priceNaira
+        }
+      : {}),
+    ...(updates.durationDays !== undefined ? { durationDays: Math.max(1, Number(updates.durationDays) || 7) } : {}),
+    ...(updates.isFeatured !== undefined ? { isFeatured: Boolean(updates.isFeatured) } : {}),
+    ...(updates.status !== undefined ? { status: updates.status } : {}),
+    ...(updates.startDate !== undefined ? { startDate: toIsoString(updates.startDate) } : {}),
+    ...(updates.expiryDate !== undefined ? { expiryDate: toIsoString(updates.expiryDate) } : {}),
+    ...(updates.adminNotes !== undefined ? { adminNotes: updates.adminNotes.trim().slice(0, 500) } : {}),
+    updatedAt: serverTimestamp()
+  });
+
+  await updateDoc(doc(db, 'advertisements', ad.id), payload);
+  await recordAdminAuditLog({
+    action: 'edit',
+    contentType: 'advertisements',
+    recordId: ad.id,
+    recordTitle: `${updates.businessName || ad.businessName} — ${updates.title || ad.title}`
+  });
+}
+
+export async function ceoDeleteOfficialAd(ad: Advertisement, reason?: string): Promise<void> {
+  return adminDeleteAdvertisementPermanently(ad, reason);
 }
 
 export async function trackAdEvent(

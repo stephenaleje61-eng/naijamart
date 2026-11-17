@@ -15,6 +15,9 @@ import bikeRiderRoutes from './server/routes/bikeRiderRoutes.js';
 import adsRoutes from './server/routes/adsRoutes.js';
 import servicesRoutes from './server/routes/servicesRoutes.js';
 import ceoRoutes from './server/routes/ceoRoutes.js';
+import paymentsRoutes from './server/routes/paymentsRoutes.js';
+import campusEcosystemRoutes from './server/routes/campusEcosystemRoutes.js';
+import { antiScamRouter, networkRouter } from './server/routes/socialAntiScamRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,8 +29,15 @@ const isProd = process.env.NODE_ENV === 'production';
 // 1. ADD CORS BEFORE ALL ROUTES
 app.use(cors({ origin: '*' }));
 
-// 1. ADD BODY PARSERS BEFORE ALL ROUTES
-app.use(express.json({ limit: '50mb' }));
+// 1. ADD BODY PARSERS BEFORE ALL ROUTES (preserve rawBody for Paystack/Flutterwave webhook HMAC checks)
+app.use(
+  express.json({
+    limit: '50mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve uploaded files statically with caching headers
@@ -42,7 +52,7 @@ app.use('/fuwukari-logo.png', express.static(path.resolve(__dirname, 'public/fuw
 // INITIALIZE FIRESTORE PRODUCTION DATABASE SYNC
 import { firestoreSync } from './server/firestore.js';
 
-console.log('Connecting FU MARKET to permanent production database (Google Cloud Firestore)...');
+console.log('Connecting NIGERIA UNIVERSITY HUB to permanent production database (Google Cloud Firestore)...');
 db.initFirestoreSync().catch(err => {
   console.error('Failed to initialize Firestore sync on startup:', err);
 });
@@ -75,11 +85,16 @@ app.use('/bike-riders-api', bikeRiderRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/ceo', ceoRoutes);
+app.use('/api/payments', paymentsRoutes);
+app.use('/api/ecosystem', campusEcosystemRoutes);
+app.use('/api/antiscam', antiScamRouter);
+app.use('/api/network', networkRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    app: 'FU MARKET',
+    app: 'NIGERIA UNIVERSITY HUB',
+    slogan: 'Connect. Trade. Learn. Network. Grow Together.',
     time: new Date().toISOString(),
     uptime: process.uptime(),
     productsCount: db.products.length,
@@ -102,7 +117,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   console.error('[Global Express API Error]:', err);
   res.status(err.status || 500).json({
     success: false,
-    error: err.message || 'Internal server error occurred on FU MARKET backend'
+    error: err.message || 'Internal server error occurred on NIGERIA UNIVERSITY HUB backend'
   });
 });
 
@@ -146,11 +161,11 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`[NaijaMart] Server running at http://0.0.0.0:${PORT} in ${isProd ? 'production' : 'development'} mode`);
+    console.log(`[NIGERIA UNIVERSITY HUB] Server running at http://0.0.0.0:${PORT} in ${isProd ? 'production' : 'development'} mode`);
   });
 }
 
 startServer().catch((err) => {
-  console.error('Failed to start NaijaMart server:', err);
+  console.error('Failed to start NIGERIA UNIVERSITY HUB server:', err);
   process.exit(1);
 });

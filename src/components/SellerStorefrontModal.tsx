@@ -72,7 +72,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
     else if (!cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const shopName = seller?.shopName || 'Store';
     const msg = encodeURIComponent(
-      `Hello ${shopName}, I found your storefront on FU MARKET (FUWUKARI). I would like to make an enquiry.`
+      `Hello ${shopName}, I found your storefront on NIGERIA CAMPUS MARKET. I would like to make an enquiry.`
     );
     return `https://wa.me/${cleaned}?text=${msg}`;
   };
@@ -81,18 +81,18 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-5xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[90vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-5xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[90vh] flex flex-col text-[#10251D]">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-[#14532D] border border-white/25 hover:border-[#F2B90D] text-white shadow-md flex items-center justify-center transition"
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-[#065D36] border border-white/25 hover:border-[#D4A62A] text-white shadow-md flex items-center justify-center transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Green Storefront Banner */}
-        <div className="relative h-44 sm:h-52 bg-[#0B6B3A] border-b-4 border-[#F2B90D] overflow-hidden shrink-0">
+        <div className="relative h-44 sm:h-52 bg-[#087443] border-b-4 border-[#D4A62A] overflow-hidden shrink-0">
           {seller?.coverImage && (
             <img
               src={seller.coverImage}
@@ -101,12 +101,12 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
             />
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-[#14532D]/95 via-[#0B6B3A]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#065D36]/95 via-[#087443]/60 to-transparent" />
 
           {/* Seller Branding Overlay */}
           <div className="absolute bottom-4 left-6 right-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-white">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#F2B90D] border-2 border-white shadow-xl flex items-center justify-center text-[#111111] font-black text-2xl shrink-0 overflow-hidden">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#D4A62A] border-2 border-white shadow-xl flex items-center justify-center text-[#10251D] font-black text-2xl shrink-0 overflow-hidden">
                 {seller?.shopLogo ? (
                   <img src={seller.shopLogo} alt={seller?.shopName || 'Store'} className="w-full h-full object-cover" />
                 ) : (
@@ -129,7 +129,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-white/90 mt-1">
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#F2B90D]" />
+                    <MapPin className="w-3.5 h-3.5 text-[#D4A62A]" />
                     {seller?.city || 'Wukari'}, {seller?.state || 'Taraba'}
                   </span>
                   <span>•</span>
@@ -143,9 +143,9 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
               <button
                 type="button"
                 onClick={handleShareStorefront}
-                className="px-3.5 py-2 bg-[#14532D] hover:bg-black/30 border border-white/25 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 transition"
+                className="px-3.5 py-2 bg-[#065D36] hover:bg-black/30 border border-white/25 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 transition"
               >
-                {copiedLink ? <CheckCircle2 className="w-4 h-4 text-[#F2B90D]" /> : <Share2 className="w-4 h-4" />}
+                {copiedLink ? <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" /> : <Share2 className="w-4 h-4" />}
                 <span>{copiedLink ? 'Copied' : 'Share Shop'}</span>
               </button>
 
@@ -159,7 +159,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                       name: seller.shopName || 'Seller'
                     });
                   }}
-                  className="px-3.5 py-2 bg-white hover:bg-[#F5F5F5] text-[#0B6B3A] font-black text-xs rounded-xl flex items-center gap-1.5 transition"
+                  className="px-3.5 py-2 bg-white hover:bg-[#F4F8F5] text-[#087443] font-black text-xs rounded-xl flex items-center gap-1.5 transition"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>Message In App</span>
@@ -171,7 +171,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition"
+                  className="px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>Chat on WhatsApp</span>
@@ -182,10 +182,10 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
         </div>
 
         {/* Content Area */}
-        <div className="p-6 overflow-y-auto flex-1 bg-[#F5F5F5]">
+        <div className="p-6 overflow-y-auto flex-1 bg-[#F4F8F5]">
           {seller?.description && (
             <div className="p-4 bg-white rounded-2xl border border-[#E5E7EB] text-xs sm:text-sm text-[#333333] mb-6">
-              <strong className="block text-[#111111] font-black mb-1">About this Seller:</strong>
+              <strong className="block text-[#10251D] font-black mb-1">About this Seller:</strong>
               <p className="leading-relaxed">{seller.description}</p>
               {seller.address && (
                 <p className="text-xs text-[#555555] mt-2 font-medium">
@@ -197,11 +197,13 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-base text-[#111111] flex items-center gap-2">
-                <Package className="w-4 h-4 text-[#0B6B3A]" />
+              <h3 className="font-black text-base text-[#10251D] flex items-center gap-2">
+                <Package className="w-4 h-4 text-[#087443]" />
                 All Products from {seller?.shopName || 'Seller'} ({products.length})
               </h3>
-              <span className="text-xs text-[#0B6B3A] font-bold">FU MARKET • Campus Store</span>
+              <span className="text-xs text-[#087443] font-bold">
+                NIGERIA CAMPUS MARKET • Campus Store
+              </span>
             </div>
 
             {loading ? (
@@ -209,7 +211,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                 Loading storefront catalog...
               </div>
             ) : loadError ? (
-              <div className="py-12 px-6 text-center bg-[#FFF8DB] rounded-2xl border-2 border-[#111111] text-xs text-[#111111]">
+              <div className="py-12 px-6 text-center bg-[#FFF8DB] rounded-2xl border-2 border-[#10251D] text-xs text-[#10251D]">
                 <p className="font-black text-sm mb-1">Storefront Notice</p>
                 <p>{loadError}</p>
               </div>

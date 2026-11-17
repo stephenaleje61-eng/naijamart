@@ -144,7 +144,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
 
   const renderCategoryIcon = () => {
     const cat = (category || '').toLowerCase();
-    const props = { className: 'w-10 h-10 text-[#0B6B3A] stroke-1.5' };
+    const props = { className: 'w-10 h-10 text-[#087443] stroke-1.5' };
 
     if (cat.includes('hostel')) return <BedDouble {...props} />;
     if (cat.includes('textbook') || cat.includes('book') || cat.includes('past')) return <BookOpen {...props} />;
@@ -162,12 +162,12 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`w-full h-full bg-[#F5F5F5] flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
+        className={`w-full h-full bg-[#F4F8F5] flex flex-col items-center justify-center p-4 text-center select-none relative ${onClick ? 'cursor-pointer' : ''}`}
       >
         <div className="w-14 h-14 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-center mb-2 shadow-xs">
           {renderCategoryIcon()}
         </div>
-        <span className="text-[11px] font-bold text-[#111111] line-clamp-1 max-w-[90%] px-1">
+        <span className="text-[11px] font-bold text-[#10251D] line-clamp-1 max-w-[90%] px-1">
           {alt || 'FU MARKET Item'}
         </span>
         <span className="text-[10px] text-[#555555] mt-0.5 flex items-center gap-1 font-medium">
@@ -182,7 +182,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 type="button"
                 onClick={handleRetry}
                 disabled={isRetrying}
-                className="text-[10px] font-bold text-white bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 px-2.5 py-1 rounded-md flex items-center gap-1 transition"
+                className="text-[10px] font-bold text-white bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 px-2.5 py-1 rounded-md flex items-center gap-1 transition"
                 title="Retry loading photo"
               >
                 {isRetrying ? (
@@ -209,9 +209,9 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#F5F5F5]" onClick={onClick}>
+    <div className="relative w-full h-full overflow-hidden bg-[#F4F8F5]" onClick={onClick}>
       {isLoading && (
-        <div className="absolute inset-0 bg-gradient-to-r from-[#F5F5F5] via-[#E5E7EB] to-[#F5F5F5] animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#F4F8F5] via-[#E5E7EB] to-[#F4F8F5] animate-pulse" />
       )}
       <img
         key={displaySrc}

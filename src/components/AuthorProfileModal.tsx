@@ -60,9 +60,9 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
     >
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#E5E7EB]">
         {/* Header */}
-        <div className="bg-[#111111] text-white px-5 py-5 flex items-center justify-between gap-3 border-b-4 border-[#EA580C]">
+        <div className="bg-[#087443] text-white px-5 py-5 flex items-center justify-between gap-3 border-b-4 border-[#D4A62A]">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-[#EA580C] text-white flex items-center justify-center font-black text-lg overflow-hidden shrink-0 border-2 border-white/20">
+            <div className="w-12 h-12 rounded-2xl bg-[#D4A62A] text-[#10251D] flex items-center justify-center font-black text-lg overflow-hidden shrink-0 border-2 border-white/25">
               {profile.avatarUrl ? (
                 <img
                   src={profile.avatarUrl}
@@ -84,16 +84,16 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                   variant="compact"
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-[11px] text-white/75 mt-1">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-white/80 mt-1">
                 {profile.city && (
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-[#FB923C]" />
+                    <MapPin className="w-3 h-3 text-[#D4A62A]" />
                     {profile.city}
                   </span>
                 )}
                 {profile.joinedAt && (
                   <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-[#FB923C]" />
+                    <Calendar className="w-3 h-3 text-[#D4A62A]" />
                     Member since {new Date(profile.joinedAt).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}
                   </span>
                 )}
@@ -105,7 +105,7 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close author profile"
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#EA580C] text-white flex items-center justify-center transition shrink-0"
+            className="w-9 h-9 rounded-xl bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -114,14 +114,14 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
         {/* Author's Posts */}
         <div className="p-5 sm:p-6 max-h-[68vh] overflow-y-auto space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-black uppercase tracking-wider text-[#111111]">
+            <h4 className="text-xs font-black uppercase tracking-wider text-[#10251D]">
               Published Sports &amp; Announcements ({authorPosts.length})
             </h4>
             {loading && <span className="text-[11px] text-[#6B7280]">Refreshing profile...</span>}
           </div>
 
           {authorPosts.length === 0 ? (
-            <div className="py-8 text-center bg-[#F9FAFB] rounded-2xl border border-[#E5E7EB] text-xs text-[#6B7280]">
+            <div className="py-8 text-center bg-[#F4F8F5] rounded-2xl border border-[#E5E7EB] text-xs text-[#6B7280]">
               No active public updates posted by this user yet.
             </div>
           ) : (
@@ -136,10 +136,10 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                       onClose();
                       onSelectPost(post);
                     }}
-                    className="w-full text-left p-3.5 rounded-2xl border border-[#E5E7EB] hover:border-[#EA580C] bg-[#F9FAFB] hover:bg-[#FFF7ED]/50 transition flex items-start gap-3"
+                    className="w-full text-left p-3.5 rounded-2xl border border-[#E5E7EB] hover:border-[#087443] bg-[#F4F8F5] hover:bg-white transition flex items-start gap-3"
                   >
                     {post.imageUrl && (
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#111111] shrink-0">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#10251D] shrink-0">
                         <EventPosterImage src={post.imageUrl} alt={post.title} />
                       </div>
                     )}
@@ -147,7 +147,7 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                            isSport ? 'bg-[#111111] text-[#FB923C]' : 'bg-[#EA580C] text-white'
+                            isSport ? 'bg-[#10251D] text-[#D4A62A]' : 'bg-[#087443] text-white'
                           }`}
                         >
                           {isSport ? <Trophy className="w-3 h-3" /> : <Megaphone className="w-3 h-3" />}
@@ -157,7 +157,7 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                           {formatRelativeTime(post.createdAt)}
                         </span>
                       </div>
-                      <h5 className="text-sm font-black text-[#111111] line-clamp-1">
+                      <h5 className="text-sm font-black text-[#10251D] line-clamp-1">
                         {post.title}
                       </h5>
                       <p className="text-xs text-[#4B5563] line-clamp-2">{post.description}</p>

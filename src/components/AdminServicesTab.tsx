@@ -210,11 +210,11 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E7EB]">
           <p className="text-[11px] font-bold text-[#555555]">Total Services</p>
-          <p className="text-xl font-black text-[#111111] tabular-nums">{stats.total}</p>
+          <p className="text-xl font-black text-[#10251D] tabular-nums">{stats.total}</p>
         </div>
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E7EB]">
           <p className="text-[11px] font-bold text-[#555555]">Active</p>
-          <p className="text-xl font-black text-[#0B6B3A] tabular-nums">{stats.active}</p>
+          <p className="text-xl font-black text-[#087443] tabular-nums">{stats.active}</p>
         </div>
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E7EB]">
           <p className="text-[11px] font-bold text-[#555555]">Featured</p>
@@ -222,7 +222,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
         </div>
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E7EB]">
           <p className="text-[11px] font-bold text-[#555555]">Views</p>
-          <p className="text-xl font-black text-[#111111] tabular-nums">{stats.totalViews}</p>
+          <p className="text-xl font-black text-[#10251D] tabular-nums">{stats.totalViews}</p>
         </div>
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E7EB]">
           <p className="text-[11px] font-bold text-[#555555]">WhatsApp Clicks</p>
@@ -241,7 +241,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
             type="button"
             onClick={() => setSubView('listings')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              subView === 'listings' ? 'bg-[#0B6B3A] text-white' : 'text-[#555555]'
+              subView === 'listings' ? 'bg-[#087443] text-white' : 'text-[#555555]'
             }`}
           >
             Service Listings ({services.length})
@@ -250,7 +250,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
             type="button"
             onClick={() => setSubView('categories')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              subView === 'categories' ? 'bg-[#0B6B3A] text-white' : 'text-[#555555]'
+              subView === 'categories' ? 'bg-[#087443] text-white' : 'text-[#555555]'
             }`}
           >
             Categories ({categories.length})
@@ -259,7 +259,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
             type="button"
             onClick={() => setSubView('reports')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              subView === 'reports' ? 'bg-[#0B6B3A] text-white' : 'text-[#555555]'
+              subView === 'reports' ? 'bg-[#087443] text-white' : 'text-[#555555]'
             }`}
           >
             Reported Services ({stats.pendingReports})
@@ -269,9 +269,9 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
         <button
           type="button"
           onClick={handlePurgeExpired}
-          className="px-3.5 py-2 bg-[#FFF7ED] hover:bg-[#EA580C] text-[#9A3412] hover:text-white border border-[#FDBA74] text-xs font-black rounded-xl transition flex items-center gap-1.5"
+          className="px-3.5 py-2 bg-[#F4F8F5] hover:bg-[#D4A62A] text-[#10251D] border border-[#D4A62A] text-xs font-black rounded-xl transition flex items-center gap-1.5"
         >
-          <Clock className="w-3.5 h-3.5" />
+          <Clock className="w-3.5 h-3.5 text-[#087443]" />
           <span>Remove Expired Promotions</span>
         </button>
       </div>
@@ -281,13 +281,13 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#0B6B3A] absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-[#087443] absolute left-3 top-2.5" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search service name, provider, category, phone or location..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
             <select
@@ -322,11 +322,11 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                       src={srv.images?.[0] || ''}
                       alt={srv.serviceName}
                       loading="lazy"
-                      className="w-16 h-14 rounded-lg object-cover border border-[#E5E7EB] bg-[#F5F5F5] shrink-0"
+                      className="w-16 h-14 rounded-lg object-cover border border-[#E5E7EB] bg-[#F4F8F5] shrink-0"
                     />
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#555555]">
-                        <span className="font-bold text-[#0B6B3A]">{srv.category}</span>
+                        <span className="font-bold text-[#087443]">{srv.category}</span>
                         <span>·</span>
                         <span className="font-bold uppercase">{srv.status}</span>
                         {srv.featured && (
@@ -338,7 +338,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                           </>
                         )}
                       </div>
-                      <h4 className="text-sm font-black text-[#111111] truncate">
+                      <h4 className="text-sm font-black text-[#10251D] truncate">
                         {srv.serviceName}
                       </h4>
                       <p className="text-xs text-[#444444] tabular-nums">
@@ -356,7 +356,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                       <button
                         type="button"
                         onClick={() => handleModerate(srv, 'active')}
-                        className="px-2.5 py-1.5 bg-[#0B6B3A] text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                        className="px-2.5 py-1.5 bg-[#087443] text-white text-xs font-bold rounded-lg flex items-center gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Approve</span>
@@ -377,7 +377,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                     <button
                       type="button"
                       onClick={() => onEditService(srv)}
-                      className="px-2.5 py-1.5 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-lg flex items-center gap-1"
+                      className="px-2.5 py-1.5 bg-[#F4F8F5] hover:bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-lg flex items-center gap-1"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       <span>Edit</span>
@@ -395,7 +395,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                       <button
                         type="button"
                         onClick={() => setFeaturingService(srv)}
-                        className="px-2.5 py-1.5 bg-[#F2B90D] text-[#111111] text-xs font-black rounded-lg flex items-center gap-1"
+                        className="px-2.5 py-1.5 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-lg flex items-center gap-1"
                       >
                         <Star className="w-3.5 h-3.5" />
                         <span>Feature</span>
@@ -464,8 +464,8 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
             onSubmit={handleSaveCategory}
             className="bg-white border border-[#E5E7EB] rounded-xl p-4 space-y-3"
           >
-            <p className="text-xs font-black text-[#111111] flex items-center gap-1.5">
-              <FolderPlus className="w-4 h-4 text-[#0B6B3A]" />
+            <p className="text-xs font-black text-[#10251D] flex items-center gap-1.5">
+              <FolderPlus className="w-4 h-4 text-[#087443]" />
               <span>{editingCat ? `Edit Category: ${editingCat.name}` : 'Add Service Category'}</span>
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -479,7 +479,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                     : setNewCategoryName(e.target.value)
                 }
                 placeholder="Category name..."
-                className="px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
               <input
                 type="text"
@@ -490,13 +490,13 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                     : setNewCategoryDesc(e.target.value)
                 }
                 placeholder="Short description (optional)"
-                className="px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl"
+                className="px-4 py-2 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl"
               >
                 {editingCat ? 'Update Category' : 'Add Category'}
               </button>
@@ -504,7 +504,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingCat(null)}
-                  className="px-3 py-2 bg-[#F5F5F5] text-xs font-bold rounded-xl"
+                  className="px-3 py-2 bg-[#F4F8F5] text-xs font-bold rounded-xl"
                 >
                   Cancel
                 </button>
@@ -519,7 +519,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                 className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 flex items-center justify-between gap-2"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-black text-[#111111] truncate">{cat.name}</p>
+                  <p className="text-xs font-black text-[#10251D] truncate">{cat.name}</p>
                   {cat.description && (
                     <p className="text-[11px] text-[#555555] truncate">{cat.description}</p>
                   )}
@@ -528,7 +528,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditingCat(cat)}
-                    className="px-2.5 py-1 bg-[#F5F5F5] text-xs font-bold rounded-lg"
+                    className="px-2.5 py-1 bg-[#F4F8F5] text-xs font-bold rounded-lg"
                   >
                     Edit
                   </button>
@@ -569,7 +569,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs">
                     <Flag className="w-3.5 h-3.5 text-[#B91C1C]" />
-                    <span className="font-black text-[#111111]">{rep.serviceName}</span>
+                    <span className="font-black text-[#10251D]">{rep.serviceName}</span>
                     <span className="text-[11px] font-bold uppercase text-[#555555]">
                       ({rep.status})
                     </span>
@@ -586,7 +586,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                         await adminResolveServiceReport(rep.id, 'resolved');
                         onStatusMessage('Service report marked resolved.');
                       }}
-                      className="px-3 py-1.5 bg-[#0B6B3A] text-white text-xs font-bold rounded-lg"
+                      className="px-3 py-1.5 bg-[#087443] text-white text-xs font-bold rounded-lg"
                     >
                       Resolve
                     </button>
@@ -596,7 +596,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
                         await adminResolveServiceReport(rep.id, 'dismissed');
                         onStatusMessage('Service report dismissed.');
                       }}
-                      className="px-3 py-1.5 bg-[#F5F5F5] text-[#111111] text-xs font-bold rounded-lg"
+                      className="px-3 py-1.5 bg-[#F4F8F5] text-[#10251D] text-xs font-bold rounded-lg"
                     >
                       Dismiss
                     </button>
@@ -613,9 +613,9 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
         <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
           <form
             onSubmit={handleConfirmFeature}
-            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 text-[#111111]"
+            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 text-[#10251D]"
           >
-            <h3 className="text-sm font-black text-[#111111]">
+            <h3 className="text-sm font-black text-[#10251D]">
               Feature Service: {featuringService.serviceName}
             </h3>
             <div className="space-y-2">
@@ -646,13 +646,13 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
               <button
                 type="button"
                 onClick={() => setFeaturingService(null)}
-                className="px-4 py-2 text-xs font-bold bg-[#F5F5F5] rounded-xl"
+                className="px-4 py-2 text-xs font-bold bg-[#F4F8F5] rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-black bg-[#0B6B3A] text-white rounded-xl"
+                className="px-4 py-2 text-xs font-black bg-[#087443] text-white rounded-xl"
               >
                 Verify &amp; Activate Featured
               </button>

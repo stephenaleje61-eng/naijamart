@@ -51,7 +51,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       ? 'text-[#B91C1C]'
       : service.availability === 'busy'
       ? 'text-[#B45309]'
-      : 'text-[#0B6B3A]';
+      : 'text-[#087443]';
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -59,13 +59,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   };
 
   return (
-    <article className="bg-white border border-[#E5E7EB] hover:border-[#0B6B3A] rounded-2xl overflow-hidden flex flex-col justify-between transition duration-200 hover:-translate-y-0.5 shadow-xs">
+    <article className="bg-white border border-[#E5E7EB] hover:border-[#087443] rounded-2xl overflow-hidden flex flex-col justify-between transition duration-200 hover:-translate-y-0.5 shadow-xs">
       <div>
         {/* Compressed Lazy-Loaded Service Thumbnail */}
         <button
           type="button"
           onClick={() => onViewDetails(service)}
-          className="relative w-full aspect-[4/3] bg-[#F5F5F5] overflow-hidden block text-left"
+          className="relative w-full aspect-[4/3] bg-[#F4F8F5] overflow-hidden block text-left"
         >
           {coverImage && !imgFailed ? (
             <img
@@ -79,16 +79,16 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-[#F0FDF4] to-[#E5E7EB] text-center">
-              <Briefcase className="w-8 h-8 text-[#0B6B3A] mb-1.5" />
-              <span className="text-xs font-bold text-[#14532D] line-clamp-2">
+              <Briefcase className="w-8 h-8 text-[#087443] mb-1.5" />
+              <span className="text-xs font-bold text-[#065D36] line-clamp-2">
                 {service.serviceName}
               </span>
             </div>
           )}
 
           {service.featured && (
-            <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 bg-[#111111]/90 text-[#F2B90D] text-[10px] font-black px-2.5 py-1 rounded-md">
-              <Star className="w-3 h-3 fill-[#F2B90D]" />
+            <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 bg-[#10251D]/90 text-[#D4A62A] text-[10px] font-black px-2.5 py-1 rounded-md">
+              <Star className="w-3 h-3 fill-[#D4A62A]" />
               <span>Featured</span>
             </span>
           )}
@@ -98,7 +98,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         <div className="p-4 space-y-2.5">
           {/* Unboxed clean metadata row */}
           <div className="flex items-center flex-wrap gap-1.5 text-[11px] font-semibold text-[#555555]">
-            <span className="text-[#0B6B3A] font-bold truncate max-w-[170px]">
+            <span className="text-[#087443] font-bold truncate max-w-[170px]">
               {service.category}
             </span>
             <span aria-hidden="true">·</span>
@@ -119,12 +119,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             onClick={() => onViewDetails(service)}
             className="text-left block w-full group"
           >
-            <h3 className="text-sm sm:text-base font-black text-[#111111] group-hover:text-[#0B6B3A] line-clamp-1 transition">
+            <h3 className="text-sm sm:text-base font-black text-[#10251D] group-hover:text-[#087443] line-clamp-1 transition">
               {service.serviceName}
             </h3>
           </button>
 
-          <p className="text-base font-black text-[#0B6B3A] tabular-nums">{priceLabel}</p>
+          <p className="text-base font-black text-[#087443] tabular-nums">{priceLabel}</p>
 
           <p className="text-xs text-[#555555] line-clamp-2 leading-relaxed">
             {service.description}
@@ -132,8 +132,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
           <div className="pt-2 border-t border-[#E5E7EB] space-y-1 text-[11px] text-[#444444]">
             <div className="flex items-center gap-1.5 truncate">
-              <UserCheck className="w-3.5 h-3.5 text-[#0B6B3A] shrink-0" />
-              <span className="font-bold text-[#111111] truncate">{service.providerName}</span>
+              <UserCheck className="w-3.5 h-3.5 text-[#087443] shrink-0" />
+              <span className="font-bold text-[#10251D] truncate">{service.providerName}</span>
             </div>
             <CeoVerifiedBadge
               verified={Boolean(service.ceoVerified || service.isVerified)}
@@ -160,7 +160,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(service)}
-          className="px-3 py-2.5 bg-[#F5F5F5] hover:bg-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl transition min-h-[40px] whitespace-nowrap"
+          className="px-3 py-2.5 bg-[#F4F8F5] hover:bg-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl transition min-h-[40px] whitespace-nowrap"
         >
           View Details
         </button>
@@ -168,7 +168,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         <button
           type="button"
           onClick={() => onContactProvider(service)}
-          className="px-3 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-bold rounded-xl transition min-h-[40px] whitespace-nowrap"
+          className="px-3 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-bold rounded-xl transition min-h-[40px] whitespace-nowrap"
         >
           Contact Provider
         </button>
@@ -186,7 +186,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
         <a
           href={buildServiceCallHref(service.phone)}
-          className="px-3 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 min-h-[40px] whitespace-nowrap"
+          className="px-3 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 min-h-[40px] whitespace-nowrap"
         >
           <Phone className="w-3.5 h-3.5 shrink-0" />
           <span>Call Provider</span>

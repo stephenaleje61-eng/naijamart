@@ -156,6 +156,8 @@ router.get('/', async (req: Request, res: Response) => {
       condition,
       state,
       city,
+      institutionId,
+      campus,
       minPrice,
       maxPrice,
       sellerId,
@@ -163,6 +165,16 @@ router.get('/', async (req: Request, res: Response) => {
       limit = 50,
       page = 1
     } = req.query;
+
+    // Institution scoping (legacy records missing institutionId map to 'fuwukari')
+    if (institutionId && typeof institutionId === 'string' && institutionId !== 'all') {
+      const targetInst = institutionId.toLowerCase().trim();
+      list = list.filter(p => String((p as any).institutionId || 'fuwukari').toLowerCase().trim() === targetInst);
+    }
+    if (campus && typeof campus === 'string' && campus !== 'all') {
+      const targetCampus = campus.toLowerCase().trim();
+      list = list.filter(p => !(p as any).campus || String((p as any).campus).toLowerCase().trim() === targetCampus);
+    }
 
     // Search keyword
     if (q && typeof q === 'string') {
@@ -176,20 +188,26 @@ router.get('/', async (req: Request, res: Response) => {
       );
     }
 
-    // Category filter (maps legacy categoryIds cleanly to the 6 FU MARKET categories)
+    // Category filter (supports Wukari 6 + National 12 categories without collapsing)
     if (category && typeof category === 'string' && category !== 'all') {
-      const targetCat = category.toLowerCase();
-      const mapServerCategory = (rawId: string): string => {
-        const v = String(rawId || '').toLowerCase().trim();
-        if (['hostel-items', 'textbooks-past-questions', 'food', 'electronics', 'fashion', 'gas-cooking'].includes(v)) return v;
-        if (v.includes('gas') || v.includes('kitchen') || v.includes('cook')) return 'gas-cooking';
-        if (v.includes('book') || v.includes('textbook') || v.includes('education')) return 'textbooks-past-questions';
-        if (v.includes('food') || v.includes('grocer')) return 'food';
-        if (v.includes('phone') || v.includes('computer') || v.includes('electronic')) return 'electronics';
-        if (v.includes('fashion') || v.includes('shoe') || v.includes('bag') || v.includes('beauty')) return 'fashion';
-        return 'hostel-items';
+      const targetCat = category.toLowerCase().trim();
+      const EQUIV: Record<string, string[]> = {
+        food: ['food', 'food-groceries'],
+        'food-groceries': ['food', 'food-groceries'],
+        fashion: ['fashion', 'fashion-clothing', 'shoes-bags', 'beauty-products'],
+        'fashion-clothing': ['fashion', 'fashion-clothing'],
+        'textbooks-past-questions': ['textbooks-past-questions', 'books-educational'],
+        'books-educational': ['textbooks-past-questions', 'books-educational'],
+        electronics: ['electronics', 'phones-accessories', 'laptops-computers', 'home-appliances'],
+        'phones-accessories': ['phones-accessories', 'electronics'],
+        'laptops-computers': ['laptops-computers', 'electronics'],
+        'hostel-items': ['hostel-items', 'furniture', 'home-appliances'],
+        furniture: ['furniture', 'hostel-items'],
+        'home-appliances': ['home-appliances', 'hostel-items', 'electronics'],
+        'gas-cooking': ['gas-cooking', 'home-appliances']
       };
-      list = list.filter(p => mapServerCategory(p.categoryId) === targetCat || p.categoryId.toLowerCase() === targetCat);
+      const allowedSet = new Set([targetCat, ...(EQUIV[targetCat] || [])]);
+      list = list.filter(p => allowedSet.has(p.categoryId.toLowerCase().trim()));
     }
 
     // Condition filter
@@ -336,7 +354,7 @@ router.post('/:id/whatsapp-click', (req: Request, res: Response) => {
 
   const appOrigin = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const productLink = `${appOrigin}/#product-${product.id}`;
-  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on FU MARKET. Is it still available? Listing link: ${productLink}`;
+  const prefilledMessage = `Hello ${product.shopName || 'Seller'}, I found your product "${product.title}" (₦${product.price.toLocaleString()}) on NIGERIA UNIVERSITY HUB. Is it still available? Listing link: ${productLink}`;
 
   const link = formatWhatsAppLink(product.whatsappNumber, prefilledMessage);
 
@@ -367,6 +385,8 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       whatsappNumber = whatsapp,
       state = 'Taraba',
       city = 'Wukari',
+      institutionId = 'fuwukari',
+      campus,
       quantity = 1
     } = req.body;
 
@@ -555,6 +575,8 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
       imageUrl: finalImages[0] || '',
       state: String(state).trim(),
       city: String(city).trim(),
+      institutionId: String(institutionId || 'fuwukari').trim(),
+      ...(campus ? { campus: String(campus).trim() } : {}),
       quantity: Math.max(1, Number(quantity) || 1),
       status: 'active',
       moderationStatus: fraudScan.status,
@@ -574,7 +596,7 @@ router.post('/', handleUploadOrJson, optionalAuth, async (req: AuthenticatedRequ
         userId: user.id,
         shopName: `${user.name}'s Enterprise`,
         shopSlug: user.name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `store-${Date.now()}`,
-        description: `Student storefront on FU MARKET. Based in ${city}, ${state}.`,
+        description: `Student storefront on NIGERIA UNIVERSITY HUB. Based in ${city}, ${state}.`,
         whatsappNumber: sellerPhone,
         state: String(state).trim(),
         city: String(city).trim(),

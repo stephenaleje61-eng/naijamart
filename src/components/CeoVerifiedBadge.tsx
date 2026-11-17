@@ -92,24 +92,28 @@ export const CeoVerifiedBadge: React.FC<CeoVerifiedBadgeProps> = ({
 
   if (!isVerified) return null;
 
-  const badgeText = customText || config.badgeText || CEO_VERIFIED_BADGE_TEXT;
+  const rawText = customText || config.badgeText || CEO_VERIFIED_BADGE_TEXT;
+  const badgeText =
+    rawText.toUpperCase() === 'VERIFIED BY FU MARKET CEO'
+      ? CEO_VERIFIED_BADGE_TEXT
+      : rawText;
 
   if (variant === 'compact') {
     return (
       <span
-        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[#0B6B3A] text-[9px] font-black tracking-wide uppercase shadow-xs ${className}`}
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#F4F8F5] border border-[#087443]/30 text-[#087443] text-[9px] font-black tracking-wide uppercase shadow-xs ${className}`}
         title={badgeText}
       >
         {config.logoUrl ? (
           <img
             src={config.logoUrl}
-            alt="FU MARKET CEO Verification"
-            className="w-3.5 h-3.5 rounded-full object-cover border border-emerald-300 bg-white shrink-0"
+            alt="NIGERIA CAMPUS MARKET CEO Verification"
+            className="w-3.5 h-3.5 rounded-full object-cover border border-[#087443]/40 bg-white shrink-0"
           />
         ) : (
-          <ShieldCheck className="w-3 h-3 text-[#0B6B3A] shrink-0" />
+          <ShieldCheck className="w-3 h-3 text-[#087443] shrink-0" />
         )}
-        <span className="truncate max-w-[165px]">{badgeText}</span>
+        <span className="truncate max-w-[180px]">{badgeText}</span>
       </span>
     );
   }
@@ -117,25 +121,25 @@ export const CeoVerifiedBadge: React.FC<CeoVerifiedBadgeProps> = ({
   if (variant === 'banner') {
     return (
       <div
-        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#0B6B3A]/10 via-emerald-50 to-amber-50/70 border border-emerald-200 shadow-xs ${className}`}
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#10251D]/10 via-[#F4F8F5] to-[#D4A62A]/15 border border-[#087443]/25 shadow-xs ${className}`}
       >
         {config.logoUrl ? (
           <img
             src={config.logoUrl}
             alt="Official CEO Verification Seal"
-            className="w-7 h-7 rounded-full object-cover border-2 border-[#0B6B3A] bg-white shrink-0"
+            className="w-7 h-7 rounded-full object-cover border-2 border-[#087443] bg-white shrink-0"
           />
         ) : (
-          <div className="w-7 h-7 rounded-full bg-[#0B6B3A] text-[#F2B90D] flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-full bg-[#10251D] text-[#D4A62A] flex items-center justify-center shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </div>
         )}
         <div className="min-w-0">
-          <div className="text-[11px] font-black tracking-wider text-[#0B6B3A] uppercase leading-tight flex items-center gap-1">
+          <div className="text-[11px] font-black tracking-wider text-[#087443] uppercase leading-tight flex items-center gap-1">
             <span>{badgeText}</span>
           </div>
-          <p className="text-[10px] text-emerald-800/80 font-medium truncate">
-            Officially reviewed and verified on FU MARKET
+          <p className="text-[10px] text-[#10251D]/80 font-medium truncate">
+            Officially reviewed and verified on NIGERIA CAMPUS MARKET
           </p>
         </div>
       </div>
@@ -144,17 +148,17 @@ export const CeoVerifiedBadge: React.FC<CeoVerifiedBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[#0B6B3A] text-[10px] font-black tracking-wide uppercase shadow-xs ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F4F8F5] border border-[#087443]/30 text-[#087443] text-[10px] font-black tracking-wide uppercase shadow-xs ${className}`}
       title={badgeText}
     >
       {config.logoUrl ? (
         <img
           src={config.logoUrl}
-          alt="FU MARKET CEO Verification"
-          className="w-4 h-4 rounded-full object-cover border border-emerald-300 bg-white shrink-0"
+          alt="NIGERIA CAMPUS MARKET CEO Verification"
+          className="w-4 h-4 rounded-full object-cover border border-[#087443]/40 bg-white shrink-0"
         />
       ) : (
-        <ShieldCheck className="w-3.5 h-3.5 text-[#0B6B3A] shrink-0" />
+        <ShieldCheck className="w-3.5 h-3.5 text-[#087443] shrink-0" />
       )}
       <span>{badgeText}</span>
     </span>

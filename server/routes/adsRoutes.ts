@@ -120,7 +120,7 @@ router.post('/paystack/initialize', async (req: Request, res: Response) => {
     return res.status(503).json({
       configured: false,
       error:
-        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Please contact FU MARKET CEO (08167258121) on WhatsApp for payment instructions.'
+        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Please contact NIGERIA UNIVERSITY HUB CEO (08167258121) on WhatsApp for payment instructions.'
     });
   }
 
@@ -133,7 +133,7 @@ router.post('/paystack/initialize', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Valid advertisement ID is required.' });
   }
 
-  const safeBusinessName = String(businessName || 'FU MARKET Advertiser').trim().slice(0, 140);
+  const safeBusinessName = String(businessName || 'NIGERIA UNIVERSITY HUB Advertiser').trim().slice(0, 140);
   const safeEmail =
     typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
       ? email.trim()
@@ -213,7 +213,7 @@ router.post('/paystack/verify', async (req: Request, res: Response) => {
     return res.status(503).json({
       configured: false,
       error:
-        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Contact FU MARKET CEO (08167258121) for manual verification.'
+        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Contact NIGERIA UNIVERSITY HUB CEO (08167258121) for manual verification.'
     });
   }
 
@@ -306,7 +306,7 @@ router.post('/paystack/verify', async (req: Request, res: Response) => {
         id: `pay_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         reference: cleanRef,
         adId: cleanAdId,
-        businessName: String(tx?.metadata?.businessName || 'FU MARKET Advertiser'),
+        businessName: String(tx?.metadata?.businessName || 'NIGERIA UNIVERSITY HUB Advertiser'),
         payerEmail: tx?.customer?.email ? String(tx.customer.email) : undefined,
         packageId: pkg.id,
         amountNaira: paidKobo / 100,

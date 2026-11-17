@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
-  MapPin,
   Heart,
   User as UserIcon,
   PlusCircle,
@@ -16,15 +15,33 @@ import {
   Sliders,
   Megaphone,
   Briefcase,
-  Siren
+  Siren,
+  GraduationCap,
+  UserCog,
+  Bell,
+  Crown,
+  Globe,
+  Menu,
+  X,
+  BookOpen,
+  Gift,
+  Calculator,
+  Home,
+  Utensils,
+  MessageSquare,
+  Trophy,
+  ClipboardList,
+  Bike,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
-import { Category } from '../types.js';
+import { Category, Institution } from '../types.js';
 import { NIGERIA_STATES } from '../constants/states.js';
 import { usePWAInstall } from '../hooks/usePWAInstall.js';
 import { AppView } from './BottomNav.js';
 import { SafetyTickerBanner } from './SafetyTickerBanner.js';
 import { isAuthorizedCeo } from '../services/events.js';
+import { getCeoAdsWhatsAppUrl } from '../services/ads.js';
 
 interface HeaderProps {
   categories: Category[];
@@ -43,6 +60,7 @@ interface HeaderProps {
   onOpenCeoSuperAdmin?: () => void;
   onOpenAdvertiseModal?: () => void;
   onOpenServicesSection?: () => void;
+  onOpenEventsSection?: () => void;
   onOpenEmergencySection?: () => void;
   onOpenFavourites: () => void;
   onOpenSafetyModal: () => void;
@@ -51,13 +69,35 @@ interface HeaderProps {
   onNavigateView: (view: AppView) => void;
   onTriggerPWAHelp: () => void;
   activeView: AppView;
+  activeInstitution?: Institution;
+  activeCampus?: string;
+  onOpenInstitutionSwitcher?: () => void;
+  onSelectInstitutionQuick?: (institutionId: string) => void;
+  onOpenUserProfile?: () => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
+  onOpenNationwideSearch?: () => void;
+  onOpenSubscriptions?: () => void;
+  onOpenDownloadApp?: () => void;
+  onOpenPostServiceModal?: () => void;
 }
 
 export const NIGERIAN_STATES = ['All Locations', 'Taraba', ...NIGERIA_STATES.filter((s) => s !== 'Taraba')];
 
+type NavDropdownKey = 'marketplace' | 'universities' | 'services' | 'more' | 'user' | null;
+
+const QUICK_UNIVERSITIES = [
+  { id: 'fuwukari', label: 'FUWUKARI — Wukari' },
+  { id: 'unilag', label: 'UNILAG — Lagos' },
+  { id: 'ui', label: 'UI — Ibadan' },
+  { id: 'abu', label: 'ABU — Zaria' },
+  { id: 'unn', label: 'UNN — Nsukka' },
+  { id: 'oau', label: 'OAU — Ile-Ife' }
+];
+
 export const Header: React.FC<HeaderProps> = ({
-  selectedState,
-  onSelectState,
+  categories,
+  onSelectCategory,
   searchQuery,
   onSearchChange,
   onOpenSellModal,
@@ -69,6 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCeoSuperAdmin,
   onOpenAdvertiseModal,
   onOpenServicesSection,
+  onOpenEventsSection,
   onOpenEmergencySection,
   onOpenFavourites,
   onOpenSafetyModal,
@@ -76,17 +117,27 @@ export const Header: React.FC<HeaderProps> = ({
   cartCount,
   onNavigateView,
   onTriggerPWAHelp,
-  activeView
+  activeView,
+  activeInstitution,
+  activeCampus,
+  onOpenInstitutionSwitcher,
+  onSelectInstitutionQuick,
+  onOpenUserProfile,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
+  onOpenNationwideSearch,
+  onOpenSubscriptions,
+  onOpenDownloadApp,
+  onOpenPostServiceModal
 }) => {
   const { user, sellerProfile, favourites, logout } = useAuth();
   const isCeo = isAuthorizedCeo(user);
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
-  const [showLocationMenu, setShowLocationMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<NavDropdownKey>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
-  const locationRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const headerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLocalSearch(searchQuery);
@@ -94,15 +145,22 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (locationRef.current && !locationRef.current.contains(e.target as Node)) {
-        setShowLocationMenu(false);
+      if (headerContainerRef.current && !headerContainerRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
       }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenDropdown(null);
+        setMobileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -124,235 +182,660 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const toggleDropdown = (key: NavDropdownKey) => {
+    setOpenDropdown((prev) => (prev === key ? null : key));
+  };
+
+  const instShort = activeInstitution?.shortName || 'ALL CAMPUSES';
+  const instName = activeInstitution?.name || 'All Nigerian Universities & Polytechnics';
+  const instLocation = activeInstitution
+    ? `${activeCampus || activeInstitution.campus} · ${activeInstitution.state} State`
+    : 'Nationwide Campus Network';
+
+  const navBtnClass = (active: boolean) =>
+    `px-2.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 inline-flex items-center gap-1 cursor-pointer ${
+      active
+        ? 'bg-[#D4A62A] text-[#10251D] font-black shadow-xs'
+        : 'text-white/95 hover:bg-white/12 hover:text-[#D4A62A]'
+    }`;
+
   return (
-    <header className="sticky top-0 z-40 bg-[#0B6B3A] text-white shadow-md">
-      {/* Continuously Scrolling Payment Safety Notice */}
+    <header ref={headerContainerRef} className="sticky top-0 z-40 bg-[#087443] text-white shadow-md">
       <SafetyTickerBanner />
 
-      {/* Top FUWUKARI Strip */}
-      <div className="bg-[#14532D] border-b border-white/15 text-white text-xs py-1.5 px-4">
+      {/* Active Campus Context Utility Bar */}
+      <div className="bg-[#10251D] border-b border-white/15 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-semibold">
-            <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded">
-              FUWUKARI
+          <div className="flex items-center gap-2 font-semibold min-w-0">
+            <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded shrink-0 whitespace-nowrap">
+              {instShort}
             </span>
-            <span className="text-white/95 truncate">
-              Made for FUWUKARI Students • Wukari, Taraba State
+            <span className="text-white/95 truncate max-w-[200px] sm:max-w-md" title={instName}>
+              {instName} · {instLocation}
             </span>
+            {onOpenInstitutionSwitcher && (
+              <button
+                type="button"
+                onClick={onOpenInstitutionSwitcher}
+                className="ml-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-white/10 hover:bg-[#D4A62A] text-[#D4A62A] hover:text-[#10251D] text-[10px] font-black transition shrink-0 whitespace-nowrap cursor-pointer"
+              >
+                <GraduationCap className="w-3 h-3 shrink-0" />
+                <span>Switch Campus</span>
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-3 sm:gap-4 text-white/90 text-[11px]">
+
+          <div className="flex items-center gap-2.5 sm:gap-3.5 text-white/90 text-[11px] flex-wrap">
+            {onOpenNationwideSearch && (
+              <button
+                type="button"
+                onClick={onOpenNationwideSearch}
+                className="hover:text-[#D4A62A] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Globe className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <span className="hidden sm:inline">Nationwide Search</span>
+              </button>
+            )}
+            {onOpenSubscriptions && (
+              <button
+                type="button"
+                onClick={onOpenSubscriptions}
+                className="hover:text-[#D4A62A] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Crown className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <span>Plans</span>
+              </button>
+            )}
             {onOpenEmergencySection && (
               <button
                 type="button"
                 onClick={onOpenEmergencySection}
-                className="bg-[#DC2626] hover:bg-[#B91C1C] text-white px-2.5 py-0.5 rounded-md font-black flex items-center gap-1 transition"
+                className="bg-[#DC2626] hover:bg-[#B91C1C] text-white px-2.5 py-0.5 rounded-md font-black flex items-center gap-1 transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Siren className="w-3 h-3" />
-                <span>Emergency Help</span>
+                <span>Safety &amp; Scam Report</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onOpenSafetyModal}
-              className="hover:text-[#F2B90D] flex items-center gap-1 font-semibold transition"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#F2B90D]" />
-              <span>Safe Campus Trade</span>
-            </button>
-            {!isInstalled && (
+            {(!isInstalled || Boolean(onOpenDownloadApp)) && (
               <button
                 type="button"
-                onClick={handleInstallClick}
-                className="text-[#F2B90D] hover:text-[#FFC107] font-bold flex items-center gap-1 transition"
+                onClick={() => (onOpenDownloadApp ? onOpenDownloadApp() : handleInstallClick())}
+                className="text-[#D4A62A] hover:text-[#E0B43B] font-bold hidden sm:flex items-center gap-1 transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{isIOS ? 'Install on iPhone' : 'Get FU MARKET App'}</span>
+                <span>{isIOS ? 'iPhone App' : 'Install App'}</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Navigation Row */}
-      <div className="max-w-7xl mx-auto px-4 py-3 space-y-2.5">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Official FUWUKARI Crest + FU MARKET Brand */}
+      {/* Main Single-Row Navigation Header */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          {/* Logo & Brand Name */}
           <a
             href="/"
             onClick={(e) => {
               e.preventDefault();
+              setOpenDropdown(null);
               onSearchChange('');
-              onNavigateView('marketplace');
+              onNavigateView('home');
             }}
-            className="flex items-center gap-2 sm:gap-2.5 shrink-0 group"
+            className="flex items-center gap-2 shrink-0 group"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-sm border-2 border-[#F2B90D] group-hover:scale-105 transition overflow-hidden shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-sm border-2 border-[#D4A62A] group-hover:scale-105 transition overflow-hidden shrink-0">
               <img
-                src="/fuwukari-crest.png"
-                alt="Federal University Wukari (FUWUKARI) Official Logo"
-                width={44}
-                height={44}
+                src="/pwa-192x192.png"
+                alt="NIGERIA CAMPUS MARKET Logo"
+                width={40}
+                height={40}
                 decoding="async"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain rounded-lg"
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-black text-base sm:text-2xl tracking-tight text-[#F2B90D] leading-none">
-                FU MARKET
+              <span className="font-display font-black text-sm sm:text-base tracking-tight text-white leading-none whitespace-nowrap">
+                NIGERIA <span className="text-[#D4A62A]">CAMPUS MARKET</span>
               </span>
-              <span className="text-[10px] font-semibold text-white/90 hidden sm:block mt-0.5">
-                FUWUKARI Official Student Marketplace
+              <span className="text-[9px] font-bold tracking-wider text-white/85 hidden 2xl:block mt-0.5 whitespace-nowrap">
+                Buy. Sell. Connect. Grow Across Nigerian Campuses.
               </span>
             </div>
           </a>
 
-          {/* Location Selector */}
-          <div className="relative hidden lg:block shrink-0" ref={locationRef}>
+          {/* Primary Desktop Dropdown Navigation */}
+          <nav aria-label="Primary Navigation" className="hidden lg:flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={() => setShowLocationMenu(!showLocationMenu)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#14532D] hover:bg-[#14532D]/90 border border-white/25 rounded-xl text-xs font-semibold text-white transition"
+              onClick={() => {
+                setOpenDropdown(null);
+                onNavigateView('home');
+              }}
+              className={navBtnClass(activeView === 'home' && openDropdown === null)}
             >
-              <MapPin className="w-3.5 h-3.5 text-[#F2B90D]" />
-              <span className="max-w-[115px] truncate">
-                {selectedState === 'all' ? 'All Locations' : selectedState}
-              </span>
-              <ChevronDown className="w-3 h-3 text-white/80" />
+              Home
             </button>
 
-            {showLocationMenu && (
-              <div className="absolute left-0 mt-1 w-52 bg-white rounded-xl shadow-2xl border border-[#E5E7EB] py-2 z-50 max-h-72 overflow-y-auto">
-                <div className="px-3 py-1 text-[10px] font-bold text-[#555555] uppercase tracking-wider">
-                  Select Location
-                </div>
-                {NIGERIAN_STATES.map((st) => {
-                  const stateVal = st === 'All Locations' ? 'all' : st;
-                  const active = selectedState === stateVal || (selectedState === 'all' && st === 'All Locations');
-                  return (
+            {/* Marketplace Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={openDropdown === 'marketplace'}
+                onClick={() => toggleDropdown('marketplace')}
+                className={navBtnClass(activeView === 'marketplace' || openDropdown === 'marketplace')}
+              >
+                <span>Marketplace</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {openDropdown === 'marketplace' && (
+                <div className="absolute left-0 mt-2 w-60 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onSelectCategory('all');
+                      onNavigateView('marketplace');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Browse All Campus Items</span>
+                  </button>
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#10251D]/55 border-t border-[#F4F8F5] mt-1">
+                    Popular Categories
+                  </div>
+                  {categories.slice(0, 6).map((cat) => (
                     <button
-                      key={st}
+                      key={cat.id}
                       type="button"
                       onClick={() => {
-                        onSelectState(stateVal);
-                        setShowLocationMenu(false);
+                        setOpenDropdown(null);
+                        onSelectCategory(cat.id);
+                        onNavigateView('marketplace');
                       }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#F5F5F5] transition ${
-                        active ? 'font-black text-[#0B6B3A] bg-[#F5F5F5]' : 'text-[#111111]'
+                      className="w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F8F5] flex items-center justify-between"
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      <span className="text-[10px] text-[#087443] font-black tabular-nums">
+                        {cat.productCount || 0}
+                      </span>
+                    </button>
+                  ))}
+                  <div className="border-t border-[#F4F8F5] mt-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onOpenSellModal();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                    >
+                      <PlusCircle className="w-4 h-4 text-[#D4A62A]" />
+                      <span>Sell an Item for Free</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onNavigateView('orders');
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2"
+                    >
+                      <ClipboardList className="w-4 h-4 text-[#087443]" />
+                      <span>My Orders &amp; Tracking</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Universities Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={openDropdown === 'universities'}
+                onClick={() => toggleDropdown('universities')}
+                className={navBtnClass(openDropdown === 'universities')}
+              >
+                <span>Universities</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {openDropdown === 'universities' && (
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onOpenInstitutionSwitcher?.();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                  >
+                    <GraduationCap className="w-4 h-4 text-[#D4A62A]" />
+                    <span>Explore All Nigerian Institutions</span>
+                  </button>
+                  {onOpenNationwideSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onOpenNationwideSearch();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2"
+                    >
+                      <Globe className="w-4 h-4 text-[#087443]" />
+                      <span>Nationwide Cross-Campus Search</span>
+                    </button>
+                  )}
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#10251D]/55 border-t border-[#F4F8F5] mt-1">
+                    Popular Campuses
+                  </div>
+                  {QUICK_UNIVERSITIES.map((uni) => (
+                    <button
+                      key={uni.id}
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        if (onSelectInstitutionQuick) {
+                          onSelectInstitutionQuick(uni.id);
+                        } else {
+                          onOpenInstitutionSwitcher?.();
+                        }
+                      }}
+                      className={`w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F8F5] flex items-center justify-between ${
+                        activeInstitution?.id === uni.id ? 'bg-[#F4F8F5] text-[#087443] font-black' : ''
                       }`}
                     >
-                      {st}
+                      <span>{uni.label}</span>
+                      {activeInstitution?.id === uni.id && (
+                        <span className="text-[10px] font-black text-[#D4A62A]">ACTIVE</span>
+                      )}
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-xl">
+            {/* Student Services Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={openDropdown === 'services'}
+                onClick={() => toggleDropdown('services')}
+                className={navBtnClass(
+                  ['hux', 'food', 'jobs', 'books', 'gpa', 'deals', 'bike-riders'].includes(activeView) ||
+                    openDropdown === 'services'
+                )}
+              >
+                <span>Student Services</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {openDropdown === 'services' && (
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#087443] border-b border-[#F4F8F5]">
+                    Student Services Hub
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('hux');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Home className="w-4 h-4 text-[#087443]" />
+                    <span>Accommodation &amp; Hostels</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('jobs');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Briefcase className="w-4 h-4 text-[#087443]" />
+                    <span>Jobs &amp; Internships</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('food');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Utensils className="w-4 h-4 text-[#087443]" />
+                    <span>Campus Food Ordering</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('books');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <BookOpen className="w-4 h-4 text-[#087443]" />
+                    <span>Books &amp; Study Materials</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('gpa');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Calculator className="w-4 h-4 text-[#087443]" />
+                    <span>GPA &amp; CGPA Calculator</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('deals');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Crown className="w-4 h-4 text-[#D4A62A]" />
+                    <span>Student Deals &amp; Discounts</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('bike-riders');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Bike className="w-4 h-4 text-[#087443]" />
+                    <span>Campus Bike &amp; Dispatch Riders</span>
+                  </button>
+                  {onOpenServicesSection && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onOpenServicesSection();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    >
+                      <Store className="w-4 h-4 text-[#087443]" />
+                      <span>Browse Services Directory</span>
+                    </button>
+                  )}
+                  {onOpenPostServiceModal && (
+                    <div className="border-t border-[#F4F8F5] mt-1 pt-1 px-3.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          onOpenPostServiceModal();
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-[#D4A62A] text-[#10251D] text-xs font-black text-center"
+                      >
+                        Post Your Student Service
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* More Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={openDropdown === 'more'}
+                onClick={() => toggleDropdown('more')}
+                className={navBtnClass(
+                  ['giveaways', 'referrals', 'ambassadors', 'leaderboards', 'hub', 'requests'].includes(activeView) ||
+                    openDropdown === 'more'
+                )}
+              >
+                <span>More</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {openDropdown === 'more' && (
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#087443] border-b border-[#F4F8F5]">
+                    Community &amp; Rewards
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('hub');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <MessageSquare className="w-4 h-4 text-[#087443]" />
+                    <span>Community Hub &amp; Chat</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('requests');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Briefcase className="w-4 h-4 text-[#087443]" />
+                    <span>What Students Need</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('giveaways');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Gift className="w-4 h-4 text-[#087443]" />
+                    <span>Student Giveaways</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('referrals');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <GraduationCap className="w-4 h-4 text-[#087443]" />
+                    <span>Referral Rewards &amp; Ambassadors</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      onNavigateView('leaderboards');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                  >
+                    <Trophy className="w-4 h-4 text-[#D4A62A]" />
+                    <span>Campus Leaderboards</span>
+                  </button>
+                  {onOpenEventsSection && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onOpenEventsSection();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    >
+                      <PartyPopper className="w-4 h-4 text-[#D4A62A]" />
+                      <span>Campus Events &amp; Birthdays</span>
+                    </button>
+                  )}
+                  {onOpenEmergencySection && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onOpenEmergencySection();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-[#DC2626] hover:bg-red-50 flex items-center gap-2.5"
+                    >
+                      <Siren className="w-4 h-4" />
+                      <span>Campus Safety &amp; Help Centre</span>
+                    </button>
+                  )}
+                  <div className="border-t border-[#F4F8F5] mt-1 pt-1 px-3.5 py-1.5">
+                    {isCeo && onOpenAdvertiseModal ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          onOpenAdvertiseModal();
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-[#D4A62A] text-[#10251D] text-xs font-black text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Megaphone className="w-3.5 h-3.5" />
+                        <span>Manage Official Ads (CEO)</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={getCeoAdsWhatsAppUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-1.5 rounded-lg bg-[#10251D] text-[#D4A62A] text-xs font-black text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Megaphone className="w-3.5 h-3.5" />
+                        <span>Advertise on Platform</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </nav>
+
+          {/* Compact Search Bar */}
+          <div className="flex-1 max-w-[210px] sm:max-w-xs">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
               <input
                 type="text"
-                placeholder="Search hostel items, textbooks, food, phones..."
+                placeholder="Search products, hostels..."
                 value={localSearch}
                 onChange={(e) => {
                   setLocalSearch(e.target.value);
                   onSearchChange(e.target.value);
                 }}
-                className="w-full pl-9 pr-22 py-2.5 bg-white border border-transparent focus:border-[#F2B90D] rounded-xl text-xs sm:text-sm text-[#111111] placeholder-[#666666] shadow-sm transition outline-none"
+                className="w-full pl-8 pr-12 py-2 bg-white border border-transparent focus:border-[#D4A62A] rounded-xl text-xs text-[#10251D] placeholder-[#10251D]/55 shadow-sm transition outline-none"
               />
-              <Search className="w-4 h-4 text-[#0B6B3A] absolute left-3" />
+              <Search className="w-3.5 h-3.5 text-[#087443] absolute left-2.5" />
               <button
                 type="submit"
-                className="absolute right-1 px-3.5 py-1.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-lg transition"
+                className="absolute right-1 px-2 py-1 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-[10px] font-black rounded-lg transition cursor-pointer"
               >
-                Search
+                Go
               </button>
             </form>
           </div>
 
-          {/* Action CTAs: Sell, Cart, Saved, Login */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenSellModal}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs rounded-xl shadow active:scale-95 transition"
-            >
-              <PlusCircle className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline whitespace-nowrap">Post Item</span>
-            </button>
+          {/* Right Auth, Account, Cart & Utility Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenNotifications && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                className="p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative shrink-0 cursor-pointer"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <Bell className="w-4 h-4 text-[#D4A62A]" />
+                {unreadNotificationsCount > 0 && (
+                  <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
+                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-            {/* Cart Icon */}
             <button
               type="button"
               onClick={onOpenCart}
-              className="p-2 sm:px-3 sm:py-2 bg-[#14532D] hover:bg-[#14532D]/80 border border-white/25 text-white rounded-xl flex items-center gap-1.5 transition relative"
+              className="p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative whitespace-nowrap shrink-0 cursor-pointer"
               title="Shopping Cart"
               aria-label="Shopping Cart"
             >
-              <ShoppingCart className="w-4 h-4 text-[#F2B90D]" />
+              <ShoppingCart className="w-4 h-4 text-[#D4A62A]" />
               {cartCount > 0 && (
-                <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center">
+                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
                   {cartCount}
                 </span>
               )}
-              <span className="hidden lg:inline text-xs font-bold">Cart</span>
             </button>
 
-            {/* Saved Items */}
             <button
               type="button"
               onClick={onOpenFavourites}
-              className="p-2 bg-[#14532D] hover:bg-[#14532D]/80 border border-white/25 text-white rounded-xl flex items-center gap-1 transition relative"
+              className="hidden xl:flex p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl items-center gap-1 transition relative shrink-0 cursor-pointer"
               title="Saved Items"
               aria-label="Saved Items"
             >
-              <Heart className="w-4 h-4 text-[#F2B90D]" />
+              <Heart className="w-4 h-4 text-[#D4A62A]" />
               {favourites.length > 0 && (
-                <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center">
+                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
                   {favourites.length}
                 </span>
               )}
             </button>
 
-            {/* Login / Account Menu */}
-            <div className="relative" ref={userMenuRef}>
+            {/* Auth / Account Menu */}
+            <div className="relative shrink-0">
               {user ? (
                 <button
                   type="button"
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white text-[#111111] font-bold shadow-sm hover:bg-[#F5F5F5] transition"
+                  onClick={() => toggleDropdown('user')}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white text-[#10251D] font-bold shadow-sm hover:bg-[#F4F8F5] transition cursor-pointer whitespace-nowrap"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-[#0B6B3A] text-[#F2B90D] font-black text-xs flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-[#087443] text-[#D4A62A] font-black text-xs flex items-center justify-center">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-bold text-[#111111] max-w-[80px] truncate hidden sm:inline">
+                  <span className="text-xs font-bold text-[#10251D] max-w-[75px] truncate hidden sm:inline">
                     {user.name.split(' ')[0]}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#555555]" />
+                  <ChevronDown className="w-3.5 h-3.5 text-[#10251D]/65" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => onOpenAuthModal('login')}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#F5F5F5] text-[#0B6B3A] text-xs font-black rounded-xl shadow-sm transition"
-                >
-                  <UserIcon className="w-3.5 h-3.5 text-[#0B6B3A]" />
-                  <span>Login</span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenAuthModal('login')}
+                    className="flex items-center gap-1 px-2.5 py-2 bg-white hover:bg-[#F4F8F5] text-[#087443] text-xs font-black rounded-xl shadow-sm transition whitespace-nowrap cursor-pointer"
+                  >
+                    <UserIcon className="w-3.5 h-3.5 text-[#087443]" />
+                    <span>Login</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAuthModal('register')}
+                    className="hidden sm:inline-flex items-center px-3 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition whitespace-nowrap cursor-pointer shadow-sm"
+                  >
+                    Sign Up
+                  </button>
+                </div>
               )}
 
-              {showUserMenu && user && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] py-2 z-50 text-[#111111]">
-                  <div className="px-4 py-3 border-b border-[#E5E7EB]">
-                    <p className="text-xs font-black text-[#111111] truncate">{user.name}</p>
-                    <p className="text-[11px] text-[#555555] truncate">{user.email}</p>
+              {openDropdown === 'user' && user && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50 text-[#10251D]">
+                  <div className="px-4 py-3 border-b border-[#F4F8F5]">
+                    <p className="text-xs font-black text-[#10251D] truncate">{user.name}</p>
+                    <p className="text-[11px] text-[#10251D]/70 truncate">{user.email}</p>
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-[#0B6B3A] text-[#F2B90D]">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-[#087443] text-[#D4A62A]">
                         {user.role}
                       </span>
-                      {sellerProfile?.isVerified && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F5F5F5] text-[#0B6B3A] border border-[#0B6B3A]/30 flex items-center gap-0.5">
+                      {(sellerProfile?.isVerified || user.ceoVerified || user.isVerified) && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F8F5] text-[#087443] border border-[#087443]/30 flex items-center gap-0.5">
                           <ShieldCheck className="w-3 h-3" /> Verified
                         </span>
                       )}
@@ -360,28 +843,66 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   <div className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onNavigateView('orders');
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                    >
+                      <ClipboardList className="w-4 h-4 text-[#087443]" />
+                      My Orders &amp; Food Tracking
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onNavigateView('account');
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                    >
+                      <UserIcon className="w-4 h-4 text-[#087443]" />
+                      Student Account Hub
+                    </button>
+
+                    {onOpenUserProfile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          onOpenUserProfile();
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                      >
+                        <UserCog className="w-4 h-4 text-[#087443]" />
+                        Campus Profile Settings
+                      </button>
+                    )}
+
                     {user.role === 'seller' || user.role === 'admin' ? (
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenSellerDashboard();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#111111] hover:bg-[#F5F5F5] flex items-center gap-2 font-bold transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
                       >
-                        <Store className="w-4 h-4 text-[#0B6B3A]" />
+                        <Store className="w-4 h-4 text-[#087443]" />
                         Seller Dashboard &amp; Listings
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenAuthModal('register', 'seller');
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#0B6B3A] hover:bg-[#F5F5F5] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
                       >
-                        <Store className="w-4 h-4 text-[#0B6B3A]" />
+                        <Store className="w-4 h-4 text-[#087443]" />
                         Become a Campus Seller
                       </button>
                     )}
@@ -390,12 +911,12 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenCeoSuperAdmin();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-white bg-[#0B6B3A] hover:bg-[#14532D] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-white bg-[#087443] hover:bg-[#065D36] flex items-center gap-2 font-black transition"
                       >
-                        <ShieldCheck className="w-4 h-4 text-[#F2B90D]" />
+                        <ShieldCheck className="w-4 h-4 text-[#D4A62A]" />
                         CEO Super Admin Dashboard
                       </button>
                     )}
@@ -404,13 +925,13 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenCeoMasterControl();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#111111] bg-[#F2B90D]/20 hover:bg-[#F2B90D]/35 flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] bg-[#D4A62A]/20 hover:bg-[#D4A62A]/35 flex items-center gap-2 font-black transition"
                       >
-                        <Sliders className="w-4 h-4 text-[#0B6B3A]" />
-                        FU MARKET CEO MASTER CONTROL
+                        <Sliders className="w-4 h-4 text-[#087443]" />
+                        Platform Master Control
                       </button>
                     )}
 
@@ -418,13 +939,13 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenCeoEventsDashboard();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#EA580C] hover:bg-[#FFF7ED] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
                       >
-                        <PartyPopper className="w-4 h-4" />
-                        CEO Birthday &amp; Events Desk
+                        <PartyPopper className="w-4 h-4 text-[#D4A62A]" />
+                        CEO Events Publisher
                       </button>
                     )}
 
@@ -432,114 +953,114 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setShowUserMenu(false);
+                          setOpenDropdown(null);
                           onOpenAdminDashboard();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-[#0B6B3A] hover:bg-[#F5F5F5] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
                       >
                         <LayoutDashboard className="w-4 h-4" />
-                        Admin Moderation Desk
+                        Admin &amp; Institutions Desk
                       </button>
                     )}
 
                     <button
                       type="button"
                       onClick={() => {
-                        setShowUserMenu(false);
-                        onOpenFavourites();
-                      }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#333333] hover:text-[#111111] hover:bg-[#F5F5F5] flex items-center gap-2 transition"
-                    >
-                      <Heart className="w-4 h-4 text-[#F2B90D]" />
-                      Saved Favourites ({favourites.length})
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowUserMenu(false);
+                        setOpenDropdown(null);
                         onOpenSafetyModal();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#333333] hover:text-[#111111] hover:bg-[#F5F5F5] flex items-center gap-2 transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#10251D]/80 hover:text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 transition"
                     >
-                      <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
+                      <ShieldCheck className="w-4 h-4 text-[#087443]" />
                       Safety &amp; Scam Prevention
                     </button>
                   </div>
 
-                  <div className="border-t border-[#E5E7EB] pt-1 mt-1">
+                  <div className="border-t border-[#F4F8F5] pt-1 mt-1">
                     <button
                       type="button"
                       onClick={() => {
-                        setShowUserMenu(false);
+                        setOpenDropdown(null);
                         logout();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#111111] hover:bg-[#F5F5F5] flex items-center gap-2 font-bold transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
                     >
-                      <LogOut className="w-4 h-4 text-[#14532D]" />
+                      <LogOut className="w-4 h-4 text-[#065D36]" />
                       Sign Out
                     </button>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Mobile Hamburger Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden p-2 rounded-xl bg-[#10251D] border border-white/20 text-white hover:text-[#D4A62A] cursor-pointer"
+              aria-label="Open Navigation Menu"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
-        {/* Campus Sections Sub-Navigation Bar */}
-        <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-0.5 text-xs font-bold">
-          {[
-            { id: 'marketplace' as AppView, label: 'Marketplace' },
-            { id: 'requests' as AppView, label: 'What Students Need' },
-            { id: 'hux' as AppView, label: 'Wukari Agent' },
-            { id: 'hub' as AppView, label: 'Single Hub' },
-            { id: 'friends' as AppView, label: 'Messaging' },
-            { id: 'bike-riders' as AppView, label: 'Bike Man' }
-          ].map((nav) => (
-            <button
-              key={nav.id}
-              type="button"
-              onClick={() => onNavigateView(nav.id)}
-              className={`px-3.5 py-1.5 rounded-xl transition whitespace-nowrap ${
-                activeView === nav.id
-                  ? 'bg-[#F2B90D] text-[#111111] font-black shadow-sm'
-                  : 'bg-[#14532D] text-white/95 border border-white/15 hover:bg-white/15'
-              }`}
-            >
-              {nav.label}
-            </button>
-          ))}
-          {onOpenServicesSection && (
-            <button
-              type="button"
-              onClick={onOpenServicesSection}
-              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#14532D] hover:bg-white/15 text-[#F2B90D] border border-[#F2B90D]/50 font-black flex items-center gap-1.5"
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Services</span>
-            </button>
-          )}
-          {onOpenEmergencySection && (
+        {/* Mobile Drawer Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-3 pt-3 border-t border-white/15 grid grid-cols-2 sm:grid-cols-3 gap-2 pb-2 text-xs">
+            {[
+              { label: 'Home', action: () => onNavigateView('home') },
+              { label: 'Marketplace', action: () => onNavigateView('marketplace') },
+              { label: 'Universities', action: () => onOpenInstitutionSwitcher?.() },
+              { label: 'Accommodation', action: () => onNavigateView('hux') },
+              { label: 'Campus Food', action: () => onNavigateView('food') },
+              { label: 'Jobs & Skills', action: () => onNavigateView('jobs') },
+              { label: 'Books', action: () => onNavigateView('books') },
+              { label: 'GPA Calculator', action: () => onNavigateView('gpa') },
+              { label: 'Student Deals', action: () => onNavigateView('deals') },
+              { label: 'Giveaways', action: () => onNavigateView('giveaways') },
+              { label: 'Community Hub', action: () => onNavigateView('hub') },
+              { label: 'My Orders', action: () => onNavigateView('orders') },
+              { label: 'Safety & Help', action: () => onOpenEmergencySection?.() }
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  item.action();
+                }}
+                className="px-3 py-2 rounded-xl bg-[#10251D] hover:bg-[#D4A62A] hover:text-[#10251D] text-white font-bold text-left flex items-center justify-between transition"
+              >
+                <span className="truncate">{item.label}</span>
+              </button>
+            ))}
             <button
               type="button"
-              onClick={onOpenEmergencySection}
-              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#DC2626] hover:bg-[#B91C1C] text-white font-black flex items-center gap-1.5"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenSellModal();
+              }}
+              className="px-3 py-2 rounded-xl bg-[#D4A62A] text-[#10251D] font-black text-left col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
             >
-              <Siren className="w-3.5 h-3.5" />
-              <span>Emergency &amp; Help</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>Post Item / Start Selling</span>
             </button>
-          )}
-          {onOpenAdvertiseModal && (
-            <button
-              type="button"
-              onClick={onOpenAdvertiseModal}
-              className="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap bg-[#EA580C] hover:bg-[#C2410C] text-white font-black flex items-center gap-1.5"
-            >
-              <Megaphone className="w-3.5 h-3.5" />
-              <span>FU MARKET ADS</span>
-            </button>
-          )}
-        </div>
+            {!user && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAuthModal('register');
+                }}
+                className="px-3 py-2 rounded-xl bg-white text-[#087443] font-black text-center col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                <span>Create Free Student Account</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

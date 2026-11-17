@@ -61,7 +61,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = 'Single Hub — FUWUKARI Group Chat | FU MARKET';
+    document.title = 'Single Hub — Campus Group Chat | NIGERIA CAMPUS MARKET';
   }, []);
 
   useEffect(() => {
@@ -217,31 +217,31 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col font-sans pb-20 sm:pb-0">
+    <div className="min-h-screen bg-[#F4F8F5] text-[#10251D] flex flex-col font-sans pb-20 sm:pb-0">
       {/* Header */}
-      <div className="bg-[#0B6B3A] border-b border-[#14532D] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between text-white">
+      <div className="bg-[#087443] border-b border-[#065D36] px-3 sm:px-4 py-2.5 sticky top-0 z-30 flex items-center justify-between text-white">
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onBackToHome}
-            className="p-2 rounded-xl bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white transition"
-            title="Back to FU MARKET"
+            className="p-2 rounded-xl bg-[#065D36] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] text-white transition"
+            title="Back to NIGERIA CAMPUS MARKET"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#14532D] border-2 border-[#F2B90D] text-[#F2B90D] font-black flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-full bg-[#065D36] border-2 border-[#D4A62A] text-[#D4A62A] font-black flex items-center justify-center text-lg">
               🎓
             </div>
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#F2B90D] border-2 border-[#0B6B3A] rounded-full" />
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#D4A62A] border-2 border-[#087443] rounded-full" />
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-[#F2B90D]">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-[#D4A62A]">
                 Single Hub — FUWUKARI
               </h1>
-              <span className="bg-[#F2B90D] text-[#111111] text-[10px] px-2 py-0.5 rounded-md font-black flex items-center gap-1">
+              <span className="bg-[#D4A62A] text-[#10251D] text-[10px] px-2 py-0.5 rounded-md font-black flex items-center gap-1">
                 <Radio className="w-2.5 h-2.5 animate-ping" />
                 Live
               </span>
@@ -258,7 +258,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           <button
             type="button"
             onClick={onNavigateToFriends}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] text-white rounded-xl text-xs font-bold transition"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#065D36] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] text-white rounded-xl text-xs font-bold transition"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Direct Chats</span>
@@ -267,9 +267,9 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           {student ? (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#14532D] hover:bg-[#0B6B3A] border border-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+              className="bg-[#065D36] hover:bg-[#087443] border border-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
             >
-              <div className="w-5 h-5 rounded-full bg-[#F2B90D] text-[#111111] flex items-center justify-center text-[10px] font-black uppercase">
+              <div className="w-5 h-5 rounded-full bg-[#D4A62A] text-[#10251D] flex items-center justify-center text-[10px] font-black uppercase">
                 {student.name.charAt(0)}
               </div>
               <span className="hidden sm:inline max-w-[100px] truncate">{student.name}</span>
@@ -277,7 +277,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1"
+              className="bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1"
             >
               <GraduationCap className="w-3.5 h-3.5" />
               <span>Join Hub</span>
@@ -289,8 +289,8 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-4xl w-full mx-auto flex flex-col justify-between">
         <div className="my-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-3 text-center text-xs max-w-md mx-auto shadow-xs">
-          <p className="font-black text-[#0B6B3A] flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
+          <p className="font-black text-[#087443] flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-[#087443]" />
             <span>FUWUKARI Open Student Messaging</span>
           </p>
           <p className="text-[11px] text-[#555555] mt-0.5 leading-relaxed">
@@ -300,7 +300,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
 
         {loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-8 h-8 text-[#0B6B3A] animate-spin mx-auto mb-2" />
+            <Loader2 className="w-8 h-8 text-[#087443] animate-spin mx-auto mb-2" />
             <p className="text-xs font-bold text-[#555555]">Loading FUWUKARI Hub messages...</p>
           </div>
         ) : messages.length === 0 ? (
@@ -308,7 +308,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
             <div className="w-16 h-16 rounded-2xl bg-[#FFFFFF] border border-[#E5E7EB] text-3xl flex items-center justify-center mx-auto mb-3 shadow-xs">
               💬
             </div>
-            <h3 className="text-sm sm:text-base font-black text-[#111111]">
+            <h3 className="text-sm sm:text-base font-black text-[#10251D]">
               No messages yet in Single Hub
             </h3>
             <p className="text-xs text-[#555555] mt-1 mb-4 leading-relaxed">
@@ -319,7 +319,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                 if (!student) setShowLoginModal(true);
                 else setInputText('Hello FUWUKARI!');
               }}
-              className="px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl shadow-sm"
+              className="px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl shadow-sm"
             >
               Say Hello
             </button>
@@ -336,8 +336,8 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                   <div
                     className={`max-w-[85%] sm:max-w-md rounded-2xl p-3 border relative shadow-xs ${
                       isOwn
-                        ? 'bg-[#0B6B3A] border-[#14532D] text-white rounded-br-xs'
-                        : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#111111] rounded-bl-xs'
+                        ? 'bg-[#087443] border-[#065D36] text-white rounded-br-xs'
+                        : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#10251D] rounded-bl-xs'
                     }`}
                   >
                     {!isOwn && (
@@ -353,11 +353,11 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                         className="flex items-center gap-1.5 mb-1 text-left hover:underline"
                         title="Start 1-on-1 private chat"
                       >
-                        <span className="text-xs font-black text-[#0B6B3A] line-clamp-1">
+                        <span className="text-xs font-black text-[#087443] line-clamp-1">
                           {msg.senderName}
                         </span>
                         {msg.matricNumber && (
-                          <span className="text-[10px] bg-[#F5F5F5] text-[#555555] font-mono px-1.5 py-0.2 rounded border border-[#E5E7EB] uppercase">
+                          <span className="text-[10px] bg-[#F4F8F5] text-[#555555] font-mono px-1.5 py-0.2 rounded border border-[#E5E7EB] uppercase">
                             {msg.matricNumber}
                           </span>
                         )}
@@ -365,7 +365,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                     )}
 
                     {msg.imageUrl && (
-                      <div className="rounded-xl overflow-hidden mb-2 bg-[#F5F5F5] max-h-72 border border-[#E5E7EB]">
+                      <div className="rounded-xl overflow-hidden mb-2 bg-[#F4F8F5] max-h-72 border border-[#E5E7EB]">
                         <img
                           src={msg.imageUrl}
                           alt="Hub attachment"
@@ -378,7 +378,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                     {msg.text && (
                       <p
                         className={`text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap break-words ${
-                          isOwn ? 'text-white' : 'text-[#111111]'
+                          isOwn ? 'text-white' : 'text-[#10251D]'
                         }`}
                       >
                         {msg.text}
@@ -405,30 +405,30 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
       <div className="bg-[#FFFFFF] border-t border-[#E5E7EB] p-2.5 sm:p-3 sticky bottom-14 sm:bottom-0 z-20">
         <div className="max-w-4xl mx-auto">
           {filePreview && (
-            <div className="relative mb-2.5 p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-3">
+            <div className="relative mb-2.5 p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-3">
               <img
                 src={filePreview}
                 alt="Upload preview"
                 className="w-14 h-14 object-cover rounded-xl border border-[#E5E7EB]"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-[#111111] truncate">
+                <p className="text-xs font-bold text-[#10251D] truncate">
                   {selectedFile?.name || 'Photo attachment'}
                 </p>
                 {isUploading ? (
                   <div className="mt-1 space-y-1">
                     <div className="w-full bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="bg-[#0B6B3A] h-1.5 transition-all duration-200"
+                        className="bg-[#087443] h-1.5 transition-all duration-200"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-[#0B6B3A]">Uploading {uploadProgress}%</span>
+                      <span className="font-bold text-[#087443]">Uploading {uploadProgress}%</span>
                       <button
                         type="button"
                         onClick={handleCancelUpload}
-                        className="text-[#111111] underline font-bold"
+                        className="text-[#10251D] underline font-bold"
                       >
                         Cancel Upload
                       </button>
@@ -441,7 +441,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
               <button
                 type="button"
                 onClick={removeSelectedFile}
-                className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#111111] flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#10251D] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -449,7 +449,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           )}
 
           {showEmojiPicker && (
-            <div className="p-2 mb-2 bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-2 overflow-x-auto">
+            <div className="p-2 mb-2 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl flex items-center gap-2 overflow-x-auto">
               {COMMON_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
@@ -464,14 +464,14 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
           )}
 
           {uploadError && (
-            <div className="mb-2 p-2.5 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
+            <div className="mb-2 p-2.5 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
               <span>{uploadError}</span>
               <div className="flex items-center gap-2 shrink-0">
                 {selectedFile && (
                   <button
                     type="button"
                     onClick={() => handleSendMessage()}
-                    className="px-2 py-0.5 bg-[#0B6B3A] text-white font-black rounded flex items-center gap-1"
+                    className="px-2 py-0.5 bg-[#087443] text-white font-black rounded flex items-center gap-1"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Retry</span>
@@ -480,7 +480,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setUploadError(null)}
-                  className="text-[#111111] font-bold underline"
+                  className="text-[#10251D] font-bold underline"
                 >
                   Dismiss
                 </button>
@@ -492,7 +492,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 text-[#555555] hover:text-[#0B6B3A] hover:bg-[#F5F5F5] rounded-full transition shrink-0"
+              className="p-2 text-[#555555] hover:text-[#087443] hover:bg-[#F4F8F5] rounded-full transition shrink-0"
               title="Add Emoji"
             >
               <Smile className="w-5 h-5" />
@@ -508,7 +508,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-[#555555] hover:text-[#0B6B3A] hover:bg-[#F5F5F5] rounded-full transition shrink-0"
+              className="p-2 text-[#555555] hover:text-[#087443] hover:bg-[#F4F8F5] rounded-full transition shrink-0"
               title="Attach Photo"
             >
               <ImageIcon className="w-5 h-5" />
@@ -519,13 +519,13 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={student ? 'Message FUWUKARI Single Hub...' : 'Enter name & matric to chat...'}
-              className="flex-1 py-2.5 px-4 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-[#111111] placeholder-[#6B7280] outline-none"
+              className="flex-1 py-2.5 px-4 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-full text-xs sm:text-sm font-medium text-[#10251D] placeholder-[#6B7280] outline-none"
             />
 
             <button
               type="submit"
               disabled={isSending || (!inputText.trim() && !selectedFile)}
-              className="w-10 h-10 rounded-full bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-40 text-[#F2B90D] flex items-center justify-center shrink-0 transition"
+              className="w-10 h-10 rounded-full bg-[#087443] hover:bg-[#065D36] disabled:opacity-40 text-[#D4A62A] flex items-center justify-center shrink-0 transition"
             >
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -536,7 +536,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
               <span>Browsing as guest. </span>
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="text-[#0B6B3A] font-black underline"
+                className="text-[#087443] font-black underline"
               >
                 Sign in with Name &amp; Matric Number to send messages
               </button>
@@ -553,7 +553,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         >
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#0B6B3A] border border-[#F2B90D] text-white flex items-center justify-center"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#087443] border border-[#D4A62A] text-white flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -570,7 +570,7 @@ export const SingleHubPage: React.FC<SingleHubPageProps> = ({
         onClose={() => setShowLoginModal(false)}
         onSuccess={(loggedStudent) => setStudent(loggedStudent)}
         initialData={student}
-        title="FUWUKARI Campus ID — FU MARKET"
+        title="Campus Student ID — NIGERIA CAMPUS MARKET"
         subtitle="Set your name and matric number to join Single Hub, send friend requests, and chat 1-on-1."
       />
     </div>

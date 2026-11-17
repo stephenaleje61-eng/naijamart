@@ -1,15 +1,9 @@
 import { Router, Request, Response } from 'express';
 import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  query,
-  where,
-  limit
-} from 'firebase/firestore';
-import { firestoreDb as db } from '../firestore.js';
+  queryCollectionEquals,
+  setFirestoreDocument,
+  updateFirestoreDocument
+} from '../firestore.js';
 import { BikeRider } from '../../src/types.js';
 
 const router = Router();
@@ -21,17 +15,15 @@ let inMemoryRiders: BikeRider[] = [];
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { area } = req.query;
-    const ridersCol = collection(db, 'bikeRiders');
-    let q = query(ridersCol, limit(100));
-    if (area && typeof area === 'string' && area !== 'all' && area.trim().length > 0) {
-      q = query(ridersCol, where('area', '==', area.trim()), limit(100));
-    }
+    const filters =
+      area && typeof area === 'string' && area !== 'all' && area.trim().length > 0
+        ? [{ field: 'area', value: area.trim() }]
+        : [];
 
-    const snapshot = await getDocs(q);
-    const riders: BikeRider[] = [];
-    snapshot.forEach((d) => {
-      const data = d.data();
-      riders.push({
+    const docs = await queryCollectionEquals('bikeRiders', filters, 100);
+    const riders: BikeRider[] = docs.map((d) => {
+      const data = d.data;
+      return {
         id: d.id,
         name: data.name || '',
         photoUrl: data.photoUrl || '',
@@ -41,7 +33,7 @@ router.get('/', async (req: Request, res: Response) => {
         isAvailable: data.isAvailable !== false,
         createdAt: data.createdAt || new Date().toISOString(),
         userId: data.userId || ''
-      });
+      };
     });
 
     // Sort: available first, then newest
@@ -103,8 +95,7 @@ router.post('/', async (req: Request, res: Response) => {
     };
 
     // Save to Firestore
-    const riderRef = doc(db, 'bikeRiders', id);
-    await setDoc(riderRef, newRider);
+    await setFirestoreDocument('bikeRiders', id, newRider, false);
 
     inMemoryRiders.unshift(newRider);
 
@@ -125,8 +116,7 @@ router.patch('/:id/availability', async (req: Request, res: Response) => {
     const { isAvailable } = req.body;
     const { id } = req.params;
 
-    const riderRef = doc(db, 'bikeRiders', id);
-    await updateDoc(riderRef, {
+    await updateFirestoreDocument('bikeRiders', id, {
       isAvailable: Boolean(isAvailable),
       updatedAt: new Date().toISOString()
     });

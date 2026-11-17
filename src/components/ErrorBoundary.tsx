@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[FU MARKET ErrorBoundary]:', error, errorInfo);
+    console.error('[NIGERIA CAMPUS MARKET ErrorBoundary]:', error, errorInfo);
   }
 
   private handleReload = () => {
@@ -37,13 +37,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4 text-[#111111]">
+        <div className="min-h-screen bg-[#F4F8F5] flex items-center justify-center p-4 text-[#10251D]">
           <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-3xl p-6 shadow-xl text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#FFF8DB] border-2 border-[#F2B90D] flex items-center justify-center mx-auto text-[#0B6B3A]">
+            <div className="w-14 h-14 rounded-2xl bg-[#FFF8DB] border-2 border-[#D4A62A] flex items-center justify-center mx-auto text-[#087443]">
               <AlertTriangle className="w-7 h-7" />
             </div>
             <div className="space-y-1.5">
-              <h1 className="text-lg font-black text-[#111111]">FU MARKET Encountered an Issue</h1>
+              <h1 className="text-lg font-black text-[#10251D]">
+                NIGERIA CAMPUS MARKET Encountered an Issue
+              </h1>
               <p className="text-xs text-[#555555] leading-relaxed break-words">
                 {this.state.errorMessage}
               </p>
@@ -52,10 +54,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="px-5 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl flex items-center gap-2 transition"
+                className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl flex items-center gap-2 transition"
               >
-                <RefreshCw className="w-4 h-4 text-[#F2B90D]" />
-                <span>Reload FU MARKET</span>
+                <RefreshCw className="w-4 h-4 text-[#D4A62A]" />
+                <span>Reload NIGERIA CAMPUS MARKET</span>
               </button>
             </div>
           </div>

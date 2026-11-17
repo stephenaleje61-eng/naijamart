@@ -35,7 +35,9 @@ service cloud.firestore {
         !('verifiedBadgeText' in data) &&
         !('verifiedByCeoAt' in data) &&
         !('verifiedByCeoEmail' in data) &&
-        !('verificationNotes' in data);
+        !('verificationNotes' in data) &&
+        !('studentVerificationStatus' in data && data.studentVerificationStatus == 'verified') &&
+        !('scamStatus' in data);
     }
 
     function ceoVerificationFieldsUnchanged(newData, oldData) {
@@ -44,7 +46,9 @@ service cloud.firestore {
         newData.get('verifiedBadgeText', '') == oldData.get('verifiedBadgeText', '') &&
         newData.get('verifiedByCeoAt', '') == oldData.get('verifiedByCeoAt', '') &&
         newData.get('verifiedByCeoEmail', '') == oldData.get('verifiedByCeoEmail', '') &&
-        newData.get('verificationNotes', '') == oldData.get('verificationNotes', '');
+        newData.get('verificationNotes', '') == oldData.get('verificationNotes', '') &&
+        newData.get('studentVerificationStatus', 'unverified') == oldData.get('studentVerificationStatus', 'unverified') &&
+        newData.get('scamStatus', 'clear') == oldData.get('scamStatus', 'clear');
     }
 
     function isValidProduct(data) {
@@ -190,30 +194,103 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // FRIEND SYSTEM & DIRECT 1-ON-1 PRIVATE CHAT
+    // FRIEND SYSTEM & DIRECT 1-ON-1 PRIVATE CHAT (Strictly participant-scoped + CEO/Admin moderation)
     match /friendRequests/{requestId} {
-      allow read: if true;
-      allow create, update: if isValidDocId(requestId);
-      allow delete: if isAdmin() || (isSignedIn() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid));
+      allow read: if isCeo() || isAdmin() || (
+        isSignedIn() && (
+          resource.data.fromId == request.auth.uid ||
+          resource.data.toId == request.auth.uid
+        )
+      );
+      allow create: if isValidDocId(requestId) &&
+        isSignedIn() &&
+        request.resource.data.keys().hasAll(['id', 'fromId', 'fromName', 'toId', 'toName', 'status']) &&
+        request.resource.data.fromId == request.auth.uid &&
+        request.resource.data.toId != request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if isValidDocId(requestId) &&
+        isSignedIn() &&
+        (
+          (
+            resource.data.toId == request.auth.uid &&
+            request.resource.data.fromId == resource.data.fromId &&
+            request.resource.data.toId == resource.data.toId &&
+            request.resource.data.status in ['accepted', 'rejected']
+          ) ||
+          (
+            resource.data.fromId == request.auth.uid &&
+            request.resource.data.status == 'pending'
+          )
+        );
+      allow delete: if isCeo() || isAdmin() || (
+        isSignedIn() && (
+          resource.data.fromId == request.auth.uid ||
+          resource.data.toId == request.auth.uid
+        )
+      );
     }
 
     match /friends/{friendId} {
-      allow read: if true;
-      allow create, update: if isValidDocId(friendId);
-      allow delete: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid));
+      allow read: if isCeo() || isAdmin() || (
+        isSignedIn() && (
+          resource.data.userA == request.auth.uid ||
+          resource.data.userB == request.auth.uid
+        )
+      );
+      allow create, update: if isValidDocId(friendId) &&
+        isSignedIn() &&
+        request.resource.data.keys().hasAll(['id', 'userA', 'userB']) &&
+        (
+          request.resource.data.userA == request.auth.uid ||
+          request.resource.data.userB == request.auth.uid
+        );
+      allow delete: if isCeo() || isAdmin() || (
+        isSignedIn() && (
+          resource.data.userA == request.auth.uid ||
+          resource.data.userB == request.auth.uid
+        )
+      );
     }
 
     match /privateChats/{chatId} {
-      allow read: if true;
-      allow create, update: if isValidDocId(chatId);
-      allow delete: if isAdmin();
+      allow read: if isCeo() || isAdmin() || (
+        isSignedIn() && request.auth.uid in resource.data.participants
+      );
+      allow create: if isValidDocId(chatId) &&
+        isSignedIn() &&
+        request.resource.data.participants is list &&
+        request.resource.data.participants.size() >= 2 &&
+        request.auth.uid in request.resource.data.participants;
+      allow update: if isValidDocId(chatId) && (
+        isCeo() || isAdmin() || (
+          isSignedIn() && (
+            request.auth.uid in resource.data.participants ||
+            request.auth.uid in request.resource.data.participants
+          )
+        )
+      );
+      allow delete: if isCeo() || isAdmin();
 
       match /messages/{msgId} {
-        allow read: if true;
+        allow read: if isCeo() || isAdmin() || (
+          isSignedIn() &&
+          exists(/databases/$(database)/documents/privateChats/$(chatId)) &&
+          request.auth.uid in get(/databases/$(database)/documents/privateChats/$(chatId)).data.participants
+        );
         allow create: if isValidDocId(chatId) && isValidDocId(msgId) &&
-          request.resource.data.keys().hasAll(['id', 'chatId', 'senderId', 'createdAt']);
-        allow update: if isValidDocId(chatId) && isValidDocId(msgId);
-        allow delete: if isAdmin();
+          isSignedIn() &&
+          request.resource.data.keys().hasAll(['id', 'chatId', 'senderId', 'createdAt']) &&
+          request.resource.data.senderId == request.auth.uid &&
+          exists(/databases/$(database)/documents/privateChats/$(chatId)) &&
+          request.auth.uid in get(/databases/$(database)/documents/privateChats/$(chatId)).data.participants;
+        allow update: if isValidDocId(chatId) && isValidDocId(msgId) && (
+          isCeo() || isAdmin() || (
+            isSignedIn() &&
+            exists(/databases/$(database)/documents/privateChats/$(chatId)) &&
+            request.auth.uid in get(/databases/$(database)/documents/privateChats/$(chatId)).data.participants
+          )
+        );
+        allow delete: if isCeo() || isAdmin();
       }
     }
 
@@ -322,6 +399,9 @@ service cloud.firestore {
           'id',
           'categoryType',
           'sportCategory',
+          'matchStatus',
+          'institutionId',
+          'campus',
           'title',
           'teamOrPlayer',
           'competitionName',
@@ -349,6 +429,9 @@ service cloud.firestore {
         data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
         data.categoryType == 'sport_update' &&
         data.sportCategory is string && data.sportCategory.size() > 0 && data.sportCategory.size() <= 80 &&
+        (!('matchStatus' in data) || (data.matchStatus is string && data.matchStatus in ['upcoming', 'live', 'completed', 'announcement', 'other_sport'])) &&
+        (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() <= 128)) &&
+        (!('campus' in data) || (data.campus is string && data.campus.size() <= 120)) &&
         data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
         (!('teamOrPlayer' in data) || (data.teamOrPlayer is string && data.teamOrPlayer.size() <= 160)) &&
         (!('competitionName' in data) || (data.competitionName is string && data.competitionName.size() <= 140)) &&
@@ -407,6 +490,9 @@ service cloud.firestore {
             resource.data.status in ['published', 'pending'] &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'sportCategory',
+              'matchStatus',
+              'institutionId',
+              'campus',
               'title',
               'teamOrPlayer',
               'competitionName',
@@ -472,6 +558,8 @@ service cloud.firestore {
           'id',
           'categoryType',
           'announcementCategory',
+          'institutionId',
+          'campus',
           'title',
           'eventDate',
           'eventTime',
@@ -495,6 +583,8 @@ service cloud.firestore {
         data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
         data.categoryType == 'general_announcement' &&
         data.announcementCategory is string && data.announcementCategory.size() > 0 && data.announcementCategory.size() <= 80 &&
+        (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() <= 128)) &&
+        (!('campus' in data) || (data.campus is string && data.campus.size() <= 120)) &&
         data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
         (!('eventDate' in data) || (data.eventDate is string && data.eventDate.size() <= 32)) &&
         (!('eventTime' in data) || (data.eventTime is string && data.eventTime.size() <= 60)) &&
@@ -549,6 +639,8 @@ service cloud.firestore {
             resource.data.status in ['published', 'pending'] &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'announcementCategory',
+              'institutionId',
+              'campus',
               'title',
               'eventDate',
               'eventTime',
@@ -732,6 +824,11 @@ service cloud.firestore {
           'imageUrl',
           'logoUrl',
           'location',
+          'institutionId',
+          'campus',
+          'placement',
+          'visibilityScope',
+          'createdByCeoEmail',
           'packageId',
           'packageName',
           'packagePrice',
@@ -771,6 +868,11 @@ service cloud.firestore {
         data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 900000 &&
         (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 900000)) &&
         data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
+        (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() <= 128)) &&
+        (!('campus' in data) || (data.campus is string && data.campus.size() <= 120)) &&
+        (!('placement' in data) || (data.placement is string && data.placement in ['ads_section', 'homepage_hero', 'category_feed', 'institution_spotlight'])) &&
+        (!('visibilityScope' in data) || (data.visibilityScope is string && data.visibilityScope in ['all_institutions', 'specific_institution'])) &&
+        (!('createdByCeoEmail' in data) || (data.createdByCeoEmail is string && data.createdByCeoEmail.size() <= 160)) &&
         data.packageId is string && data.packageId in ['basic', 'premium', 'featured'] &&
         (!('packageName' in data) || (data.packageName is string && data.packageName.size() <= 80)) &&
         data.packagePrice is number && data.packagePrice > 0 && data.packagePrice <= 1000000 &&
@@ -808,29 +910,22 @@ service cloud.firestore {
         (resource.data.status == 'active' && resource.data.paymentStatus == 'paid' && resource.data.isDeleted == false) ||
         (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
-      // Anyone can submit an ad, but it MUST start as pending_approval & unpaid/pending_verification, never self-activated, featured, or CEO-verified
-      allow create: if isValidDocId(adId) &&
-        isValidAdvertisement(request.resource.data) &&
-        (!isSignedIn() || !('ownerUid' in request.resource.data) || request.resource.data.ownerUid == request.auth.uid || isAdmin()) &&
-        (isCeo() || noCeoVerificationFieldsIn(request.resource.data)) &&
-        request.resource.data.status == 'pending_approval' &&
-        request.resource.data.paymentStatus in ['unpaid', 'pending_verification'] &&
-        request.resource.data.isFeatured == false &&
-        request.resource.data.isDeleted == false &&
-        request.resource.data.impressions == 0 &&
-        request.resource.data.clicks == 0 &&
-        request.resource.data.whatsappClicks == 0 &&
-        request.resource.data.createdAt == request.time &&
-        request.resource.data.updatedAt == request.time;
+      // STRICT CEO-ONLY OFFICIAL ADVERTISING MODEL: Only the verified CEO account can create, edit, or delete ads.
+      allow create: if isCeo() &&
+        isValidDocId(adId) &&
+        isValidAdvertisement(request.resource.data);
 
       allow update: if isValidDocId(adId) &&
-        isValidAdvertisement(request.resource.data) &&
-        request.resource.data.id == resource.data.id &&
-        request.resource.data.createdAt == resource.data.createdAt &&
         (
-          isCeo() ||
-          (isAdmin() && ceoVerificationFieldsUnchanged(request.resource.data, resource.data)) ||
           (
+            isCeo() &&
+            isValidAdvertisement(request.resource.data) &&
+            request.resource.data.id == resource.data.id
+          ) ||
+          (
+            isValidAdvertisement(request.resource.data) &&
+            request.resource.data.id == resource.data.id &&
+            request.resource.data.createdAt == resource.data.createdAt &&
             ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
             resource.data.status == 'active' &&
             resource.data.paymentStatus == 'paid' &&
@@ -846,7 +941,7 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if (isCeo() || isAdmin()) && isValidDocId(adId);
+      allow delete: if isCeo() && isValidDocId(adId);
     }
 
     // Protected Payment Records: Admin read/write only, never deletable
@@ -914,6 +1009,8 @@ service cloud.firestore {
           'priceMax',
           'priceDisplay',
           'location',
+          'institutionId',
+          'campus',
           'phone',
           'whatsapp',
           'images',
@@ -950,6 +1047,8 @@ service cloud.firestore {
         (!('priceMax' in data) || (data.priceMax is number && data.priceMax >= 0 && data.priceMax <= 100000000)) &&
         (!('priceDisplay' in data) || (data.priceDisplay is string && data.priceDisplay.size() <= 80)) &&
         data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
+        (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() <= 128)) &&
+        (!('campus' in data) || (data.campus is string && data.campus.size() <= 120)) &&
         data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
         data.whatsapp is string && data.whatsapp.size() >= 5 && data.whatsapp.size() <= 40 &&
         data.images is list && data.images.size() > 0 && data.images.size() <= 8 && data.images[0] is string &&
@@ -1024,6 +1123,8 @@ service cloud.firestore {
               'priceMax',
               'priceDisplay',
               'location',
+              'institutionId',
+              'campus',
               'phone',
               'whatsapp',
               'images',
@@ -1477,6 +1578,387 @@ service cloud.firestore {
 
     match /ceo_settings/{settingId} {
       allow read, write: if isCeo() && isValidDocId(settingId);
+    }
+
+    // ============================================================================
+    // NIGERIA NATIONAL INSTITUTION DIRECTORY, ACCOMMODATION & HOUSE AGENTS
+    // ============================================================================
+    match /institutions/{institutionId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidDocId(institutionId);
+    }
+
+    match /institutionUsers/{profileId} {
+      allow read: if true;
+      allow create: if isValidDocId(profileId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'institutionId', 'name']) &&
+        (!isSignedIn() || request.resource.data.userId == request.auth.uid || isCeo()) &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data));
+      allow update: if isValidDocId(profileId) &&
+        (
+          isCeo() ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            (!isSignedIn() || resource.data.userId == request.auth.uid)
+          )
+        );
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    match /accommodation/{propId} {
+      allow read: if true;
+      allow create: if isValidDocId(propId) &&
+        request.resource.data.keys().hasAll(['title', 'location', 'price', 'category', 'type', 'phone', 'userId', 'institutionId']) &&
+        request.resource.data.price is number && request.resource.data.price >= 0 &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data));
+      allow update: if isValidDocId(propId) &&
+        (
+          isCeo() ||
+          (isAdmin() && ceoVerificationFieldsUnchanged(request.resource.data, resource.data)) ||
+          (request.resource.data.userId == resource.data.userId && ceoVerificationFieldsUnchanged(request.resource.data, resource.data))
+        );
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /houseAgents/{agentId} {
+      allow read: if true;
+      allow create: if isValidDocId(agentId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'agentName', 'institutionId', 'campus', 'areaCovered', 'phone', 'whatsapp']) &&
+        (isCeo() || noCeoVerificationFieldsIn(request.resource.data));
+      allow update: if isValidDocId(agentId) &&
+        (
+          isCeo() ||
+          (
+            ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+            (isAdmin() || !isSignedIn() || resource.data.userId == request.auth.uid)
+          )
+        );
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    // =========================================================================
+    // NIGERIA CAMPUS MARKET ECOSYSTEM COLLECTIONS
+    // =========================================================================
+
+    match /productReviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if isValidDocId(reviewId) &&
+        request.resource.data.keys().hasAll(['id', 'productId', 'reviewerId', 'rating', 'comment']) &&
+        request.resource.data.rating is number &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.comment is string &&
+        request.resource.data.comment.size() >= 3 &&
+        request.resource.data.comment.size() <= 1000 &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.reviewerId == request.auth.uid);
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.reviewerId == request.auth.uid);
+    }
+
+    match /sellerFollowers/{followId} {
+      allow read: if true;
+      allow create: if isValidDocId(followId) &&
+        request.resource.data.keys().hasAll(['id', 'followerUid', 'sellerId']) &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.followerUid == request.auth.uid);
+      allow update: if false;
+      allow delete: if isCeo() || isAdmin() || !isSignedIn() || resource.data.followerUid == request.auth.uid;
+    }
+
+    match /inspectionRequests/{reqId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && (
+        resource.data.studentUid == request.auth.uid ||
+        resource.data.agentUserId == request.auth.uid
+      ));
+      allow create: if isValidDocId(reqId) &&
+        request.resource.data.keys().hasAll(['id', 'propertyId', 'propertyTitle', 'studentUid', 'agentUserId', 'status']) &&
+        (!isSignedIn() || request.resource.data.studentUid == request.auth.uid);
+      allow update: if isCeo() || isAdmin() || (isSignedIn() && (
+        resource.data.studentUid == request.auth.uid ||
+        resource.data.agentUserId == request.auth.uid
+      ));
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    match /agentVerificationRequests/{reqId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidDocId(reqId) &&
+        request.resource.data.keys().hasAll(['id', 'agentId', 'userId', 'agentName', 'status']) &&
+        request.resource.data.status == 'pending' &&
+        (isCeo() || !isSignedIn() || request.resource.data.userId == request.auth.uid);
+      allow update: if isCeo() || (
+        isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending'
+      );
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    match /foodVendors/{vendorId} {
+      allow read: if true;
+      allow create: if isValidDocId(vendorId) &&
+        request.resource.data.keys().hasAll(['id', 'ownerUid', 'vendorName', 'institutionId']) &&
+        (isCeo() || (noCeoVerificationFieldsIn(request.resource.data) && (!isSignedIn() || request.resource.data.ownerUid == request.auth.uid)));
+      allow update: if isValidDocId(vendorId) && (
+        isCeo() || (
+          ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+          (isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid))
+        )
+      );
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    match /foodMenuItems/{itemId} {
+      allow read: if true;
+      allow create: if isValidDocId(itemId) &&
+        request.resource.data.keys().hasAll(['id', 'vendorId', 'ownerUid', 'name', 'priceNaira']) &&
+        request.resource.data.priceNaira is number &&
+        request.resource.data.priceNaira > 0 &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    match /foodOrders/{orderId} {
+      allow read: if isCeo() || isAdmin() || isSignedIn();
+      allow create: if isValidDocId(orderId) &&
+        request.resource.data.keys().hasAll(['id', 'buyerUid', 'vendorId', 'vendorOwnerUid', 'items', 'totalAmount', 'status']) &&
+        request.resource.data.totalAmount is number &&
+        request.resource.data.totalAmount > 0 &&
+        (!isSignedIn() || request.resource.data.buyerUid == request.auth.uid);
+      allow update: if isCeo() || isAdmin() || isSignedIn();
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    match /deliveryPartners/{partnerId} {
+      allow read: if true;
+      allow create: if isValidDocId(partnerId) &&
+        request.resource.data.keys().hasAll(['id', 'userUid', 'fullName', 'phone']) &&
+        (isCeo() || (noCeoVerificationFieldsIn(request.resource.data) && (!isSignedIn() || request.resource.data.userUid == request.auth.uid)));
+      allow update: if isValidDocId(partnerId) && (
+        isCeo() || (
+          ceoVerificationFieldsUnchanged(request.resource.data, resource.data) &&
+          (isAdmin() || (isSignedIn() && resource.data.userUid == request.auth.uid))
+        )
+      );
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+    }
+
+    match /campusJobs/{jobId} {
+      allow read: if true;
+      allow create: if isValidDocId(jobId) &&
+        request.resource.data.keys().hasAll(['id', 'posterUid', 'title', 'companyOrOrg', 'status']) &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.posterUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.posterUid == request.auth.uid);
+    }
+
+    match /campusBooks/{bookId} {
+      allow read: if true;
+      allow create: if isValidDocId(bookId) &&
+        request.resource.data.keys().hasAll(['id', 'uploaderUid', 'title', 'status']) &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.uploaderUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
+    }
+
+    match /studentDeals/{dealId} {
+      allow read: if true;
+      allow create: if isValidDocId(dealId) &&
+        request.resource.data.keys().hasAll(['id', 'creatorUid', 'title', 'businessName', 'status']) &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.creatorUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.creatorUid == request.auth.uid);
+    }
+
+    match /studentGiveaways/{giveawayId} {
+      allow read: if true;
+      allow create: if isValidDocId(giveawayId) &&
+        request.resource.data.keys().hasAll(['id', 'hostUid', 'title', 'status']) &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.hostUid == request.auth.uid);
+      allow update: if isCeo() || isAdmin() || (isSignedIn() && (
+        resource.data.hostUid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
+      ));
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.hostUid == request.auth.uid);
+    }
+
+    match /referrals/{referralId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && (
+        resource.data.referrerUid == request.auth.uid ||
+        resource.data.referredUid == request.auth.uid
+      ));
+      allow create: if isValidDocId(referralId) &&
+        request.resource.data.keys().hasAll(['id', 'referrerUid', 'referredUid', 'referralCode']) &&
+        request.resource.data.referrerUid != request.resource.data.referredUid &&
+        (!isSignedIn() || request.resource.data.referredUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin();
+    }
+
+    match /ambassadorApplications/{appId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+      allow create: if isValidDocId(appId) &&
+        request.resource.data.keys().hasAll(['id', 'userUid', 'fullName', 'institutionId', 'status']) &&
+        request.resource.data.status == 'pending' &&
+        (isCeo() || !isSignedIn() || request.resource.data.userUid == request.auth.uid);
+      allow update: if isCeo() || isAdmin();
+      allow delete: if isCeo() || isAdmin();
+    }
+
+    match /gpaRecords/{userId} {
+      allow read, write: if isCeo() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    match /institutionGradingSystems/{instId} {
+      allow read: if true;
+      allow write: if isCeo() || isAdmin();
+    }
+
+    match /newsletterSubscribers/{subscriberId} {
+      allow create: if isValidDocId(subscriberId) &&
+        request.resource.data.keys().hasAll(['id', 'email', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['id', 'email', 'source', 'createdAt']) &&
+        request.resource.data.id == subscriberId &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() >= 5 &&
+        request.resource.data.email.size() <= 160 &&
+        request.resource.data.createdAt is string &&
+        request.resource.data.createdAt.size() <= 64 &&
+        (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 64));
+      allow read, update, delete: if isCeo() || isAdmin();
+    }
+
+    // =========================================================================
+    // NIGERIA UNIVERSITY HUB: SOCIAL FEED, COMMUNITIES, VERIFICATION,
+    // NOTIFICATIONS, MESSAGING SAFETY & ANTI-SCAM PROTECTION
+    // =========================================================================
+
+    match /notifications/{notifId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidDocId(notifId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'type', 'title', 'body', 'read', 'createdAt']) &&
+        request.resource.data.read == false &&
+        request.resource.data.title is string && request.resource.data.title.size() <= 160 &&
+        request.resource.data.body is string && request.resource.data.body.size() <= 500;
+      allow update: if isCeo() || isAdmin() || (
+        isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /notificationPreferences/{userId} {
+      allow read, write: if isCeo() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    match /blockedUsers/{blockId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.blockerId == request.auth.uid);
+      allow create, update: if isValidDocId(blockId) &&
+        isSignedIn() &&
+        request.resource.data.keys().hasAll(['id', 'blockerId', 'blockedUserId', 'createdAt']) &&
+        request.resource.data.blockerId == request.auth.uid &&
+        request.resource.data.blockedUserId != request.auth.uid;
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.blockerId == request.auth.uid);
+    }
+
+    match /conversationReports/{reportId} {
+      allow create: if isValidDocId(reportId) &&
+        request.resource.data.keys().hasAll(['id', 'chatId', 'reporterId', 'reportedUserId', 'reason', 'status']) &&
+        request.resource.data.status == 'pending';
+      allow read, update, delete: if isCeo() || isAdmin();
+    }
+
+    match /studentPosts/{postId} {
+      allow read: if true;
+      allow create: if isValidDocId(postId) &&
+        request.resource.data.keys().hasAll(['id', 'authorId', 'authorName', 'institutionId', 'category', 'content', 'status', 'createdAt']) &&
+        request.resource.data.content is string &&
+        request.resource.data.content.size() > 0 &&
+        request.resource.data.content.size() <= 4000 &&
+        request.resource.data.status == 'published' &&
+        (isCeo() || isAdmin() || !isSignedIn() || request.resource.data.authorId == request.auth.uid);
+      allow update: if isValidDocId(postId) && (
+        isCeo() || isAdmin() ||
+        (isSignedIn() && resource.data.authorId == request.auth.uid) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'sharesCount', 'updatedAt'])
+      );
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /studentPostLikes/{likeId} {
+      allow read: if true;
+      allow create: if isValidDocId(likeId) &&
+        request.resource.data.keys().hasAll(['id', 'postId', 'userId']) &&
+        (!isSignedIn() || request.resource.data.userId == request.auth.uid);
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /studentPostComments/{commentId} {
+      allow read: if true;
+      allow create: if isValidDocId(commentId) &&
+        request.resource.data.keys().hasAll(['id', 'postId', 'authorId', 'authorName', 'text', 'createdAt']) &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 2000 &&
+        (!isSignedIn() || request.resource.data.authorId == request.auth.uid || isCeo() || isAdmin());
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /studentPostReports/{reportId} {
+      allow create: if isValidDocId(reportId) &&
+        request.resource.data.keys().hasAll(['id', 'postId', 'reporterId', 'reason', 'status']) &&
+        request.resource.data.status == 'pending';
+      allow read, update, delete: if isCeo() || isAdmin();
+    }
+
+    match /followedDiscussions/{followId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidDocId(followId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'postId']) &&
+        (!isSignedIn() || request.resource.data.userId == request.auth.uid);
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /communityMemberships/{memberId} {
+      allow read: if true;
+      allow create, update: if isValidDocId(memberId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'institutionId']) &&
+        (!isSignedIn() || request.resource.data.userId == request.auth.uid);
+      allow delete: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /studentVerifications/{reqId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidDocId(reqId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'institutionId', 'department', 'levelOfStudy', 'verificationMethod', 'status']) &&
+        request.resource.data.status == 'pending' &&
+        (!isSignedIn() || request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin();
+    }
+
+    match /scamReports/{reportId} {
+      allow create: if isValidDocId(reportId) &&
+        request.resource.data.keys().hasAll(['id', 'targetType', 'targetId', 'targetName', 'reporterId', 'reason', 'details', 'status']) &&
+        request.resource.data.status == 'reported' &&
+        request.resource.data.details is string &&
+        request.resource.data.details.size() <= 3000;
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin();
+    }
+
+    match /flaggedIdentifiers/{flagId} {
+      allow read: if true;
+      allow write: if isCeo() || isAdmin();
+    }
+
+    match /accountAppeals/{appealId} {
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidDocId(appealId) &&
+        request.resource.data.keys().hasAll(['id', 'userId', 'userEmail', 'explanation', 'status']) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.explanation is string &&
+        request.resource.data.explanation.size() <= 2000;
+      allow update, delete: if isCeo() || isAdmin();
+    }
+
+    match /nationalAnnouncements/{annId} {
+      allow read: if true;
+      allow write: if isCeo() || isAdmin();
     }
 
     // Connection test document

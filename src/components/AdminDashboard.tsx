@@ -14,7 +14,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Database,
-  Sliders
+  Sliders,
+  GraduationCap,
+  Plus,
+  Edit3
 } from 'lucide-react';
 import {
   Product,
@@ -25,7 +28,9 @@ import {
   HuxReport,
   StudentRequest,
   ServiceCategory,
-  ServiceListing
+  ServiceListing,
+  Institution,
+  InstitutionType
 } from '../types.js';
 import {
   fetchAdminMetrics,
@@ -66,6 +71,13 @@ import {
 } from '../services/servicesMarketplace.js';
 import { isAuthorizedCeo } from '../services/events.js';
 import { useAuth } from '../context/AuthContext.js';
+import {
+  subscribeToAllInstitutionsForCeo,
+  ceoSaveInstitution,
+  ceoToggleInstitutionStatus,
+  syncVerifiedInstitutionsIfMissing
+} from '../services/institutions.js';
+import { INSTITUTION_TYPE_OPTIONS } from '../constants/institutions.js';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -77,6 +89,7 @@ interface AdminDashboardProps {
 
 type AdminTab =
   | 'overview'
+  | 'institutions'
   | 'events'
   | 'announcements'
   | 'services'
@@ -128,6 +141,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     DEFAULT_SERVICE_CATEGORIES
   );
   const [editingServiceTarget, setEditingServiceTarget] = useState<ServiceListing | null>(null);
+  const [institutionsList, setInstitutionsList] = useState<Institution[]>([]);
+  const [instSearch, setInstSearch] = useState('');
+  const [instBusy, setInstBusy] = useState(false);
+  const [instForm, setInstForm] = useState<{
+    id: string;
+    name: string;
+    shortName: string;
+    type: InstitutionType;
+    state: string;
+    location: string;
+    campusesText: string;
+    description: string;
+  }>({
+    id: '',
+    name: '',
+    shortName: '',
+    type: 'Federal University',
+    state: 'Taraba',
+    location: '',
+    campusesText: 'Main Campus',
+    description: ''
+  });
 
   const loadData = async () => {
     setLoading(true);
@@ -208,10 +243,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const unsubServiceCats = subscribeToServiceCategories((cats) => {
       if (cats.length > 0) setServiceCategories(cats);
     });
+    const unsubInst = subscribeToAllInstitutionsForCeo((list) => setInstitutionsList(list));
     return () => {
       unsubHux();
       unsubReqs();
       unsubServiceCats();
+      unsubInst();
     };
   }, []);
 
@@ -333,24 +370,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-6xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-6xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#10251D]">
         {/* Admin Header */}
-        <div className="bg-[#0B6B3A] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#065D36]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F2B90D] flex items-center justify-center font-black text-[#111111] text-lg shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-[#D4A62A] flex items-center justify-center font-black text-[#10251D] text-lg shadow-lg">
               <LayoutDashboard className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-tight text-[#F2B90D]">
-                  FU MARKET Moderation Desk
+                <h2 className="text-lg font-black tracking-tight text-[#D4A62A]">
+                  NIGERIA CAMPUS MARKET Admin Desk
                 </h2>
-                <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full">
+                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-full">
                   ADMIN
                 </span>
               </div>
               <p className="text-xs text-white/85">
-                Real Data Moderation • Products, Student Requests, Wukari Agent Reports &amp; Users
+                Real Data Moderation • Institutions, Products, Student Requests, Hostels &amp; Users
               </p>
             </div>
           </div>
@@ -363,7 +400,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onClose();
                   onOpenMasterControl();
                 }}
-                className="px-3.5 py-2 rounded-xl bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap"
+                className="px-3.5 py-2 rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap"
               >
                 <Sliders className="w-3.5 h-3.5" />
                 <span>CEO Master Control</span>
@@ -371,7 +408,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+              className="w-8 h-8 rounded-full bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -385,11 +422,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('overview')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'overview'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('institutions')}
+              className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap inline-flex items-center gap-1 ${
+                activeTab === 'institutions'
+                  ? 'bg-[#087443] text-[#D4A62A] font-black'
+                  : 'text-[#087443] hover:bg-[#F4F8F5]'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Institutions ({institutionsList.length})</span>
             </button>
             {isCeo && (
               <>
@@ -397,8 +445,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onClick={() => setActiveTab('events')}
                   className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                     activeTab === 'events'
-                      ? 'bg-[#EA580C] text-white'
-                      : 'text-[#EA580C] hover:bg-[#FFF7ED]'
+                      ? 'bg-[#087443] text-[#D4A62A] font-black'
+                      : 'text-[#087443] hover:bg-[#F4F8F5]'
                   }`}
                 >
                   Birthday &amp; Events (CEO)
@@ -407,8 +455,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onClick={() => setActiveTab('announcements')}
                   className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                     activeTab === 'announcements'
-                      ? 'bg-[#111111] text-white'
-                      : 'text-[#111111] hover:bg-[#F5F5F5]'
+                      ? 'bg-[#10251D] text-white'
+                      : 'text-[#10251D] hover:bg-[#F4F8F5]'
                   }`}
                 >
                   Sports &amp; Announcements
@@ -419,8 +467,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('services')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'services'
-                  ? 'bg-[#0B6B3A] text-[#F2B90D] font-black'
-                  : 'text-[#0B6B3A] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-[#D4A62A] font-black'
+                  : 'text-[#087443] hover:bg-[#F4F8F5]'
               }`}
             >
               Services
@@ -441,8 +489,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('products')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'products'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Products ({products.length})
@@ -451,8 +499,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('reports')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'reports'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Product Reports ({pendingProductReportsCount})
@@ -461,8 +509,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('hux-reports')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'hux-reports'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Housing Reports ({pendingHuxReportsCount})
@@ -471,8 +519,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('requests')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'requests'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Student Requests ({studentRequests.length})
@@ -481,8 +529,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => setActiveTab('users')}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === 'users'
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5]'
+                  ? 'bg-[#087443] text-white'
+                  : 'text-[#555555] hover:text-[#10251D] hover:bg-[#F4F8F5]'
               }`}
             >
               Users ({users.length})
@@ -491,7 +539,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={loadData}
-            className="text-xs text-[#0B6B3A] hover:underline flex items-center gap-1 font-bold shrink-0"
+            className="text-xs text-[#087443] hover:underline flex items-center gap-1 font-bold shrink-0"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Refresh
@@ -499,22 +547,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-[#F5F5F5]">
+        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-[#F4F8F5]">
           {errorMsg && (
-            <div className="p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
+            <div className="p-3 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-center justify-between gap-2 font-semibold">
               <span className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#111111] shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#10251D] shrink-0" />
                 {errorMsg}
               </span>
-              <button onClick={() => setErrorMsg(null)} className="text-[#111111] hover:opacity-70">
+              <button onClick={() => setErrorMsg(null)} className="text-[#10251D] hover:opacity-70">
                 <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
           {statusMsg && (
-            <div className="p-3 bg-[#0B6B3A] border border-[#14532D] text-white text-xs rounded-xl flex items-center gap-2 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-[#F2B90D] shrink-0" />
+            <div className="p-3 bg-[#087443] border border-[#065D36] text-white text-xs rounded-xl flex items-center gap-2 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-[#D4A62A] shrink-0" />
               <span>{statusMsg}</span>
             </div>
           )}
@@ -533,7 +581,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Active Products
                       </span>
-                      <span className="text-2xl font-black text-[#111111] mt-1 block">
+                      <span className="text-2xl font-black text-[#10251D] mt-1 block">
                         {products.filter((p) => p.status === 'active').length}
                       </span>
                       <span className="text-[10px] text-[#555555]">
@@ -545,7 +593,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Student Requests
                       </span>
-                      <span className="text-2xl font-black text-[#0B6B3A] mt-1 block flex items-center gap-1.5">
+                      <span className="text-2xl font-black text-[#087443] mt-1 block flex items-center gap-1.5">
                         <HelpCircle className="w-5 h-5" />
                         {studentRequests.length}
                       </span>
@@ -556,8 +604,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         Pending Reports
                       </span>
-                      <span className="text-2xl font-black text-[#111111] mt-1 block flex items-center gap-1.5">
-                        <AlertTriangle className="w-5 h-5 text-[#F2B90D]" />
+                      <span className="text-2xl font-black text-[#10251D] mt-1 block flex items-center gap-1.5">
+                        <AlertTriangle className="w-5 h-5 text-[#D4A62A]" />
                         {pendingProductReportsCount + pendingHuxReportsCount}
                       </span>
                       <span className="text-[10px] text-[#555555]">
@@ -569,7 +617,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
                         WhatsApp Leads
                       </span>
-                      <span className="text-2xl font-black text-[#0B6B3A] mt-1 block flex items-center gap-1.5">
+                      <span className="text-2xl font-black text-[#087443] mt-1 block flex items-center gap-1.5">
                         <MessageCircle className="w-5 h-5" />
                         {metrics?.totalWhatsAppClicks ?? 0}
                       </span>
@@ -581,15 +629,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-xs space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#0B6B3A] text-[#F2B90D] flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-[#087443] text-[#D4A62A] flex items-center justify-center shrink-0">
                           <Database className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="font-black text-sm text-[#111111]">
+                          <h4 className="font-black text-sm text-[#10251D]">
                             Firestore Database &amp; Legacy Recovery Status
                           </h4>
                           <p className="text-[11px] text-[#555555]">
-                            Active DB: <span className="font-mono text-[#0B6B3A]">ai-studio-naijamartnigeria-7994e8d8...</span> ({products.length} products)
+                            Active DB: <span className="font-mono text-[#087443]">ai-studio-naijamartnigeria-7994e8d8...</span> ({products.length} products)
                           </p>
                         </div>
                       </div>
@@ -597,9 +645,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         type="button"
                         onClick={handleScanLegacyDb}
                         disabled={scanningLegacy}
-                        className="px-4 py-2 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto"
+                        className="px-4 py-2 bg-[#087443] hover:bg-[#065D36] disabled:opacity-60 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto"
                       >
-                        <RotateCcw className={`w-3.5 h-3.5 text-[#F2B90D] ${scanningLegacy ? 'animate-spin' : ''}`} />
+                        <RotateCcw className={`w-3.5 h-3.5 text-[#D4A62A] ${scanningLegacy ? 'animate-spin' : ''}`} />
                         <span>{scanningLegacy ? 'Scanning...' : 'Scan & Migrate Legacy Products'}</span>
                       </button>
                     </div>
@@ -608,8 +656,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div
                         className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
                           legacyDiag.accessible
-                            ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#14532D]'
-                            : 'bg-[#FFF8DB] border-[#F2B90D] text-[#111111]'
+                            ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#065D36]'
+                            : 'bg-[#FFF8DB] border-[#D4A62A] text-[#10251D]'
                         }`}
                       >
                         {legacyDiag.accessible ? (
@@ -634,7 +682,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Recent Audit Logs */}
                   <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-xs">
-                    <h4 className="font-black text-sm text-[#111111] mb-3">Recent Moderation Logs</h4>
+                    <h4 className="font-black text-sm text-[#10251D] mb-3">Recent Moderation Logs</h4>
                     <div className="space-y-2 max-h-60 overflow-y-auto font-mono text-xs">
                       {auditLogs.length === 0 ? (
                         <div className="text-[#555555] text-xs py-4 text-center">No logs recorded yet.</div>
@@ -642,13 +690,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         auditLogs.map((log) => (
                           <div
                             key={log.id}
-                            className="p-2.5 bg-[#F5F5F5] rounded-xl border border-[#E5E7EB] flex flex-col gap-1"
+                            className="p-2.5 bg-[#F4F8F5] rounded-xl border border-[#E5E7EB] flex flex-col gap-1"
                           >
                             <div className="flex items-center justify-between text-[11px] text-[#555555]">
-                              <span className="font-bold text-[#0B6B3A]">{log.action}</span>
+                              <span className="font-bold text-[#087443]">{log.action}</span>
                               <span>{new Date(log.timestamp).toLocaleString()}</span>
                             </div>
-                            <p className="text-[#111111]">{log.details}</p>
+                            <p className="text-[#10251D]">{log.details}</p>
                           </div>
                         ))
                       )}
@@ -668,7 +716,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         placeholder="Search product title, seller, or location..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#FFFFFF] border border-[#E5E7EB] text-[#111111] rounded-xl outline-none focus:border-[#0B6B3A]"
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#FFFFFF] border border-[#E5E7EB] text-[#10251D] rounded-xl outline-none focus:border-[#087443]"
                       />
                     </div>
                     <span className="text-xs text-[#555555] font-semibold">
@@ -679,7 +727,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#F5F5F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
+                        <thead className="bg-[#F4F8F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
                           <tr>
                             <th className="p-3">Product</th>
                             <th className="p-3">Seller / Shop</th>
@@ -690,14 +738,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </thead>
                         <tbody className="divide-y divide-[#E5E7EB]">
                           {filteredProducts.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#F5F5F5]/70 transition">
+                            <tr key={p.id} className="hover:bg-[#F4F8F5]/70 transition">
                               <td className="p-3">
                                 <button
                                   type="button"
                                   onClick={() => onOpenProductDetail(p)}
                                   className="flex items-center gap-2.5 text-left"
                                 >
-                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#F5F5F5]">
+                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#E5E7EB] shrink-0 bg-[#F4F8F5]">
                                     <ProductImage
                                       src={getProductDisplayImage(p.images, p.imageUrl)}
                                       fallbackSrcs={getValidProductImages(p.images, p.imageUrl)}
@@ -707,7 +755,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     />
                                   </div>
                                   <div>
-                                    <p className="font-bold text-[#111111] hover:text-[#0B6B3A] line-clamp-1 max-w-xs">
+                                    <p className="font-bold text-[#10251D] hover:text-[#087443] line-clamp-1 max-w-xs">
                                       {p.title}
                                     </p>
                                     <span className="text-[10px] text-[#555555] capitalize">
@@ -717,11 +765,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </button>
                               </td>
                               <td className="p-3 text-[#555555]">
-                                <span className="font-bold text-[#111111] block">{p.shopName}</span>
+                                <span className="font-bold text-[#10251D] block">{p.shopName}</span>
                                 <span className="text-[10px] font-mono">{p.whatsappNumber || 'N/A'}</span>
                               </td>
                               <td className="p-3">
-                                <span className="font-black bg-[#0B6B3A] text-[#F2B90D] px-2 py-0.5 rounded-md text-[11px]">
+                                <span className="font-black bg-[#087443] text-[#D4A62A] px-2 py-0.5 rounded-md text-[11px]">
                                   {formatNaira(p.price)}
                                 </span>
                                 {p.moderationStatus && (
@@ -729,10 +777,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <span
                                       className={`inline-flex items-center text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
                                         p.moderationStatus === 'approved'
-                                          ? 'bg-[#0B6B3A]/10 text-[#0B6B3A] border border-[#0B6B3A]/30'
+                                          ? 'bg-[#087443]/10 text-[#087443] border border-[#087443]/30'
                                           : p.moderationStatus === 'rejected'
-                                          ? 'bg-[#111111] text-[#F2B90D] border border-[#111111]'
-                                          : 'bg-[#FFF8DB] text-[#111111] border border-[#F2B90D]'
+                                          ? 'bg-[#10251D] text-[#D4A62A] border border-[#10251D]'
+                                          : 'bg-[#FFF8DB] text-[#10251D] border border-[#D4A62A]'
                                       }`}
                                     >
                                       {p.moderationStatus.toUpperCase()}
@@ -748,7 +796,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       onClick={() => handleModerateProduct(p.id, 'approved')}
-                                      className="px-2 py-1 bg-[#0B6B3A] hover:bg-[#14532D] text-white rounded text-[10px] font-bold transition"
+                                      className="px-2 py-1 bg-[#087443] hover:bg-[#065D36] text-white rounded text-[10px] font-bold transition"
                                     >
                                       Approve
                                     </button>
@@ -757,7 +805,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         setRejectProductTarget(p);
                                         setRejectReason('');
                                       }}
-                                      className="px-2 py-1 bg-[#F5F5F5] hover:bg-[#111111] hover:text-[#F2B90D] border border-[#E5E7EB] text-[#111111] rounded text-[10px] font-bold transition"
+                                      className="px-2 py-1 bg-[#F4F8F5] hover:bg-[#10251D] hover:text-[#D4A62A] border border-[#E5E7EB] text-[#10251D] rounded text-[10px] font-bold transition"
                                     >
                                       Reject
                                     </button>
@@ -768,8 +816,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       onClick={() => handleToggleFeatured(p)}
                                       className={`px-2 py-1 rounded text-[10px] font-bold transition ${
                                         p.isFeatured
-                                          ? 'bg-[#F2B90D] text-[#111111] font-black'
-                                          : 'bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#111111]'
+                                          ? 'bg-[#D4A62A] text-[#10251D] font-black'
+                                          : 'bg-[#FFFFFF] border border-[#E5E7EB] text-[#555555] hover:text-[#10251D]'
                                       }`}
                                     >
                                       {p.isFeatured ? 'Featured ★' : 'Feature'}
@@ -779,7 +827,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => handleConfirmRemoveProduct(p.id)}
-                                          className="px-2 py-1 bg-[#111111] text-[#F2B90D] rounded text-[10px] font-bold"
+                                          className="px-2 py-1 bg-[#10251D] text-[#D4A62A] rounded text-[10px] font-bold"
                                         >
                                           Confirm
                                         </button>
@@ -793,7 +841,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     ) : (
                                       <button
                                         onClick={() => setConfirmDeleteProductId(p.id)}
-                                        className="p-1 text-[#555555] hover:text-[#111111] rounded"
+                                        className="p-1 text-[#555555] hover:text-[#10251D] rounded"
                                         title="Permanently Delete Listing"
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -816,7 +864,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="space-y-3">
                   {reports.length === 0 ? (
                     <div className="bg-[#FFFFFF] p-8 rounded-2xl text-center text-xs text-[#555555] border border-[#E5E7EB]">
-                      <Package className="w-8 h-8 text-[#0B6B3A] mx-auto mb-2" />
+                      <Package className="w-8 h-8 text-[#087443] mx-auto mb-2" />
                       No product reports submitted yet.
                     </div>
                   ) : (
@@ -827,7 +875,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       >
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                            <span className="bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                               {rep.reason}
                             </span>
                             <span className="text-xs text-[#555555]">Reported by: {rep.reporterEmail}</span>
@@ -835,14 +883,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               • {new Date(rep.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <h4 className="font-bold text-sm text-[#111111] mt-1">
+                          <h4 className="font-bold text-sm text-[#10251D] mt-1">
                             Product: {rep.productTitle || rep.productId || 'Unknown listing'}
                           </h4>
-                          <p className="text-xs text-[#555555] mt-1 bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E7EB]">
+                          <p className="text-xs text-[#555555] mt-1 bg-[#F4F8F5] p-2.5 rounded-xl border border-[#E5E7EB]">
                             &ldquo;{rep.details}&rdquo;
                           </p>
                           {rep.adminNotes && (
-                            <p className="text-[11px] text-[#0B6B3A] mt-1 font-semibold">
+                            <p className="text-[11px] text-[#087443] mt-1 font-semibold">
                               Admin resolution: {rep.adminNotes}
                             </p>
                           )}
@@ -856,7 +904,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   setResolveReportTarget({ id: rep.id, status: 'resolved' });
                                   setResolveNotes('');
                                 }}
-                                className="px-3 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#087443] hover:bg-[#065D36] text-white font-bold text-xs rounded-xl"
                               >
                                 Resolve
                               </button>
@@ -865,13 +913,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   setResolveReportTarget({ id: rep.id, status: 'dismissed' });
                                   setResolveNotes('');
                                 }}
-                                className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] font-bold text-xs rounded-xl"
                               >
                                 Dismiss
                               </button>
                             </>
                           ) : (
-                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E7EB] rounded-lg">
+                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F4F8F5] border border-[#E5E7EB] rounded-lg">
                               {rep.status}
                             </span>
                           )}
@@ -887,7 +935,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="space-y-3">
                   {huxReports.length === 0 ? (
                     <div className="bg-[#FFFFFF] p-8 rounded-2xl text-center text-xs text-[#555555] border border-[#E5E7EB]">
-                      <Home className="w-8 h-8 text-[#0B6B3A] mx-auto mb-2" />
+                      <Home className="w-8 h-8 text-[#087443] mx-auto mb-2" />
                       No Wukari Agent accommodation scam reports yet.
                     </div>
                   ) : (
@@ -898,7 +946,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       >
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                            <span className="bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                               {rep.reason}
                             </span>
                             <span className="text-xs text-[#555555]">
@@ -909,10 +957,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               • {new Date(rep.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <h4 className="font-bold text-sm text-[#111111] mt-1">
+                          <h4 className="font-bold text-sm text-[#10251D] mt-1">
                             Listing: {rep.huxTitle || rep.huxId}
                           </h4>
-                          <p className="text-xs text-[#555555] mt-1 bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E7EB]">
+                          <p className="text-xs text-[#555555] mt-1 bg-[#F4F8F5] p-2.5 rounded-xl border border-[#E5E7EB]">
                             &ldquo;{rep.details}&rdquo;
                           </p>
                         </div>
@@ -922,19 +970,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <>
                               <button
                                 onClick={() => handleResolveHuxReport(rep.id, 'resolved')}
-                                className="px-3 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#087443] hover:bg-[#065D36] text-white font-bold text-xs rounded-xl"
                               >
                                 Resolve
                               </button>
                               <button
                                 onClick={() => handleResolveHuxReport(rep.id, 'dismissed')}
-                                className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] font-bold text-xs rounded-xl"
+                                className="px-3 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] font-bold text-xs rounded-xl"
                               >
                                 Dismiss
                               </button>
                             </>
                           ) : (
-                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E7EB] rounded-lg">
+                            <span className="text-xs font-bold text-[#555555] uppercase px-2.5 py-1 bg-[#F4F8F5] border border-[#E5E7EB] rounded-lg">
                               {rep.status}
                             </span>
                           )}
@@ -963,21 +1011,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span
                               className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
                                 req.status === 'fulfilled'
-                                  ? 'bg-[#0B6B3A] text-white'
-                                  : 'bg-[#F2B90D] text-[#111111]'
+                                  ? 'bg-[#087443] text-white'
+                                  : 'bg-[#D4A62A] text-[#10251D]'
                               }`}
                             >
                               {req.status}
                             </span>
-                            <span className="text-xs font-black text-[#0B6B3A]">
+                            <span className="text-xs font-black text-[#087443]">
                               Budget: {formatNaira(req.budget)}
                             </span>
                             <span className="text-xs text-[#555555]">• {req.location}</span>
                           </div>
-                          <h4 className="font-bold text-sm text-[#111111] mt-1">{req.title}</h4>
+                          <h4 className="font-bold text-sm text-[#10251D] mt-1">{req.title}</h4>
                           <p className="text-xs text-[#555555] mt-0.5 line-clamp-2">{req.description}</p>
                           <p className="text-[11px] text-[#555555] mt-1">
-                            Posted by: <strong className="text-[#111111]">{req.userName}</strong> ({req.phone})
+                            Posted by: <strong className="text-[#10251D]">{req.userName}</strong> ({req.phone})
                           </p>
                         </div>
 
@@ -986,13 +1034,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <>
                               <button
                                 onClick={() => handleConfirmDeleteRequest(req.id)}
-                                className="px-3 py-1.5 bg-[#111111] text-[#F2B90D] text-xs font-bold rounded-xl"
+                                className="px-3 py-1.5 bg-[#10251D] text-[#D4A62A] text-xs font-bold rounded-xl"
                               >
                                 Confirm Delete
                               </button>
                               <button
                                 onClick={() => setConfirmDeleteRequestId(null)}
-                                className="px-2.5 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#555555] text-xs rounded-xl"
+                                className="px-2.5 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#555555] text-xs rounded-xl"
                               >
                                 Cancel
                               </button>
@@ -1000,7 +1048,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           ) : (
                             <button
                               onClick={() => setConfirmDeleteRequestId(req.id)}
-                              className="p-2 text-[#555555] hover:text-[#111111] bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl"
+                              className="p-2 text-[#555555] hover:text-[#10251D] bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl"
                               title="Remove Student Request"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1018,7 +1066,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-[#F5F5F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
+                      <thead className="bg-[#F4F8F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
                         <tr>
                           <th className="p-3">User / Merchant</th>
                           <th className="p-3">Role</th>
@@ -1029,9 +1077,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </thead>
                       <tbody className="divide-y divide-[#E5E7EB]">
                         {users.map((u) => (
-                          <tr key={u.id} className="hover:bg-[#F5F5F5]/70">
+                          <tr key={u.id} className="hover:bg-[#F4F8F5]/70">
                             <td className="p-3">
-                              <span className="font-bold text-[#111111] block">{u.name}</span>
+                              <span className="font-bold text-[#10251D] block">{u.name}</span>
                               <span className="text-[10px] text-[#555555]">{u.email}</span>
                             </td>
                             <td className="p-3">
@@ -1040,20 +1088,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <td className="p-3 text-[#555555]">
                               {u.city || 'Wukari'}, {u.state || 'Taraba'}
                             </td>
-                            <td className="p-3 font-mono text-[#111111]">
+                            <td className="p-3 font-mono text-[#10251D]">
                               {u.whatsappNumber || u.phone || 'N/A'}
                             </td>
                             <td className="p-3">
                               <div className="flex flex-col gap-1.5">
                                 {u.isSuspended && (
-                                  <span className="text-[10px] font-black text-[#F2B90D] bg-[#111111] px-2 py-0.5 rounded-full self-start">
+                                  <span className="text-[10px] font-black text-[#D4A62A] bg-[#10251D] px-2 py-0.5 rounded-full self-start">
                                     SUSPENDED
                                   </span>
                                 )}
                                 <div className="flex items-center gap-2">
                                   {u.role === 'seller' && (
-                                    <span className="px-2.5 py-1 text-[10px] font-bold bg-[#F5F5F5] border border-[#E5E7EB] text-[#555555] rounded-xl flex items-center gap-1">
-                                      <ShieldCheck className="w-3.5 h-3.5 text-[#0B6B3A]" />
+                                    <span className="px-2.5 py-1 text-[10px] font-bold bg-[#F4F8F5] border border-[#E5E7EB] text-[#555555] rounded-xl flex items-center gap-1">
+                                      <ShieldCheck className="w-3.5 h-3.5 text-[#087443]" />
                                       {(u.ceoVerified || u.isVerified) ? 'Verified (CEO)' : 'CEO Verification Only'}
                                     </span>
                                   )}
@@ -1071,8 +1119,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       }}
                                       className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition ${
                                         u.isSuspended
-                                          ? 'bg-[#0B6B3A] text-white'
-                                          : 'bg-[#111111] text-[#F2B90D] hover:bg-black'
+                                          ? 'bg-[#087443] text-white'
+                                          : 'bg-[#10251D] text-[#D4A62A] hover:bg-black'
                                       }`}
                                     >
                                       {u.isSuspended ? 'Lift Suspension' : 'Suspend Account'}
@@ -1118,6 +1166,278 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onErrorMessage={setErrorMsg}
                 />
               )}
+
+              {/* TAB 11: NATIONAL UNIVERSITY & POLYTECHNIC MANAGEMENT */}
+              {activeTab === 'institutions' && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-[#D9E5DF] p-5 shadow-xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-black text-[#10251D]">
+                          Manage Nigerian Universities &amp; Polytechnics ({institutionsList.length})
+                        </h3>
+                        <p className="text-xs text-[#555555]">
+                          Add new institutions, edit details or campuses, and activate or deactivate campus marketplaces without editing source code.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={instBusy}
+                        onClick={async () => {
+                          setInstBusy(true);
+                          setErrorMsg(null);
+                          try {
+                            const res = await syncVerifiedInstitutionsIfMissing();
+                            flashStatus(`Synced verified directory (${res.added} added).`);
+                          } catch (err: any) {
+                            setErrorMsg(err?.message || 'Unable to sync verified institutions.');
+                          } finally {
+                            setInstBusy(false);
+                          }
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-[#10251D] hover:bg-black text-[#D4A62A] text-xs font-black cursor-pointer"
+                      >
+                        {instBusy ? 'Syncing...' : 'Sync Verified Directory'}
+                      </button>
+                    </div>
+
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        setInstBusy(true);
+                        setErrorMsg(null);
+                        try {
+                          const campuses = instForm.campusesText
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          await ceoSaveInstitution({
+                            id: instForm.id.trim() || undefined,
+                            name: instForm.name,
+                            shortName: instForm.shortName,
+                            type: instForm.type,
+                            state: instForm.state,
+                            location: instForm.location,
+                            campuses,
+                            campus: campuses[0] || 'Main Campus',
+                            description: instForm.description
+                          });
+                          flashStatus(`Institution "${instForm.shortName}" saved.`);
+                          setInstForm({
+                            id: '',
+                            name: '',
+                            shortName: '',
+                            type: 'Federal University',
+                            state: 'Taraba',
+                            location: '',
+                            campusesText: 'Main Campus',
+                            description: ''
+                          });
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || 'Failed to save institution.');
+                        } finally {
+                          setInstBusy(false);
+                        }
+                      }}
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] text-xs"
+                    >
+                      <input
+                        type="text"
+                        required
+                        value={instForm.name}
+                        onChange={(e) => setInstForm((p) => ({ ...p, name: e.target.value }))}
+                        placeholder="Full Institution Name *"
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <input
+                        type="text"
+                        required
+                        value={instForm.shortName}
+                        onChange={(e) => setInstForm((p) => ({ ...p, shortName: e.target.value }))}
+                        placeholder="Acronym (e.g. UNILAG, FUWUKARI) *"
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <select
+                        value={instForm.type}
+                        onChange={(e) =>
+                          setInstForm((p) => ({ ...p, type: e.target.value as InstitutionType }))
+                        }
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      >
+                        {INSTITUTION_TYPE_OPTIONS.filter((o) => o.value !== 'all').map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        required
+                        value={instForm.state}
+                        onChange={(e) => setInstForm((p) => ({ ...p, state: e.target.value }))}
+                        placeholder="State (e.g. Lagos) *"
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <input
+                        type="text"
+                        required
+                        value={instForm.location}
+                        onChange={(e) => setInstForm((p) => ({ ...p, location: e.target.value }))}
+                        placeholder="City / Town *"
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <input
+                        type="text"
+                        value={instForm.campusesText}
+                        onChange={(e) =>
+                          setInstForm((p) => ({ ...p, campusesText: e.target.value }))
+                        }
+                        placeholder="Campuses (comma-separated)"
+                        className="px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <input
+                        type="text"
+                        value={instForm.description}
+                        onChange={(e) =>
+                          setInstForm((p) => ({ ...p, description: e.target.value }))
+                        }
+                        placeholder="Short campus description (optional)"
+                        className="sm:col-span-2 px-3 py-2 rounded-xl border border-gray-300 bg-white outline-none focus:border-[#087443]"
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        {instForm.id && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInstForm({
+                                id: '',
+                                name: '',
+                                shortName: '',
+                                type: 'Federal University',
+                                state: 'Taraba',
+                                location: '',
+                                campusesText: 'Main Campus',
+                                description: ''
+                              })
+                            }
+                            className="px-3 py-2 rounded-xl border border-gray-300 bg-white font-bold"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={instBusy}
+                          className="px-4 py-2 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white font-black inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4 text-[#D4A62A]" />
+                          <span>{instForm.id ? 'Update Institution' : 'Add Institution'}</span>
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-[#087443] absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={instSearch}
+                        onChange={(e) => setInstSearch(e.target.value)}
+                        placeholder="Search institutions by name, acronym, or state..."
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] text-xs outline-none focus:border-[#087443]"
+                      />
+                    </div>
+
+                    <div className="divide-y divide-[#E5E7EB] max-h-96 overflow-y-auto">
+                      {institutionsList
+                        .filter((inst) => {
+                          const q = instSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            inst.name.toLowerCase().includes(q) ||
+                            inst.shortName.toLowerCase().includes(q) ||
+                            inst.state.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((inst) => (
+                          <div
+                            key={inst.id}
+                            className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-black text-[#10251D]">{inst.name}</span>
+                                <span className="px-2 py-0.5 rounded bg-[#10251D] text-[#D4A62A] text-[10px] font-black">
+                                  {inst.shortName}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                    inst.status === 'inactive'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-emerald-100 text-[#087443]'
+                                  }`}
+                                >
+                                  {inst.status || 'active'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#555555]">
+                                {inst.type} · {inst.location}, {inst.state} State · Campuses:{' '}
+                                {inst.campuses.join(', ')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setInstForm({
+                                    id: inst.id,
+                                    name: inst.name,
+                                    shortName: inst.shortName,
+                                    type: inst.type,
+                                    state: inst.state,
+                                    location: inst.location,
+                                    campusesText: inst.campuses.join(', '),
+                                    description: inst.description || ''
+                                  })
+                                }
+                                className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-[#087443] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-[#087443]" />
+                                <span>Edit</span>
+                              </button>
+                              {!inst.isDefault && (
+                                <button
+                                  type="button"
+                                  disabled={instBusy}
+                                  onClick={async () => {
+                                    setInstBusy(true);
+                                    setErrorMsg(null);
+                                    try {
+                                      const nextStatus =
+                                        inst.status === 'inactive' ? 'active' : 'inactive';
+                                      await ceoToggleInstitutionStatus(inst.id, nextStatus);
+                                      flashStatus(`${inst.shortName} marked ${nextStatus}.`);
+                                    } catch (err: any) {
+                                      setErrorMsg(err?.message || 'Unable to update institution status.');
+                                    } finally {
+                                      setInstBusy(false);
+                                    }
+                                  }}
+                                  className={`px-2.5 py-1.5 rounded-lg font-black text-[11px] cursor-pointer ${
+                                    inst.status === 'inactive'
+                                      ? 'bg-[#087443] text-white'
+                                      : 'bg-[#10251D] text-[#D4A62A]'
+                                  }`}
+                                >
+                                  {inst.status === 'inactive' ? 'Activate' : 'Deactivate'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1133,14 +1453,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}
               className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-black text-[#111111] text-sm">Reject Listing: {rejectProductTarget.title}</h4>
+              <h4 className="font-black text-[#10251D] text-sm">Reject Listing: {rejectProductTarget.title}</h4>
               <textarea
                 required
                 rows={3}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Reason for rejecting listing..."
-                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
+                className="w-full p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -1152,7 +1472,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#111111] text-[#F2B90D] font-black text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#10251D] text-[#D4A62A] font-black text-xs rounded-xl"
                 >
                   Reject Listing
                 </button>
@@ -1168,7 +1488,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onSubmit={handleSubmitResolveReport}
               className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-black text-[#111111] text-sm capitalize">
+              <h4 className="font-black text-[#10251D] text-sm capitalize">
                 Mark Report as {resolveReportTarget.status}
               </h4>
               <textarea
@@ -1176,7 +1496,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 value={resolveNotes}
                 onChange={(e) => setResolveNotes(e.target.value)}
                 placeholder="Optional admin resolution notes..."
-                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
+                className="w-full p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -1188,7 +1508,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#0B6B3A] text-white font-black text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#087443] text-white font-black text-xs rounded-xl"
                 >
                   Confirm
                 </button>
@@ -1204,14 +1524,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onSubmit={handleSubmitSuspendUser}
               className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
             >
-              <h4 className="font-black text-[#111111] text-sm">Suspend User: {suspendUserTarget.name}</h4>
+              <h4 className="font-black text-[#10251D] text-sm">Suspend User: {suspendUserTarget.name}</h4>
               <textarea
                 required
                 rows={3}
                 value={suspendReason}
                 onChange={(e) => setSuspendReason(e.target.value)}
                 placeholder="Enter reason for account suspension..."
-                className="w-full p-2.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
+                className="w-full p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -1223,7 +1543,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#111111] text-[#F2B90D] font-black text-xs rounded-xl"
+                  className="px-4 py-1.5 bg-[#10251D] text-[#D4A62A] font-black text-xs rounded-xl"
                 >
                   Suspend User
                 </button>

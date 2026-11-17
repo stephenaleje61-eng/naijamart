@@ -15,29 +15,31 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[88vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[88vh] flex flex-col text-[#10251D]">
         {/* Green Header */}
-        <div className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white p-5 flex items-center justify-between shrink-0">
+        <div className="bg-[#087443] border-b-4 border-[#D4A62A] text-white p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#F2B90D] flex items-center justify-center text-[#111111]">
+            <div className="w-9 h-9 rounded-xl bg-[#D4A62A] flex items-center justify-center text-[#10251D]">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-base text-white">FU MARKET — FUWUKARI Safe Trading Guidelines</h3>
+              <h3 className="font-black text-base text-white">
+                NIGERIA CAMPUS MARKET — Campus Safe Trading Guidelines
+              </h3>
               <p className="text-[11px] text-white/90">Campus Buyer, Accommodation &amp; Delivery Safety Charter</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#14532D] border border-white/25 hover:border-[#F2B90D] flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-[#065D36] border border-white/25 hover:border-[#D4A62A] flex items-center justify-center transition"
           >
             <X className="w-4 h-4 text-white" />
           </button>
         </div>
 
         {/* Tab Header */}
-        <div className="bg-[#F5F5F5] border-b border-[#E5E7EB] px-5 flex items-center gap-2 overflow-x-auto shrink-0 py-2.5 text-xs font-bold">
+        <div className="bg-[#F4F8F5] border-b border-[#E5E7EB] px-5 flex items-center gap-2 overflow-x-auto shrink-0 py-2.5 text-xs font-bold">
           {[
             { id: 'safety', label: 'Buyer Scam Protection' },
             { id: 'prohibited', label: 'Prohibited Items' },
@@ -50,8 +52,8 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-[#0B6B3A] text-[#F2B90D] font-black'
-                  : 'text-[#555555] hover:text-[#111111]'
+                  ? 'bg-[#087443] text-[#D4A62A] font-black'
+                  : 'text-[#555555] hover:text-[#10251D]'
               }`}
             >
               {tab.label}
@@ -63,14 +65,14 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
         <div className="p-6 overflow-y-auto flex-1 text-xs text-[#333333] space-y-4 leading-relaxed bg-white">
           {activeTab === 'safety' && (
             <div className="space-y-4">
-              <div className="p-4 bg-[#FFFDF2] border border-[#F2B90D] rounded-2xl">
-                <h4 className="font-black text-sm mb-1 flex items-center gap-1.5 text-[#111111]">
-                  <AlertTriangle className="w-4 h-4 text-[#0B6B3A]" />
+              <div className="p-4 bg-[#FFFDF2] border border-[#D4A62A] rounded-2xl">
+                <h4 className="font-black text-sm mb-1 flex items-center gap-1.5 text-[#10251D]">
+                  <AlertTriangle className="w-4 h-4 text-[#087443]" />
                   Important FUWUKARI Marketplace Notice
                 </h4>
                 <p className="text-[#333333]">
-                  FU MARKET connects students, sellers, agents, and campus Okada riders directly in Wukari.{' '}
-                  <strong className="text-[#0B6B3A]">Always inspect products and lodges physically before paying any money.</strong>
+                  NIGERIA CAMPUS MARKET connects students, sellers, agents, and campus riders directly across Nigerian institutions.{' '}
+                  <strong className="text-[#087443]">Always inspect products and lodges physically before paying any money.</strong>
                 </p>
               </div>
 
@@ -99,13 +101,13 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
                 ].map((item) => (
                   <div
                     key={item.n}
-                    className="p-3.5 bg-[#F5F5F5] rounded-xl border border-[#E5E7EB] flex items-start gap-3"
+                    className="p-3.5 bg-[#F4F8F5] rounded-xl border border-[#E5E7EB] flex items-start gap-3"
                   >
-                    <div className="w-6 h-6 rounded-full bg-[#0B6B3A] text-[#F2B90D] font-black flex items-center justify-center shrink-0 text-xs">
+                    <div className="w-6 h-6 rounded-full bg-[#087443] text-[#D4A62A] font-black flex items-center justify-center shrink-0 text-xs">
                       {item.n}
                     </div>
                     <div>
-                      <strong className="block text-[#111111] font-bold mb-0.5">{item.title}</strong>
+                      <strong className="block text-[#10251D] font-bold mb-0.5">{item.title}</strong>
                       <span>{item.desc}</span>
                     </div>
                   </div>
@@ -116,9 +118,9 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
 
           {activeTab === 'prohibited' && (
             <div className="space-y-3">
-              <h4 className="font-black text-sm text-[#111111] flex items-center gap-1.5">
-                <Ban className="w-4 h-4 text-[#0B6B3A]" />
-                Prohibited Items on FU MARKET
+              <h4 className="font-black text-sm text-[#10251D] flex items-center gap-1.5">
+                <Ban className="w-4 h-4 text-[#087443]" />
+                Prohibited Items on NIGERIA CAMPUS MARKET
               </h4>
               <p>The following items and posts are strictly banned across FUWUKARI campus:</p>
               <ul className="list-disc pl-5 space-y-1.5 text-[#333333]">
@@ -129,7 +131,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
                 <li>Fraudulent accommodation postings or fake agency fee demands.</li>
                 <li>Ponzi schemes, crypto investment scams, and exam malpractice materials.</li>
               </ul>
-              <p className="text-[11px] text-[#0B6B3A] font-black mt-3 p-3 bg-[#F5F5F5] rounded-xl border border-[#0B6B3A]/25">
+              <p className="text-[11px] text-[#087443] font-black mt-3 p-3 bg-[#F4F8F5] rounded-xl border border-[#087443]/25">
                 Accounts posting prohibited listings are suspended and removed permanently.
               </p>
             </div>
@@ -137,24 +139,24 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ onClose }) => {
 
           {activeTab === 'terms' && (
             <div className="space-y-3 text-xs">
-              <h4 className="font-black text-sm text-[#111111]">FU MARKET Terms of Use</h4>
+              <h4 className="font-black text-sm text-[#10251D]">NIGERIA CAMPUS MARKET Terms of Use</h4>
               <p>
-                1. <strong className="text-[#111111]">Genuine Listings Only:</strong> Every product, student request, accommodation listing, and Okada rider entry must come from a real user with accurate contact details and genuine photos.
+                1. <strong className="text-[#10251D]">Genuine Listings Only:</strong> Every product, student request, accommodation listing, and Okada rider entry must come from a real user with accurate contact details and genuine photos.
               </p>
               <p>
-                2. <strong className="text-[#111111]">Persistent Real Records:</strong> Listings remain active in the database until sold, fulfilled, updated, or deleted by the owner or an administrator.
+                2. <strong className="text-[#10251D]">Persistent Real Records:</strong> Listings remain active in the database until sold, fulfilled, updated, or deleted by the owner or an administrator.
               </p>
               <p>
-                3. <strong className="text-[#111111]">Direct Campus Deals:</strong> Buyers and sellers are responsible for verifying item condition, payment, and meetup safety on campus.
+                3. <strong className="text-[#10251D]">Direct Campus Deals:</strong> Buyers and sellers are responsible for verifying item condition, payment, and meetup safety on campus.
               </p>
             </div>
           )}
 
           {activeTab === 'privacy' && (
             <div className="space-y-3 text-xs">
-              <h4 className="font-black text-sm text-[#111111]">Privacy Policy</h4>
+              <h4 className="font-black text-sm text-[#10251D]">Privacy Policy</h4>
               <p>
-                FU MARKET stores only the details needed for your campus marketplace profile and listings: display name, matriculation number (where applicable), email/phone, WhatsApp contact, and uploaded item photos.
+                NIGERIA CAMPUS MARKET stores only the details needed for your campus marketplace profile and listings: display name, matriculation number (where applicable), email/phone, WhatsApp contact, and uploaded item photos.
               </p>
               <p>
                 Contact details attached to public listings are displayed so genuine FUWUKARI buyers, students, or agents can reach you. We never sell student information to advertisers.

@@ -16,9 +16,10 @@ import {
   Eye,
   RefreshCw,
   Loader2,
-  MapPin
+  MapPin,
+  Building2
 } from 'lucide-react';
-import { Category, Product } from '../types.js';
+import { Category, Institution, Product } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
   createProductListing,
@@ -27,7 +28,13 @@ import {
 } from '../services/api.js';
 import { auth, ensureGuestAuth } from '../services/firebase.js';
 import { NIGERIA_STATES } from '../constants/states.js';
-import { DEFAULT_CATEGORIES } from '../constants/categories.js';
+import { ALL_MARKETPLACE_CATEGORIES } from '../constants/categories.js';
+import {
+  DEFAULT_INSTITUTION_CAMPUS,
+  DEFAULT_INSTITUTION_ID,
+  VERIFIED_NIGERIAN_INSTITUTIONS,
+  getInstitutionById
+} from '../constants/institutions.js';
 import { formatNaira } from './ProductCard.js';
 import {
   uploadImageToFirebaseStorage,
@@ -40,6 +47,9 @@ import { ProductImage } from './ProductImage.js';
 
 interface SellProductModalProps {
   categories: Category[];
+  selectedInstitutionId?: string;
+  selectedCampus?: string;
+  institutions?: Institution[];
   onClose: () => void;
   onSuccess: () => void;
   onRequireAuth?: () => void;
@@ -95,6 +105,9 @@ const CAMPUS_LOCATION_CHIPS = [
 
 export const SellProductModal: React.FC<SellProductModalProps> = ({
   categories,
+  selectedInstitutionId = DEFAULT_INSTITUTION_ID,
+  selectedCampus = DEFAULT_INSTITUTION_CAMPUS,
+  institutions = VERIFIED_NIGERIAN_INSTITUTIONS,
   onClose,
   onSuccess,
   onRequireAuth,
@@ -103,19 +116,28 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   const { user, sellerProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeCategories = categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  const activeCategories = categories.length > 0 ? categories : ALL_MARKETPLACE_CATEGORIES;
+
+  const initialInstId =
+    selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId;
+  const initialInst = getInstitutionById(initialInstId, institutions);
 
   const [showBackendConfig, setShowBackendConfig] = useState(false);
   const [customBackendUrl, setCustomBackendUrl] = useState(getApiBaseUrl());
 
+  const [institutionId, setInstitutionId] = useState(initialInst.id);
+  const [campus, setCampus] = useState(selectedCampus || initialInst.campus);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
   const [category, setCategory] = useState(activeCategories[0]?.id || 'hostel-items');
   const [condition, setCondition] = useState<'new' | 'used'>('new');
-  const [state, setState] = useState(sellerProfile?.state || user?.state || 'Taraba');
-  const [city, setCity] = useState(sellerProfile?.city || user?.city || 'Hostel A, 100L');
+  const [state, setState] = useState(sellerProfile?.state || user?.state || initialInst.state || 'Taraba');
+  const [stateManuallyChanged, setStateManuallyChanged] = useState(false);
+  const [city, setCity] = useState(
+    sellerProfile?.city || user?.city || (initialInst.id === DEFAULT_INSTITUTION_ID ? 'Hostel A, 100L' : initialInst.location)
+  );
   const [whatsapp, setWhatsapp] = useState(
     sellerProfile?.whatsappNumber || user?.whatsappNumber || user?.phone || ''
   );
@@ -560,6 +582,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         description: description.trim(),
         state: state.trim(),
         city: city.trim(),
+        institutionId,
+        campus,
         whatsapp: whatsapp.trim(),
         whatsappNumber: whatsapp.trim(),
         category: category.trim(),
@@ -596,24 +620,26 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
     }
   };
 
+  const currentSellInst = getInstitutionById(institutionId, institutions);
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-2xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#111111]">
-        {/* Green Header */}
-        <div className="bg-[#0B6B3A] border-b-4 border-[#F2B90D] text-white px-6 py-4 flex items-center justify-between">
+      <div className="relative w-full max-w-2xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
+        {/* Official Emerald Green Header */}
+        <div className="bg-[#087443] border-b-4 border-[#D4A62A] text-[#FFFFFF] px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="font-display text-lg sm:text-xl font-black text-white">
-              Post Item for FREE on <span className="text-[#F2B90D]">FU MARKET</span>
+            <h2 className="font-display text-lg sm:text-xl font-black text-[#FFFFFF]">
+              Post Item for FREE on <span className="text-[#D4A62A]">FU MARKET</span>
             </h2>
-            <p className="text-xs text-white/90">
-              FUWUKARI Student Marketplace • Genuine photos &amp; direct WhatsApp chat
+            <p className="text-xs text-[#FFFFFF]/90">
+              {currentSellInst.shortName} Campus Marketplace • Genuine photos &amp; direct WhatsApp chat
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowBackendConfig(!showBackendConfig)}
-              className="p-2 rounded-full bg-[#14532D] border border-white/25 hover:border-[#F2B90D] text-white transition"
+              className="p-2 rounded-full bg-[#065D36] border border-white/25 hover:border-[#D4A62A] text-[#FFFFFF] transition"
               title="Configure Backend API URL"
             >
               <Settings className="w-4 h-4" />
@@ -621,7 +647,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#14532D] border border-white/25 hover:border-[#F2B90D] text-white flex items-center justify-center transition"
+              className="w-8 h-8 rounded-full bg-[#065D36] border border-white/25 hover:border-[#D4A62A] text-[#FFFFFF] flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -629,9 +655,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         </div>
 
         {showBackendConfig && (
-          <div className="bg-[#F5F5F5] border-b border-[#E5E7EB] p-4 text-xs">
-            <div className="flex items-center gap-2 font-bold text-[#111111] mb-1">
-              <Globe className="w-4 h-4 text-[#0B6B3A]" />
+          <div className="bg-[#F4F8F5] border-b border-[#E5E7EB] p-4 text-xs">
+            <div className="flex items-center gap-2 font-bold text-[#10251D] mb-1">
+              <Globe className="w-4 h-4 text-[#087443]" />
               <span>Backend API URL Configuration</span>
             </div>
             <div className="flex items-center gap-2 mt-2">
@@ -640,12 +666,12 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 placeholder="Leave blank for default /api"
                 value={customBackendUrl}
                 onChange={(e) => setCustomBackendUrl(e.target.value)}
-                className="flex-1 p-2 bg-white border border-[#E5E7EB] rounded-lg outline-none font-mono text-xs text-[#111111]"
+                className="flex-1 p-2 bg-white border border-[#E5E7EB] rounded-lg outline-none font-mono text-xs text-[#10251D]"
               />
               <button
                 type="button"
                 onClick={handleSaveBackendUrl}
-                className="px-3 py-2 bg-[#0B6B3A] text-white font-black rounded-lg hover:bg-[#14532D]"
+                className="px-3 py-2 bg-[#087443] text-white font-black rounded-lg hover:bg-[#065D36]"
               >
                 Save URL
               </button>
@@ -655,21 +681,21 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
         {createdProduct ? (
           <div className="p-6 sm:p-8 space-y-6 text-center max-h-[85vh] overflow-y-auto bg-white">
-            <div className="w-16 h-16 bg-[#0B6B3A] border-4 border-[#F2B90D] rounded-full flex items-center justify-center mx-auto text-[#F2B90D]">
+            <div className="w-16 h-16 bg-[#087443] border-4 border-[#D4A62A] rounded-full flex items-center justify-center mx-auto text-[#D4A62A]">
               <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div>
-              <span className="text-[11px] font-black tracking-widest uppercase text-[#0B6B3A] bg-[#F5F5F5] border border-[#0B6B3A]/30 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-black tracking-widest uppercase text-[#087443] bg-[#F4F8F5] border border-[#087443]/30 px-3 py-1 rounded-full">
                 Saved Permanently on FU MARKET
               </span>
-              <h3 className="text-2xl font-black text-[#111111] mt-3">Product posted successfully!</h3>
+              <h3 className="text-2xl font-black text-[#10251D] mt-3">Product posted successfully!</h3>
               <p className="text-xs sm:text-sm text-[#555555] max-w-md mx-auto mt-1">
                 Your genuine listing and uploaded photographs are now live for FUWUKARI students.
               </p>
             </div>
 
-            <div className="bg-[#F5F5F5] border border-[#E5E7EB] rounded-2xl p-4 text-left flex items-center gap-4 max-w-lg mx-auto">
+            <div className="bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl p-4 text-left flex items-center gap-4 max-w-lg mx-auto">
               <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E5E7EB] shrink-0 bg-white">
                 <ProductImage
                   src={createdProduct.images?.[0]}
@@ -680,13 +706,13 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#0B6B3A] text-[#F2B90D]">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
                     {createdProduct.categoryId}
                   </span>
                   <span className="text-xs text-[#555555] capitalize">{createdProduct.condition}</span>
                 </div>
-                <h4 className="font-bold text-[#111111] text-sm truncate mt-1">{createdProduct.title}</h4>
-                <div className="inline-block px-2 py-0.5 rounded bg-[#0B6B3A] text-[#F2B90D] text-sm font-black mt-0.5">
+                <h4 className="font-bold text-[#10251D] text-sm truncate mt-1">{createdProduct.title}</h4>
+                <div className="inline-block px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A] text-sm font-black mt-0.5">
                   {formatNaira(createdProduct.price)}
                 </div>
                 <div className="text-xs text-[#555555] mt-0.5">
@@ -696,17 +722,17 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             </div>
 
             {createdProduct.moderationStatus === 'pending_review' ? (
-              <div className="p-4 bg-[#FFFDF2] border border-[#F2B90D] rounded-2xl text-left max-w-lg mx-auto text-xs text-[#111111] space-y-1">
+              <div className="p-4 bg-[#FFFDF2] border border-[#D4A62A] rounded-2xl text-left max-w-lg mx-auto text-xs text-[#10251D] space-y-1">
                 <div className="font-bold flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-[#0B6B3A]" />
+                  <Clock className="w-4 h-4 text-[#087443]" />
                   <span>Pending Administrator Review</span>
                 </div>
                 <p className="text-[#555555]">Flagged for routine safety check before public feed visibility.</p>
               </div>
             ) : (
-              <div className="p-4 bg-[#F5F5F5] border border-[#0B6B3A]/40 rounded-2xl text-left max-w-lg mx-auto text-xs text-[#14532D] space-y-1">
+              <div className="p-4 bg-[#F4F8F5] border border-[#087443]/40 rounded-2xl text-left max-w-lg mx-auto text-xs text-[#065D36] space-y-1">
                 <div className="font-black flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#0B6B3A]" />
+                  <ShieldCheck className="w-4 h-4 text-[#087443]" />
                   <span>Live on FU MARKET</span>
                 </div>
                 <p>Your product is active and visible across the FUWUKARI student marketplace.</p>
@@ -720,15 +746,15 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   if (onViewProduct) onViewProduct(createdProduct);
                   onClose();
                 }}
-                className="w-full sm:w-auto px-6 py-3 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition"
+                className="w-full sm:w-auto px-6 py-3 bg-[#087443] hover:bg-[#065D36] text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition"
               >
-                <Eye className="w-4 h-4 text-[#F2B90D]" />
+                <Eye className="w-4 h-4 text-[#D4A62A]" />
                 <span>View Product</span>
               </button>
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="w-full sm:w-auto px-5 py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-5 py-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Post Another</span>
@@ -736,7 +762,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-5 py-3 text-[#555555] hover:text-[#111111] font-bold text-xs sm:text-sm"
+                className="w-full sm:w-auto px-5 py-3 text-[#555555] hover:text-[#10251D] font-bold text-xs sm:text-sm"
               >
                 Close
               </button>
@@ -745,8 +771,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto bg-white">
             {errorMessage && (
-              <div className="p-3 bg-[#FFF8DB] border-2 border-[#111111] rounded-xl text-xs text-[#111111] flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-[#111111] shrink-0 mt-0.5" />
+              <div className="p-3 bg-[#FFF8DB] border-2 border-[#10251D] rounded-xl text-xs text-[#10251D] flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-[#10251D] shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <strong className="block font-black">Action Required:</strong>
                   <span className="break-words">{errorMessage}</span>
@@ -757,11 +783,11 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             {/* Product Photographs */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-[#0B6B3A]" />
+                <label className="text-xs font-black text-[#10251D] uppercase tracking-wider flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-[#087443]" />
                   Product Photo <span className="text-[#555555] font-normal">(Max 6 • JPG, PNG, WebP)</span>
                 </label>
-                <span className="text-[11px] text-[#0B6B3A] font-bold">
+                <span className="text-[11px] text-[#087443] font-bold">
                   {photoSlots.length}/6 ({photoSlots.filter((s) => s.status === 'success').length} ready)
                 </span>
               </div>
@@ -771,8 +797,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               </p>
 
               {photoSlots.some((s) => s.isFallback && s.status === 'success') && (
-                <div className="mb-3 p-2.5 bg-[#FFFDF2] border border-[#F2B90D] rounded-xl text-[11px] text-[#111111] flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-[#0B6B3A] shrink-0 mt-0.5" />
+                <div className="mb-3 p-2.5 bg-[#FFFDF2] border border-[#D4A62A] rounded-xl text-[11px] text-[#10251D] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                   <span>
                     Firebase Storage bucket is not enabled yet — photo(s) saved safely via compact Firestore fallback (up to 1–2 compressed photos per item).
                   </span>
@@ -783,7 +809,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 {photoSlots.map((slot, idx) => (
                   <div
                     key={slot.id}
-                    className="relative aspect-square rounded-2xl overflow-hidden border border-[#E5E7EB] bg-[#F5F5F5] flex flex-col justify-between"
+                    className="relative aspect-square rounded-2xl overflow-hidden border border-[#E5E7EB] bg-[#F4F8F5] flex flex-col justify-between"
                   >
                     <img
                       src={slot.previewUrl}
@@ -793,24 +819,24 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
                     <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between">
                       {idx === 0 && (
-                        <span className="bg-[#0B6B3A] text-[#F2B90D] text-[9px] font-black px-1.5 py-0.5 rounded">
+                        <span className="bg-[#087443] text-[#D4A62A] text-[9px] font-black px-1.5 py-0.5 rounded">
                           Cover
                         </span>
                       )}
                       <button
                         type="button"
                         onClick={() => handleRemoveSlot(slot.id)}
-                        className="ml-auto w-6 h-6 rounded-full bg-[#111111] hover:bg-[#14532D] text-white flex items-center justify-center shadow"
+                        className="ml-auto w-6 h-6 rounded-full bg-[#10251D] hover:bg-[#065D36] text-white flex items-center justify-center shadow"
                         title="Remove photo"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 bg-[#111111]/90 p-2 text-white">
+                    <div className="absolute inset-x-0 bottom-0 bg-[#10251D]/90 p-2 text-white">
                       {slot.status === 'success' && slot.downloadUrl && (
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[#F2B90D]">
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-[#D4A62A]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>{slot.isFallback ? 'Saved (Fallback)' : 'Uploaded (100%)'}</span>
                           </div>
@@ -821,7 +847,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span className="flex items-center gap-1">
-                              <Loader2 className="w-3 h-3 animate-spin text-[#F2B90D]" />
+                              <Loader2 className="w-3 h-3 animate-spin text-[#D4A62A]" />
                               {slot.status === 'compressing'
                                 ? 'Optimizing'
                                 : slot.status === 'retrying'
@@ -834,7 +860,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                           </div>
                           <div className="w-full bg-white/25 h-1.5 rounded-full overflow-hidden">
                             <div
-                              className="bg-[#F2B90D] h-full transition-all duration-300"
+                              className="bg-[#D4A62A] h-full transition-all duration-300"
                               style={{ width: `${slot.progress}%` }}
                             />
                           </div>
@@ -851,7 +877,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                       {slot.status === 'error' && (
                         <div className="space-y-1">
                           <div
-                            className="text-[10px] text-[#F2B90D] font-semibold line-clamp-2 leading-tight"
+                            className="text-[10px] text-[#D4A62A] font-semibold line-clamp-2 leading-tight"
                             title={slot.errorMessage || 'Upload failed'}
                           >
                             {slot.errorMessage || 'Upload failed'}
@@ -859,7 +885,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRetryUpload(slot.id)}
-                            className="w-full py-1 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] rounded text-[10px] font-black flex items-center justify-center gap-1"
+                            className="w-full py-1 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] rounded text-[10px] font-black flex items-center justify-center gap-1"
                           >
                             <RefreshCw className="w-2.5 h-2.5" />
                             <span>Retry Upload</span>
@@ -874,9 +900,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-[#0B6B3A]/50 hover:border-[#0B6B3A] bg-[#F5F5F5] transition flex flex-col items-center justify-center p-3 text-center text-xs font-bold text-[#0B6B3A] cursor-pointer"
+                    className="aspect-square rounded-2xl border-2 border-dashed border-[#087443]/50 hover:border-[#087443] bg-[#F4F8F5] transition flex flex-col items-center justify-center p-3 text-center text-xs font-bold text-[#087443] cursor-pointer"
                   >
-                    <Upload className="w-6 h-6 mb-1 text-[#0B6B3A]" />
+                    <Upload className="w-6 h-6 mb-1 text-[#087443]" />
                     <span className="font-black">Add Photo</span>
                     <span className="text-[9px] text-[#555555] font-normal mt-0.5">JPG, PNG, WebP</span>
                   </button>
@@ -895,7 +921,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             {!user && (
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
                   Your Name / Shop Name <span className="text-[#555555] font-normal">(Optional • Guest Post)</span>
                 </label>
                 <input
@@ -904,14 +930,14 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   placeholder="e.g., Musa Gadgets or leave blank to post as Guest"
                   value={guestSellerName}
                   onChange={(e) => setGuestSellerName(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                  className="w-full text-xs sm:text-sm p-3 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                Product Name <span className="text-[#0B6B3A]">*</span>
+              <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                Product Name <span className="text-[#087443]">*</span>
               </label>
               <input
                 type="text"
@@ -920,20 +946,20 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 placeholder="e.g., 6-Inch Student Mattress, HP Laptop, 3kg Gas Cylinder"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-xs sm:text-sm p-3 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                className="w-full text-xs sm:text-sm p-3 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                  Category <span className="text-[#0B6B3A]">*</span>
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                  Category <span className="text-[#087443]">*</span>
                 </label>
                 <select
                   name="category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none font-semibold"
+                  className="w-full text-xs sm:text-sm p-3 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none font-semibold"
                 >
                   {activeCategories.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -944,8 +970,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                  Condition <span className="text-[#0B6B3A]">*</span>
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                  Condition <span className="text-[#087443]">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -953,8 +979,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     onClick={() => setCondition('new')}
                     className={`py-2.5 text-xs font-black rounded-xl border transition ${
                       condition === 'new'
-                        ? 'bg-[#0B6B3A] border-[#0B6B3A] text-[#F2B90D]'
-                        : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#444444]'
+                        ? 'bg-[#087443] border-[#087443] text-[#D4A62A]'
+                        : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
                     Brand New
@@ -964,8 +990,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     onClick={() => setCondition('used')}
                     className={`py-2.5 text-xs font-black rounded-xl border transition ${
                       condition === 'used'
-                        ? 'bg-[#0B6B3A] border-[#0B6B3A] text-[#F2B90D]'
-                        : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#444444]'
+                        ? 'bg-[#087443] border-[#087443] text-[#D4A62A]'
+                        : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
                     Fairly Used
@@ -976,8 +1002,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                  Price (₦) <span className="text-[#0B6B3A]">*</span>
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                  Price (₦) <span className="text-[#087443]">*</span>
                 </label>
                 <input
                   type="number"
@@ -986,12 +1012,12 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   placeholder="15000"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] font-bold outline-none"
+                  className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] font-bold outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
                   Old Price (Optional)
                 </label>
                 <input
@@ -1000,12 +1026,12 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   placeholder="20000"
                   value={originalPrice}
                   onChange={(e) => setOriginalPrice(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                  className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
                   Quantity
                 </label>
                 <input
@@ -1013,16 +1039,16 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   min="1"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                  className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                 />
               </div>
             </div>
 
             {/* Seller WhatsApp */}
-            <div className="p-4 rounded-2xl bg-[#F5F5F5] border border-[#0B6B3A]/40 space-y-2.5">
+            <div className="p-4 rounded-2xl bg-[#F4F8F5] border border-[#087443]/40 space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#111111] uppercase flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-[#0B6B3A]" />
+                <label className="text-xs font-black text-[#10251D] uppercase flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-[#087443]" />
                   <span>WhatsApp Number *</span>
                 </label>
                 {whatsapp.trim() && (
@@ -1030,7 +1056,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     href={`https://wa.me/234${whatsapp.replace(/[^0-9]/g, '').replace(/^0/, '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[11px] font-black text-[#0B6B3A] hover:underline flex items-center gap-1"
+                    className="text-[11px] font-black text-[#087443] hover:underline flex items-center gap-1"
                   >
                     <ExternalLink className="w-3 h-3" />
                     Test Link
@@ -1044,16 +1070,69 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 placeholder="Enter active WhatsApp number (e.g. 0803...)"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                className="w-full p-3 bg-white border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-sm font-bold font-mono text-[#111111] outline-none"
+                className="w-full p-3 bg-white border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-sm font-bold font-mono text-[#10251D] outline-none"
               />
+            </div>
+
+            {/* Institution & Campus Selector */}
+            <div className="bg-[#F4F8F5] border border-[#087443]/20 rounded-xl p-3 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#087443] uppercase tracking-wider">
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Institution &amp; Campus</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#10251D] mb-1">
+                    University / Polytechnic <span className="text-[#087443]">*</span>
+                  </label>
+                  <select
+                    value={institutionId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setInstitutionId(nextId);
+                      const inst = getInstitutionById(nextId, institutions);
+                      setCampus(inst.campus || inst.campuses[0] || DEFAULT_INSTITUTION_CAMPUS);
+                      if (!stateManuallyChanged && inst.state) {
+                        setState(inst.state);
+                      }
+                    }}
+                    className="w-full p-2.5 text-xs sm:text-sm bg-white border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
+                  >
+                    {(institutions && institutions.length > 0
+                      ? institutions
+                      : VERIFIED_NIGERIAN_INSTITUTIONS
+                    ).map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.shortName} — {inst.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#10251D] mb-1">
+                    Campus <span className="text-[#087443]">*</span>
+                  </label>
+                  <select
+                    value={campus}
+                    onChange={(e) => setCampus(e.target.value)}
+                    className="w-full p-2.5 text-xs sm:text-sm bg-white border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
+                  >
+                    {getInstitutionById(institutionId, institutions).campuses.map((camp) => (
+                      <option key={camp} value={camp}>
+                        {camp}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Campus Location (Hostel & Level + State) */}
             <div className="space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                    Hostel / Campus Location <span className="text-[#0B6B3A]">*</span>
+                  <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                    Hostel / Campus Location <span className="text-[#087443]">*</span>
                   </label>
                   <input
                     type="text"
@@ -1062,18 +1141,21 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     placeholder="e.g. Hostel A, 100L"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                    className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                    State <span className="text-[#0B6B3A]">*</span>
+                  <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                    State <span className="text-[#087443]">*</span>
                   </label>
                   <select
                     name="state"
                     value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                    onChange={(e) => {
+                      setStateManuallyChanged(true);
+                      setState(e.target.value);
+                    }}
+                    className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                   >
                     {NIGERIA_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -1086,7 +1168,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[10px] font-bold text-[#555555] flex items-center gap-1 mr-1">
-                  <MapPin className="w-3 h-3 text-[#0B6B3A]" /> Quick pick:
+                  <MapPin className="w-3 h-3 text-[#087443]" /> Quick pick:
                 </span>
                 {CAMPUS_LOCATION_CHIPS.map((loc) => (
                   <button
@@ -1095,8 +1177,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     onClick={() => setCity(loc)}
                     className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ${
                       city === loc
-                        ? 'bg-[#0B6B3A] text-[#F2B90D] border-[#0B6B3A]'
-                        : 'bg-[#F5F5F5] text-[#333333] border-[#E5E7EB] hover:border-[#0B6B3A]'
+                        ? 'bg-[#087443] text-[#D4A62A] border-[#087443]'
+                        : 'bg-[#F4F8F5] text-[#333333] border-[#E5E7EB] hover:border-[#087443]'
                     }`}
                   >
                     {loc}
@@ -1106,8 +1188,8 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-black text-[#111111] uppercase tracking-wider mb-1">
-                Description &amp; Specs <span className="text-[#0B6B3A]">*</span>
+              <label className="block text-xs font-black text-[#10251D] uppercase tracking-wider mb-1">
+                Description &amp; Specs <span className="text-[#087443]">*</span>
               </label>
               <textarea
                 required
@@ -1116,7 +1198,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                 placeholder="Describe genuine condition, specifications, and where you can meet on campus..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-3 text-xs sm:text-sm bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl text-[#111111] outline-none"
+                className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
               />
             </div>
 
@@ -1124,16 +1206,16 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 text-xs font-bold text-[#555555] hover:text-[#111111] rounded-xl"
+                className="px-5 py-2.5 text-xs font-bold text-[#555555] hover:text-[#10251D] rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || hasActiveUploads}
-                className="px-6 py-3 font-black text-xs sm:text-sm rounded-xl bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] flex items-center gap-2 shadow disabled:opacity-50 transition"
+                className="px-6 py-3 font-black text-xs sm:text-sm rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] flex items-center gap-2 shadow disabled:opacity-50 transition"
               >
-                <CheckCircle2 className="w-4 h-4 text-[#0B6B3A]" />
+                <CheckCircle2 className="w-4 h-4 text-[#087443]" />
                 <span>
                   {submitting
                     ? 'Publishing...'

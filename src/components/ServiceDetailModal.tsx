@@ -81,7 +81,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
         reason: reportReason,
         details: reportDetails.trim(),
         reporterId: user?.id,
-        reporterName: user?.name || 'FU MARKET Visitor'
+        reporterName: user?.name || 'NIGERIA CAMPUS MARKET Visitor'
       });
       setReportSubmitted(true);
       setShowReportForm(false);
@@ -100,18 +100,18 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
       aria-modal="true"
       aria-label={service.serviceName}
     >
-      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#111111]">
+      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#0B6B3A] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#14532D]">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#065D36]">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold text-[#F2B90D] truncate">{service.category}</p>
+            <p className="text-[11px] font-bold text-[#D4A62A] truncate">{service.category}</p>
             <h2 className="text-base sm:text-lg font-black truncate">{service.serviceName}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close service details"
-            className="w-9 h-9 rounded-lg bg-[#14532D] hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition shrink-0"
+            className="w-9 h-9 rounded-lg bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -120,7 +120,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
         <div className="p-5 sm:p-6 max-h-[82vh] overflow-y-auto space-y-5">
           {/* Gallery */}
           <div className="space-y-2.5">
-            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F5F5F5] border border-[#E5E7EB]">
+            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F4F8F5] border border-[#E5E7EB]">
               {activePhoto && !imgFailed ? (
                 <img
                   src={activePhoto}
@@ -131,8 +131,8 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-[#F0FDF4]">
-                  <Briefcase className="w-10 h-10 text-[#0B6B3A] mb-2" />
-                  <span className="text-xs font-bold text-[#14532D]">{service.serviceName}</span>
+                  <Briefcase className="w-10 h-10 text-[#087443] mb-2" />
+                  <span className="text-xs font-bold text-[#065D36]">{service.serviceName}</span>
                 </div>
               )}
             </div>
@@ -148,7 +148,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                       setImgFailed(false);
                     }}
                     className={`w-16 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition ${
-                      idx === activePhotoIdx ? 'border-[#0B6B3A]' : 'border-[#E5E7EB] opacity-75'
+                      idx === activePhotoIdx ? 'border-[#087443]' : 'border-[#E5E7EB] opacity-75'
                     }`}
                   >
                     <img
@@ -167,7 +167,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="md:col-span-2 space-y-4">
               <div className="flex flex-wrap items-center gap-2 text-xs text-[#555555]">
-                <span className="font-bold text-[#0B6B3A]">{service.category}</span>
+                <span className="font-bold text-[#087443]">{service.category}</span>
                 <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
@@ -186,7 +186,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <h3 className="text-sm font-black text-[#111111]">About This Service</h3>
+                <h3 className="text-sm font-black text-[#10251D]">About This Service</h3>
                 <p className="text-xs sm:text-sm text-[#333333] whitespace-pre-line leading-relaxed">
                   {service.description}
                 </p>
@@ -197,12 +197,12 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             <div className="p-4 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl space-y-3 h-fit">
               <div>
                 <span className="text-[11px] font-bold text-[#555555]">Service Rate</span>
-                <p className="text-xl font-black text-[#0B6B3A] tabular-nums">{priceLabel}</p>
+                <p className="text-xl font-black text-[#087443] tabular-nums">{priceLabel}</p>
               </div>
 
               <div className="pt-2 border-t border-[#E5E7EB] space-y-1.5 text-xs">
-                <p className="flex items-center gap-1.5 font-bold text-[#111111]">
-                  <UserCheck className="w-4 h-4 text-[#0B6B3A] shrink-0" />
+                <p className="flex items-center gap-1.5 font-bold text-[#10251D]">
+                  <UserCheck className="w-4 h-4 text-[#087443] shrink-0" />
                   <span>{service.providerName}</span>
                 </p>
                 <CeoVerifiedBadge
@@ -213,7 +213,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                 />
                 <p className="flex items-center gap-1.5 font-semibold text-[#444444]">
                   {service.availability === 'available' ? (
-                    <CheckCircle2 className="w-4 h-4 text-[#0B6B3A] shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0" />
                   ) : service.availability === 'busy' ? (
                     <Clock className="w-4 h-4 text-[#B45309] shrink-0" />
                   ) : (
@@ -246,7 +246,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 
                 <a
                   href={buildServiceCallHref(service.phone)}
-                  className="w-full px-4 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition flex items-center justify-center gap-2 min-h-[42px]"
+                  className="w-full px-4 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition flex items-center justify-center gap-2 min-h-[42px]"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Call {service.phone}</span>
@@ -255,7 +255,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowContactCard((prev) => !prev)}
-                  className="w-full px-4 py-2.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-bold rounded-xl transition min-h-[40px]"
+                  className="w-full px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-bold rounded-xl transition min-h-[40px]"
                 >
                   {showContactCard ? 'Hide Contact Info' : 'Contact Provider'}
                 </button>
@@ -266,7 +266,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
           {showContactCard && (
             <div className="p-4 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1 text-xs">
-                <p className="font-black text-[#14532D]">
+                <p className="font-black text-[#065D36]">
                   Direct Provider Contact — {service.providerName}
                 </p>
                 <p className="text-[#333333] tabular-nums">
@@ -283,7 +283,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                       name: service.providerName
                     });
                   }}
-                  className="px-4 py-2 bg-[#111111] hover:bg-[#14532D] text-[#F2B90D] text-xs font-black rounded-xl transition whitespace-nowrap"
+                  className="px-4 py-2 bg-[#10251D] hover:bg-[#065D36] text-[#D4A62A] text-xs font-black rounded-xl transition whitespace-nowrap"
                 >
                   In-App Direct Chat
                 </button>
@@ -298,7 +298,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenPromotion(service)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#FFF7ED] border border-[#FDBA74] hover:bg-[#EA580C] hover:text-white text-[#9A3412] text-xs font-black rounded-xl transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#F4F8F5] border border-[#D4A62A] hover:bg-[#D4A62A] hover:text-[#10251D] text-[#087443] text-xs font-black rounded-xl transition"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Promote This Service</span>
@@ -307,8 +307,8 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             </div>
 
             {reportSubmitted ? (
-              <span className="text-xs font-bold text-[#0B6B3A]">
-                Report submitted to FU MARKET CEO.
+              <span className="text-xs font-bold text-[#087443]">
+                Report submitted to NIGERIA CAMPUS MARKET CEO.
               </span>
             ) : (
               <button

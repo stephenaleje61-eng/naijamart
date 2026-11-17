@@ -19,11 +19,11 @@ export const CampusSafetyInfoModal: React.FC<CampusSafetyInfoModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-3xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#10251D]">
         {/* Header */}
         <div className="bg-[#0F1E3D] text-white p-5 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#0B6B3A] text-white flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-[#087443] text-white flex items-center justify-center shrink-0">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
@@ -99,7 +99,7 @@ export const CampusSafetyInfoModal: React.FC<CampusSafetyInfoModalProps> = ({
                   <div className="px-4 pb-4 pt-1 border-t border-[#E2E8F0] space-y-2">
                     {topic.points.map((point, idx) => (
                       <div key={idx} className="flex items-start gap-2.5 text-xs text-[#1E293B] leading-relaxed">
-                        <CheckCircle2 className="w-4 h-4 text-[#0B6B3A] shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                         <span>{point}</span>
                       </div>
                     ))}
@@ -126,7 +126,7 @@ export const CampusSafetyInfoModal: React.FC<CampusSafetyInfoModalProps> = ({
               <button
                 type="button"
                 onClick={onOpenContacts}
-                className="min-h-[44px] px-4 py-2 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition"
+                className="min-h-[44px] px-4 py-2 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition"
               >
                 View Emergency Contacts
               </button>

@@ -137,22 +137,22 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A1F14] via-[#0B3B22] to-[#111111] flex flex-col justify-center items-center p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#091812] via-[#10251D] to-[#087443] flex flex-col justify-center items-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         <button
           type="button"
           onClick={onBackToMarketplace}
-          className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-[#F2B90D] transition"
+          className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-[#D4A62A] transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to FU MARKET Marketplace</span>
+          <span>Back to NIGERIA CAMPUS MARKET</span>
         </button>
 
-        <div className="bg-white rounded-3xl shadow-2xl border border-white/20 overflow-hidden text-[#111111]">
+        <div className="bg-white rounded-3xl shadow-2xl border border-white/20 overflow-hidden text-[#10251D]">
           {/* Header Banner */}
-          <div className="bg-[#0B6B3A] text-white px-6 py-6 border-b-4 border-[#F2B90D]">
+          <div className="bg-[#10251D] text-white px-6 py-6 border-b-4 border-[#D4A62A]">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#111111]/80 border border-[#F2B90D]/50 text-[#F2B90D] text-[10px] font-black tracking-widest uppercase">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#087443] border border-[#D4A62A]/50 text-[#D4A62A] text-[10px] font-black tracking-widest uppercase">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {CEO_ROLE_LABEL}
               </span>
@@ -161,10 +161,10 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
               </span>
             </div>
             <h1 className="font-display text-xl sm:text-2xl font-black tracking-tight text-white">
-              FU MARKET CEO ADMIN LOGIN
+              NIGERIA CAMPUS MARKET CEO LOGIN
             </h1>
             <p className="text-xs text-emerald-100/90 mt-1">
-              Exclusive Executive Control Gateway. Cryptographic Firebase authentication required.
+              National Control Centre Gateway. Cryptographic Firebase authentication required.
             </p>
           </div>
 
@@ -202,8 +202,8 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
             )}
 
             {statusMsg && (
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-[#0B6B3A] flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#0B6B3A] shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-[#087443] flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                 <span className="font-semibold">{statusMsg}</span>
               </div>
             )}
@@ -214,7 +214,7 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                   Authorized CEO Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#0B6B3A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-[#087443] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
@@ -223,7 +223,7 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter authorized CEO email"
                     disabled={lockout.locked || loading}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#0B6B3A] focus:ring-2 focus:ring-[#0B6B3A]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#087443] focus:ring-2 focus:ring-[#087443]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
                   />
                 </div>
               </div>
@@ -237,14 +237,14 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                     type="button"
                     onClick={handlePasswordReset}
                     disabled={resetLoading || lockout.locked}
-                    className="text-[11px] font-bold text-[#0B6B3A] hover:underline flex items-center gap-1"
+                    className="text-[11px] font-bold text-[#087443] hover:underline flex items-center gap-1"
                   >
                     <KeyRound className="w-3 h-3" />
                     <span>{resetLoading ? 'Sending...' : 'Reset via Email'}</span>
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-[#0B6B3A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-[#087443] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
@@ -253,12 +253,12 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your Firebase password"
                     disabled={lockout.locked || loading}
-                    className="w-full pl-10 pr-11 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#0B6B3A] focus:ring-2 focus:ring-[#0B6B3A]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#087443] focus:ring-2 focus:ring-[#087443]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111111]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#10251D]"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -271,14 +271,14 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                   Phone Verification Check <span className="text-[#6B7280] font-semibold">(Optional Extra Check)</span>
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-[#0B6B3A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Phone className="w-4 h-4 text-[#087443] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Authorized CEO phone number"
                     disabled={lockout.locked || loading}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#0B6B3A] focus:ring-2 focus:ring-[#0B6B3A]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#D1D5DB] focus:border-[#087443] focus:ring-2 focus:ring-[#087443]/15 outline-none text-sm font-medium bg-[#F9FAFB] focus:bg-white transition"
                   />
                 </div>
               </div>
@@ -286,10 +286,10 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
               <button
                 type="submit"
                 disabled={loading || googleLoading || lockout.locked}
-                className="w-full py-3.5 px-5 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 uppercase tracking-wider"
+                className="w-full py-3.5 px-5 bg-[#087443] hover:bg-[#065D36] disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 uppercase tracking-wider"
               >
-                <LogIn className="w-4 h-4 text-[#F2B90D]" />
-                <span>{loading ? 'Verifying CEO Credentials...' : 'Sign In as FU MARKET CEO'}</span>
+                <LogIn className="w-4 h-4 text-[#D4A62A]" />
+                <span>{loading ? 'Verifying CEO Credentials...' : 'Sign In as National CEO'}</span>
               </button>
             </form>
 
@@ -305,7 +305,7 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading || googleLoading || lockout.locked}
-              className="w-full py-3 px-5 bg-[#111111] hover:bg-black disabled:opacity-50 text-[#F2B90D] font-black text-xs rounded-xl transition flex items-center justify-center gap-2.5 uppercase tracking-wider border border-[#F2B90D]/30"
+              className="w-full py-3 px-5 bg-[#10251D] hover:bg-black disabled:opacity-50 text-[#D4A62A] font-black text-xs rounded-xl transition flex items-center justify-center gap-2.5 uppercase tracking-wider border border-[#D4A62A]/30"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>
@@ -314,7 +314,7 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
             </button>
 
             <p className="text-[11px] text-center text-[#6B7280] leading-relaxed">
-              Every login attempt, failed attempt, and unauthorized entry is cryptographically verified and recorded in FU MARKET CEO Security Logs.
+              Every login attempt, failed attempt, and unauthorized entry is cryptographically verified and recorded in NIGERIA CAMPUS MARKET CEO Security Logs.
             </p>
           </div>
         </div>

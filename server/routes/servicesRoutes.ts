@@ -97,7 +97,7 @@ router.post('/paystack/initialize', async (req: Request, res: Response) => {
     return res.status(503).json({
       configured: false,
       error:
-        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Please contact FU MARKET CEO (08167258121) on WhatsApp for payment instructions.'
+        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Please contact NIGERIA UNIVERSITY HUB CEO (08167258121) on WhatsApp for payment instructions.'
     });
   }
 
@@ -111,7 +111,7 @@ router.post('/paystack/initialize', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Valid service ID is required.' });
   }
 
-  const safeServiceName = String(serviceName || 'FU MARKET Service').trim().slice(0, 140);
+  const safeServiceName = String(serviceName || 'NIGERIA UNIVERSITY HUB Service').trim().slice(0, 140);
   const safeProviderName = String(providerName || 'Service Provider').trim().slice(0, 120);
   const safeEmail =
     typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
@@ -193,7 +193,7 @@ router.post('/paystack/verify', async (req: Request, res: Response) => {
     return res.status(503).json({
       configured: false,
       error:
-        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Contact FU MARKET CEO (08167258121) for manual verification.'
+        'Paystack payment gateway is not configured on this server (PAYSTACK_SECRET_KEY missing). Contact NIGERIA UNIVERSITY HUB CEO (08167258121) for manual verification.'
     });
   }
 
@@ -285,7 +285,7 @@ router.post('/paystack/verify', async (req: Request, res: Response) => {
         id: `spay_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         reference: cleanRef,
         serviceId: cleanServiceId,
-        serviceName: String(tx?.metadata?.serviceName || 'FU MARKET Service'),
+        serviceName: String(tx?.metadata?.serviceName || 'NIGERIA UNIVERSITY HUB Service'),
         providerName: String(tx?.metadata?.providerName || 'Provider'),
         payerEmail: tx?.customer?.email ? String(tx.customer.email) : undefined,
         planId: plan.id,
@@ -350,7 +350,7 @@ router.post(
       id: `spay_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       reference: cleanRef,
       serviceId: String(serviceId),
-      serviceName: String(serviceName || 'FU MARKET Service').slice(0, 140),
+      serviceName: String(serviceName || 'NIGERIA UNIVERSITY HUB Service').slice(0, 140),
       providerName: String(providerName || 'Provider').slice(0, 120),
       payerPhone: payerPhone ? String(payerPhone).slice(0, 40) : undefined,
       planId: plan.id,

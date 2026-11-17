@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, stripUndefined, toIsoString } from './firebase.js';
 import { isFirebaseCeoVerified } from './events.js';
+import { DEFAULT_INSTITUTION_ID } from '../constants/institutions.js';
 import {
   AnnouncementComment,
   AnnouncementModerationStatus,
@@ -23,6 +24,7 @@ import {
   GeneralAnnouncementPost,
   PostCollectionName,
   PublicAuthorProfile,
+  SportMatchStatus,
   SportUpdatePost,
   User
 } from '../types.js';
@@ -150,11 +152,11 @@ export function getPostWhatsAppShareUrl(post: CommunityAnnouncementPost): string
   );
   const category =
     post.categoryType === 'sport_update'
-      ? `FU SPORT UPDATE • ${post.sportCategory}`
-      : `FU ANNOUNCEMENT • ${post.announcementCategory}`;
+      ? `CAMPUS SPORT UPDATE • ${post.sportCategory}`
+      : `CAMPUS ANNOUNCEMENT • ${post.announcementCategory}`;
   const text = `${category}\n*${post.title}*\n${post.description.slice(0, 160)}${
     post.description.length > 160 ? '...' : ''
-  }\n\nRead full details on FU MARKET:\n${url}`;
+  }\n\nRead full details on NIGERIA CAMPUS MARKET:\n${url}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
@@ -176,11 +178,37 @@ export function formatRelativeTime(iso: string): string {
   });
 }
 
+export function inferSportMatchStatus(post: SportUpdatePost): SportMatchStatus {
+  if (
+    post.matchStatus &&
+    ['upcoming', 'live', 'completed', 'announcement', 'other_sport'].includes(post.matchStatus)
+  ) {
+    return post.matchStatus;
+  }
+  const cat = String(post.sportCategory || '').toLowerCase();
+  if (cat.includes('live')) return 'live';
+  if (cat.includes('result') || post.score?.trim()) return 'completed';
+  if (cat.includes('fixture') || cat.includes('match announcement') || cat.includes('tournament')) {
+    return 'upcoming';
+  }
+  if (
+    cat.includes('basketball') ||
+    cat.includes('volleyball') ||
+    cat.includes('athletics')
+  ) {
+    return 'other_sport';
+  }
+  return 'announcement';
+}
+
 function sanitizeSportUpdate(id: string, data: any): SportUpdatePost {
-  return {
+  const base: SportUpdatePost = {
     id: String(data?.id || id),
     categoryType: 'sport_update',
     sportCategory: String(data?.sportCategory || 'Sports News').trim(),
+    ...(data?.matchStatus ? { matchStatus: data.matchStatus as SportMatchStatus } : {}),
+    institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+    ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     title: String(data?.title || '').trim(),
     ...(data?.teamOrPlayer ? { teamOrPlayer: String(data.teamOrPlayer).trim() } : {}),
     ...(data?.competitionName ? { competitionName: String(data.competitionName).trim() } : {}),
@@ -207,6 +235,10 @@ function sanitizeSportUpdate(id: string, data: any): SportUpdatePost {
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString(),
     updatedAt: data?.updatedAt ? toIsoString(data.updatedAt) : new Date().toISOString()
   };
+  return {
+    ...base,
+    matchStatus: inferSportMatchStatus(base)
+  };
 }
 
 function sanitizeGeneralAnnouncement(id: string, data: any): GeneralAnnouncementPost {
@@ -216,6 +248,8 @@ function sanitizeGeneralAnnouncement(id: string, data: any): GeneralAnnouncement
     announcementCategory: String(
       data?.announcementCategory || 'General Important Information'
     ).trim(),
+    institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+    ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     title: String(data?.title || '').trim(),
     ...(data?.eventDate ? { eventDate: String(data.eventDate).trim() } : {}),
     ...(data?.eventTime ? { eventTime: String(data.eventTime).trim() } : {}),
@@ -388,7 +422,7 @@ async function assertAuthenticatedAndActive(appUser?: User | null): Promise<{
   if (appUser?.isSuspended) {
     throw new Error(
       `Account suspended from posting: ${
-        appUser.suspensionReason || 'Violation of FU MARKET community safety policy.'
+        appUser.suspensionReason || 'Violation of NIGERIA CAMPUS MARKET community safety policy.'
       }`
     );
   }
@@ -399,7 +433,7 @@ async function assertAuthenticatedAndActive(appUser?: User | null): Promise<{
     if (userDoc.exists() && userDoc.data()?.isSuspended) {
       throw new Error(
         `Account suspended from posting: ${
-          userDoc.data()?.suspensionReason || 'Violation of FU MARKET community safety policy.'
+          userDoc.data()?.suspensionReason || 'Violation of NIGERIA CAMPUS MARKET community safety policy.'
         }`
       );
     }
@@ -428,6 +462,9 @@ async function assertAuthenticatedAndActive(appUser?: User | null): Promise<{
 export async function createSportUpdatePost(
   input: {
     sportCategory: string;
+    matchStatus?: SportMatchStatus;
+    institutionId?: string;
+    campus?: string;
     title: string;
     teamOrPlayer?: string;
     competitionName?: string;
@@ -459,6 +496,9 @@ export async function createSportUpdatePost(
     id,
     categoryType: 'sport_update' as const,
     sportCategory: input.sportCategory.trim().slice(0, 80),
+    ...(input.matchStatus ? { matchStatus: input.matchStatus } : {}),
+    institutionId: (input.institutionId || DEFAULT_INSTITUTION_ID).trim().slice(0, 128),
+    ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
     title: input.title.trim().slice(0, 180),
     ...(input.teamOrPlayer?.trim() ? { teamOrPlayer: input.teamOrPlayer.trim().slice(0, 160) } : {}),
     ...(input.competitionName?.trim()
@@ -508,6 +548,8 @@ export async function createSportUpdatePost(
 export async function createGeneralAnnouncementPost(
   input: {
     announcementCategory: string;
+    institutionId?: string;
+    campus?: string;
     title: string;
     eventDate?: string;
     eventTime?: string;
@@ -535,6 +577,8 @@ export async function createGeneralAnnouncementPost(
     id,
     categoryType: 'general_announcement' as const,
     announcementCategory: input.announcementCategory.trim().slice(0, 80),
+    institutionId: (input.institutionId || DEFAULT_INSTITUTION_ID).trim().slice(0, 128),
+    ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
     title: input.title.trim().slice(0, 180),
     ...(input.eventDate?.trim() ? { eventDate: input.eventDate.trim().slice(0, 32) } : {}),
     ...(input.eventTime?.trim() ? { eventTime: input.eventTime.trim().slice(0, 60) } : {}),
@@ -592,6 +636,11 @@ export async function updateOwnSportUpdatePost(
     ...(updates.sportCategory !== undefined
       ? { sportCategory: updates.sportCategory.trim().slice(0, 80) }
       : {}),
+    ...(updates.matchStatus !== undefined ? { matchStatus: updates.matchStatus } : {}),
+    ...(updates.institutionId !== undefined
+      ? { institutionId: updates.institutionId.trim().slice(0, 128) }
+      : {}),
+    ...(updates.campus !== undefined ? { campus: updates.campus.trim().slice(0, 120) } : {}),
     ...(updates.title !== undefined ? { title: updates.title.trim().slice(0, 180) } : {}),
     ...(updates.teamOrPlayer !== undefined
       ? { teamOrPlayer: updates.teamOrPlayer.trim().slice(0, 160) }
@@ -638,6 +687,10 @@ export async function updateOwnGeneralAnnouncementPost(
     ...(updates.announcementCategory !== undefined
       ? { announcementCategory: updates.announcementCategory.trim().slice(0, 80) }
       : {}),
+    ...(updates.institutionId !== undefined
+      ? { institutionId: updates.institutionId.trim().slice(0, 128) }
+      : {}),
+    ...(updates.campus !== undefined ? { campus: updates.campus.trim().slice(0, 120) } : {}),
     ...(updates.title !== undefined ? { title: updates.title.trim().slice(0, 180) } : {}),
     ...(updates.eventDate !== undefined
       ? { eventDate: updates.eventDate.trim().slice(0, 32) }

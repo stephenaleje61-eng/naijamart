@@ -259,7 +259,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
       setReportSent(true);
       setReportDetails('');
       setShowReportForm(false);
-      onToast('Report submitted to FU MARKET Admin Moderation Desk.');
+      onToast('Report submitted to NIGERIA CAMPUS MARKET Admin Moderation Desk.');
     } catch (err: any) {
       setActionError(err?.message || 'Failed to submit report.');
     } finally {
@@ -287,24 +287,24 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
     >
       <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#E5E7EB] my-4 max-h-[92vh] flex flex-col">
         {/* Top Header */}
-        <div className="bg-[#111111] text-white px-5 py-4 flex items-center justify-between gap-3 border-b-4 border-[#EA580C] shrink-0">
+        <div className="bg-[#087443] text-white px-5 py-4 flex items-center justify-between gap-3 border-b-4 border-[#D4A62A] shrink-0">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#EA580C] text-white text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase tracking-wider">
               {isSport ? <Trophy className="w-3.5 h-3.5" /> : <Megaphone className="w-3.5 h-3.5" />}
               {isSport ? post.sportCategory : post.announcementCategory}
             </span>
             {post.isPinned && (
-              <span className="px-2 py-0.5 rounded bg-white text-[#111111] text-[10px] font-black uppercase">
+              <span className="px-2 py-0.5 rounded bg-white text-[#10251D] text-[10px] font-black uppercase">
                 PINNED
               </span>
             )}
             {post.isFeatured && (
-              <span className="px-2 py-0.5 rounded bg-[#F2B90D] text-[#111111] text-[10px] font-black uppercase">
+              <span className="px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
                 FEATURED
               </span>
             )}
             {isSport && post.isUnverifiedUserPost !== false && (
-              <span className="px-2 py-0.5 rounded bg-white/15 text-[#FDBA74] border border-white/20 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded bg-[#065D36] text-[#F4F8F5] border border-white/20 text-[10px] font-bold">
                 User-Submitted • Unverified
               </span>
             )}
@@ -314,7 +314,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             type="button"
             onClick={onClose}
             aria-label="Close post details"
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#EA580C] text-white flex items-center justify-center transition shrink-0"
+            className="w-9 h-9 rounded-xl bg-[#065D36] hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -324,7 +324,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
         <div className="overflow-y-auto flex-1">
           {/* Poster / Image */}
           {post.imageUrl && (
-            <div className="bg-[#111111] max-h-[380px] flex items-center justify-center overflow-hidden border-b border-[#E5E7EB]">
+            <div className="bg-[#10251D] max-h-[380px] flex items-center justify-center overflow-hidden border-b border-[#E5E7EB]">
               <img
                 src={post.imageUrl}
                 alt={post.title}
@@ -335,15 +335,15 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
 
           <div className="p-5 sm:p-7 space-y-5">
             {actionError && (
-              <div className="p-3 bg-[#FFF7ED] border border-[#EA580C] text-[#9A3412] text-xs font-bold rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
+              <div className="p-3 bg-[#F4F8F5] border border-[#D4A62A] text-[#10251D] text-xs font-bold rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#D4A62A] shrink-0" />
                 <span>{actionError}</span>
               </div>
             )}
 
             {/* Auth Sign-in prompt if guest attempts like/save/comment */}
             {showAuthPrompt && !fbUid && (
-              <div className="p-4 bg-[#111111] text-white rounded-2xl border-2 border-[#EA580C] space-y-3">
+              <div className="p-4 bg-[#10251D] text-white rounded-2xl border-2 border-[#D4A62A] space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="text-sm font-black text-white">Sign in to Like, Comment, or Save</h4>
@@ -364,7 +364,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                     type="button"
                     disabled={signingInGoogle}
                     onClick={handleGoogleQuickSignIn}
-                    className="px-4 py-2 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-black rounded-xl transition disabled:opacity-60"
+                    className="px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition disabled:opacity-60"
                   >
                     {signingInGoogle ? 'Signing in...' : 'Continue with Google (1 Tap)'}
                   </button>
@@ -385,12 +385,12 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             {/* Title + Score highlight */}
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <h2 className="font-display text-xl sm:text-2xl font-black text-[#111111] leading-tight">
+                <h2 className="font-display text-xl sm:text-2xl font-black text-[#10251D] leading-tight">
                   {post.title}
                 </h2>
                 {isSport && post.score && (
-                  <div className="shrink-0 bg-[#111111] text-white px-4 py-2 rounded-2xl border-2 border-[#EA580C] text-center">
-                    <span className="block text-[9px] uppercase tracking-wider text-[#FDBA74] font-black">
+                  <div className="shrink-0 bg-[#10251D] text-white px-4 py-2 rounded-2xl border-2 border-[#D4A62A] text-center">
+                    <span className="block text-[9px] uppercase tracking-wider text-[#D4A62A] font-black">
                       Reported Score
                     </span>
                     <span className="text-base font-black tracking-tight">{post.score}</span>
@@ -405,7 +405,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                   onClick={() => onOpenAuthorProfile(post.authorId, post.authorName, post.authorAvatar)}
                   className="flex items-center gap-2.5 text-left group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#EA580C] text-white flex items-center justify-center font-black text-sm overflow-hidden shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#087443] text-[#D4A62A] flex items-center justify-center font-black text-sm overflow-hidden shrink-0">
                     {post.authorAvatar ? (
                       <img
                         src={post.authorAvatar}
@@ -417,7 +417,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                     )}
                   </div>
                   <div>
-                    <span className="text-xs font-black text-[#111111] group-hover:text-[#EA580C] transition block">
+                    <span className="text-xs font-black text-[#10251D] group-hover:text-[#087443] transition block">
                       {post.authorName}
                     </span>
                     <span className="text-[11px] text-[#6B7280] flex items-center gap-2">
@@ -436,7 +436,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                       <button
                         type="button"
                         onClick={() => onEditPost(post)}
-                        className="px-3 py-1.5 rounded-xl bg-[#F3F4F6] hover:bg-[#111111] hover:text-white text-[#111111] text-xs font-bold flex items-center gap-1.5 transition"
+                        className="px-3 py-1.5 rounded-xl bg-[#F3F4F6] hover:bg-[#10251D] hover:text-white text-[#10251D] text-xs font-bold flex items-center gap-1.5 transition"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         Edit
@@ -479,37 +479,37 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             {(isSport
               ? post.teamOrPlayer || post.competitionName || post.matchDate || post.matchTime || post.venue
               : post.eventDate || post.eventTime || post.location) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl p-4 text-xs">
                 {isSport && post.teamOrPlayer && (
                   <div className="flex items-start gap-2">
-                    <Users className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+                    <Users className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         Teams / Players
                       </span>
-                      <span className="font-bold text-[#111111]">{post.teamOrPlayer}</span>
+                      <span className="font-bold text-[#10251D]">{post.teamOrPlayer}</span>
                     </div>
                   </div>
                 )}
                 {isSport && post.competitionName && (
                   <div className="flex items-start gap-2">
-                    <Award className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+                    <Award className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         Competition
                       </span>
-                      <span className="font-bold text-[#111111]">{post.competitionName}</span>
+                      <span className="font-bold text-[#10251D]">{post.competitionName}</span>
                     </div>
                   </div>
                 )}
                 {(isSport ? post.matchDate : post.eventDate) && (
                   <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+                    <Calendar className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         Date
                       </span>
-                      <span className="font-bold text-[#111111]">
+                      <span className="font-bold text-[#10251D]">
                         {isSport ? post.matchDate : post.eventDate}
                       </span>
                     </div>
@@ -517,12 +517,12 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                 )}
                 {(isSport ? post.matchTime : post.eventTime) && (
                   <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+                    <Clock className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         Time
                       </span>
-                      <span className="font-bold text-[#111111]">
+                      <span className="font-bold text-[#10251D]">
                         {isSport ? post.matchTime : post.eventTime}
                       </span>
                     </div>
@@ -530,12 +530,12 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                 )}
                 {(isSport ? post.venue : post.location) && (
                   <div className="flex items-start gap-2 sm:col-span-2">
-                    <MapPin className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+                    <MapPin className="w-4 h-4 text-[#087443] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         Venue / Location
                       </span>
-                      <span className="font-bold text-[#111111]">
+                      <span className="font-bold text-[#10251D]">
                         {isSport ? post.venue : post.location}
                       </span>
                     </div>
@@ -550,8 +550,8 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             </div>
 
             {isSport && post.isUnverifiedUserPost !== false && (
-              <div className="p-3 bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl text-[11px] text-[#9A3412] flex items-start gap-2">
-                <ShieldAlert className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
+              <div className="p-3 bg-[#F4F8F5] border border-[#D4A62A]/45 rounded-2xl text-[11px] text-[#10251D] flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-[#D4A62A] shrink-0 mt-0.5" />
                 <span>
                   This update and any score shown were submitted directly by a campus user and have not yet been independently verified by official tournament organizers.
                 </span>
@@ -567,11 +567,11 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                   disabled={togglingLike}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 border transition ${
                     isLiked
-                      ? 'bg-[#EA580C] border-[#EA580C] text-white'
-                      : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111111] hover:border-[#EA580C]'
+                      ? 'bg-[#087443] border-[#087443] text-white'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#10251D] hover:border-[#087443]'
                   }`}
                 >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#D4A62A] text-[#D4A62A]' : ''}`} />
                   <span>{likesCount}</span>
                 </button>
 
@@ -581,11 +581,11 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                   disabled={togglingSave}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
                     isSaved
-                      ? 'bg-[#111111] border-[#111111] text-white'
-                      : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111111] hover:border-[#111111]'
+                      ? 'bg-[#10251D] border-[#10251D] text-white'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#10251D] hover:border-[#10251D]'
                   }`}
                 >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#EA580C] text-[#EA580C]' : ''}`} />
+                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#D4A62A] text-[#D4A62A]' : ''}`} />
                   <span>{isSaved ? 'Saved' : 'Save'}</span>
                 </button>
 
@@ -593,19 +593,19 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                   href={getPostWhatsAppShareUrl(post)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black flex items-center gap-1.5 transition"
+                  className="px-3.5 py-2 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black flex items-center gap-1.5 transition"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-[#F2B90D]" />
+                  <Share2 className="w-3.5 h-3.5 text-[#D4A62A]" />
                   <span>Share WhatsApp</span>
                 </a>
 
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="px-3 py-2 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] hover:border-[#EA580C] text-[#111111] text-xs font-bold flex items-center gap-1.5 transition"
+                  className="px-3 py-2 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] hover:border-[#087443] text-[#10251D] text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   {copiedLink ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0B6B3A]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#087443]" />
                   ) : (
                     <Copy className="w-3.5 h-3.5 text-[#6B7280]" />
                   )}
@@ -627,10 +627,10 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             {showReportForm && (
               <form
                 onSubmit={handleSubmitReport}
-                className="p-4 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl space-y-3"
+                className="p-4 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                  <h4 className="text-xs font-black text-[#10251D] uppercase tracking-wider">
                     Report Post to Moderation Desk
                   </h4>
                   <button
@@ -644,7 +644,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#111111] outline-none focus:border-[#EA580C]"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#10251D] outline-none focus:border-[#087443]"
                 >
                   {REPORT_REASONS.map((r) => (
                     <option key={r} value={r}>
@@ -658,12 +658,12 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                   value={reportDetails}
                   onChange={(e) => setReportDetails(e.target.value)}
                   placeholder="Describe why this post violates campus safety or accuracy guidelines..."
-                  className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#EA580C]"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
                 />
                 <button
                   type="submit"
                   disabled={submittingReport}
-                  className="px-4 py-2 bg-[#111111] hover:bg-[#EA580C] text-white text-xs font-black rounded-xl transition disabled:opacity-60"
+                  className="px-4 py-2 bg-[#10251D] hover:bg-[#087443] text-white text-xs font-black rounded-xl transition disabled:opacity-60"
                 >
                   {submittingReport ? 'Submitting Report...' : 'Submit Report'}
                 </button>
@@ -673,8 +673,8 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             {/* COMMENTS & REPLIES */}
             <div className="pt-4 border-t border-[#E5E7EB] space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-[#EA580C]" />
+                <h3 className="text-sm font-black text-[#10251D] flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#087443]" />
                   <span>Comments &amp; Discussion ({comments.length})</span>
                 </h3>
               </div>
@@ -682,14 +682,14 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
               {/* Add Comment Form */}
               <form onSubmit={handleSubmitComment} className="space-y-2">
                 {replyingTo && (
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-[#FFF7ED] border border-[#FED7AA] rounded-xl text-[11px] font-bold text-[#9A3412]">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-[#F4F8F5] border border-[#D4A62A] rounded-xl text-[11px] font-bold text-[#10251D]">
                     <span>
                       Replying to <strong>{replyingTo.authorName}</strong>
                     </span>
                     <button
                       type="button"
                       onClick={() => setReplyingTo(null)}
-                      className="text-[#EA580C] hover:underline"
+                      className="text-[#087443] hover:underline"
                     >
                       Cancel
                     </button>
@@ -710,14 +710,14 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                           : 'Write a comment, match reaction, or question...'
                         : 'Sign in with Google above to comment or reply...'
                     }
-                    className="flex-1 px-3.5 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#EA580C] rounded-2xl text-xs text-[#111111] outline-none resize-none"
+                    className="flex-1 px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-2xl text-xs text-[#10251D] outline-none resize-none"
                   />
                   <button
                     type="submit"
                     disabled={submittingComment || !commentText.trim()}
-                    className="px-4 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-black rounded-2xl flex items-center gap-1.5 transition disabled:opacity-50 shrink-0"
+                    className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-2xl flex items-center gap-1.5 transition disabled:opacity-50 shrink-0"
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-3.5 h-3.5 text-[#D4A62A]" />
                     <span>{submittingComment ? 'Posting...' : 'Post'}</span>
                   </button>
                 </div>
@@ -725,7 +725,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
 
               {/* Comment Thread */}
               {topComments.length === 0 ? (
-                <div className="text-center py-6 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl text-xs text-[#6B7280]">
+                <div className="text-center py-6 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl text-xs text-[#6B7280]">
                   No comments yet. Be the first student to share your thoughts!
                 </div>
               ) : (
@@ -735,14 +735,14 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                     const canDelete = Boolean(fbUid && (fbUid === c.authorId || isCeoAdmin));
                     return (
                       <div key={c.id} className="space-y-2">
-                        <div className="p-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl space-y-1.5">
+                        <div className="p-3.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <button
                               type="button"
                               onClick={() =>
                                 onOpenAuthorProfile(c.authorId, c.authorName, c.authorAvatar)
                               }
-                              className="text-xs font-black text-[#111111] hover:text-[#EA580C] transition"
+                              className="text-xs font-black text-[#10251D] hover:text-[#087443] transition"
                             >
                               {c.authorName}
                             </button>
@@ -758,7 +758,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                                 if (!requireAuthForSocial()) return;
                                 setReplyingTo(c);
                               }}
-                              className="hover:text-[#EA580C]"
+                              className="hover:text-[#087443]"
                             >
                               Reply
                             </button>
@@ -775,7 +775,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                         </div>
 
                         {replies.length > 0 && (
-                          <div className="pl-5 sm:pl-7 space-y-2 border-l-2 border-[#FED7AA] ml-3">
+                          <div className="pl-5 sm:pl-7 space-y-2 border-l-2 border-[#D4A62A] ml-3">
                             {replies.map((rep) => {
                               const canDelRep = Boolean(
                                 fbUid && (fbUid === rep.authorId || isCeoAdmin)
@@ -795,9 +795,9 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
                                           rep.authorAvatar
                                         )
                                       }
-                                      className="text-xs font-black text-[#111111] hover:text-[#EA580C] flex items-center gap-1"
+                                      className="text-xs font-black text-[#10251D] hover:text-[#087443] flex items-center gap-1"
                                     >
-                                      <CornerDownRight className="w-3 h-3 text-[#EA580C]" />
+                                      <CornerDownRight className="w-3 h-3 text-[#087443]" />
                                       <span>{rep.authorName}</span>
                                     </button>
                                     <span className="text-[10px] text-[#6B7280]">

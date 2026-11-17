@@ -113,9 +113,9 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-4xl bg-white border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#10251D]">
         {/* Deep Navy Emergency Header */}
-        <div className="bg-[#0F1E3D] text-white p-5 flex items-center justify-between gap-3 shrink-0 border-b border-[#1E3A6E]">
+        <div className="bg-[#0F1E3D] text-white p-5 flex items-center justify-between gap-3 shrink-0 border-b border-[#18362B]">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-2xl bg-[#DC2626] text-white flex items-center justify-center shrink-0">
               <Phone className="w-5 h-5" />
@@ -194,7 +194,7 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search department, phone number, or service..."
-                className="w-full min-h-[44px] pl-9 pr-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-medium text-[#111111] outline-none"
+                className="w-full min-h-[44px] pl-9 pr-3 py-2 bg-white border border-[#CBD5E1] focus:border-[#0F1E3D] rounded-xl text-xs font-medium text-[#10251D] outline-none"
               />
             </div>
             {onReportEmergency && selectedDepartment !== 'health_centre' && selectedDepartment !== 'fire_rescue' && (
@@ -278,7 +278,7 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
                 <section key={section.id} className="space-y-3">
                   <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
                     <h3 className="text-sm font-black text-[#0F1E3D] flex items-center gap-2">
-                      <span className="text-[#0B6B3A]">{getDepartmentIcon(section.id)}</span>
+                      <span className="text-[#087443]">{getDepartmentIcon(section.id)}</span>
                       <span>{section.label}</span>
                     </h3>
                     <span className="text-[11px] font-bold text-[#64748B] tabular-nums">
@@ -305,7 +305,7 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
                                   {contact.name}
                                 </h4>
                                 {contact.verified ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] text-[#0B6B3A] text-[10px] font-black shrink-0">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] text-[#087443] text-[10px] font-black shrink-0">
                                     <CheckCircle2 className="w-3 h-3" />
                                     Verified
                                   </span>
@@ -337,7 +337,7 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
                               href={callHref}
                               className={`min-h-[44px] w-full px-4 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
                                 contact.verified
-                                  ? 'bg-[#0B6B3A] hover:bg-[#14532D] text-white'
+                                  ? 'bg-[#087443] hover:bg-[#065D36] text-white'
                                   : 'bg-[#0F1E3D] hover:bg-[#16294F] text-white'
                               }`}
                             >

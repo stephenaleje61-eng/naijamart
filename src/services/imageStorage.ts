@@ -103,7 +103,12 @@ export type StorageFolder =
   | 'services'
   | 'emergency_reports'
   | 'lost_and_found'
-  | 'ceo_verification_logos';
+  | 'ceo_verification_logos'
+  | 'food'
+  | 'books'
+  | 'deals'
+  | 'agent_kyc'
+  | 'avatars';
 export type UploadStage = 'compressing' | 'uploading' | 'retrying' | 'finalizing';
 
 export interface UploadOptions {

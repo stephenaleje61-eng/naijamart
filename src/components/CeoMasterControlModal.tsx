@@ -387,7 +387,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-6 space-y-4 text-[#111111]">
+        <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-6 space-y-4 text-[#10251D]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[#B91C1C]">
               <Lock className="w-5 h-5" />
@@ -407,7 +407,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 bg-[#111111] text-white text-xs font-bold rounded-xl"
+            className="w-full py-2.5 bg-[#10251D] text-white text-xs font-bold rounded-xl"
           >
             Close
           </button>
@@ -423,11 +423,11 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
       aria-modal="true"
       aria-label="FU MARKET CEO MASTER CONTROL"
     >
-      <div className="relative w-full max-w-7xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden max-h-[94vh] flex flex-col text-[#111111]">
+      <div className="relative w-full max-w-7xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden max-h-[94vh] flex flex-col text-[#10251D]">
         {/* Header */}
-        <div className="bg-[#111111] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#27272A] shrink-0">
+        <div className="bg-[#10251D] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#27272A] shrink-0">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-black text-[#F2B90D] tracking-tight truncate">
+            <h2 className="text-base sm:text-lg font-black text-[#D4A62A] tracking-tight truncate">
               FU MARKET CEO MASTER CONTROL
             </h2>
             <p className="text-xs text-white/75 truncate">
@@ -447,7 +447,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close CEO Master Control"
-              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#F2B90D] text-white hover:text-[#111111] flex items-center justify-center transition"
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#D4A62A] text-white hover:text-[#10251D] flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -468,8 +468,8 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap shrink-0 tabular-nums ${
                 activeTab === tab.id
-                  ? 'bg-[#0B6B3A] text-white'
-                  : 'bg-white border border-[#E5E7EB] text-[#444444] hover:text-[#111111]'
+                  ? 'bg-[#087443] text-white'
+                  : 'bg-white border border-[#E5E7EB] text-[#444444] hover:text-[#10251D]'
               }`}
             >
               {tab.label}
@@ -492,8 +492,8 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               </div>
             )}
             {statusMsg && (
-              <div className="p-3 bg-[#F0FDF4] border border-[#86EFAC] text-[#14532D] text-xs font-bold rounded-xl flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#0B6B3A] shrink-0" />
+              <div className="p-3 bg-[#F0FDF4] border border-[#86EFAC] text-[#065D36] text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0" />
                 <span>{statusMsg}</span>
               </div>
             )}
@@ -501,7 +501,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
         )}
 
         {/* Main Workspace Body */}
-        <div className="flex-1 overflow-y-auto p-5 bg-[#F5F5F5] space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 bg-[#F4F8F5] space-y-5">
           {loading ? (
             <div className="py-16 text-center text-xs font-bold text-[#555555]">
               Loading website records and protected logs...
@@ -513,7 +513,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-black text-[#111111]">ALL WEBSITE CONTENT</h3>
+                    <h3 className="text-sm font-black text-[#10251D]">ALL WEBSITE CONTENT</h3>
                     <p className="text-xs text-[#555555]">
                       Manage marketplace products, product photos, adverts, events, birthdays, sports, announcements, student posts, comments, accommodation, riders, files &amp; reports.
                     </p>
@@ -527,7 +527,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                         placeholder="Search title, owner, category, ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl outline-none"
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#087443] rounded-xl outline-none"
                       />
                     </div>
 
@@ -556,8 +556,8 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                       onClick={() => setContentFilter(opt.key)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                         contentFilter === opt.key
-                          ? 'bg-[#111111] text-[#F2B90D]'
-                          : 'bg-[#F5F5F5] text-[#444444] hover:text-[#111111]'
+                          ? 'bg-[#10251D] text-[#D4A62A]'
+                          : 'bg-[#F4F8F5] text-[#444444] hover:text-[#10251D]'
                       }`}
                     >
                       {opt.label}
@@ -573,7 +573,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                         type="checkbox"
                         checked={softDeleteMode}
                         onChange={(e) => setSoftDeleteMode(e.target.checked)}
-                        className="w-4 h-4 accent-[#0B6B3A]"
+                        className="w-4 h-4 accent-[#087443]"
                       />
                       <span>Move deleted items to Recovery Archive (Soft Delete)</span>
                     </label>
@@ -626,7 +626,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                 filteredContent.every((r) => selectedKeys.has(r.compositeKey))
                               }
                               onChange={toggleSelectAllFiltered}
-                              className="w-4 h-4 accent-[#0B6B3A]"
+                              className="w-4 h-4 accent-[#087443]"
                             />
                           </th>
                           <th className="p-3">Content &amp; Title</th>
@@ -651,7 +651,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                   checked={checked}
                                   onChange={() => toggleSelectKey(rec.compositeKey)}
                                   aria-label={`Select ${rec.title}`}
-                                  className="w-4 h-4 accent-[#0B6B3A]"
+                                  className="w-4 h-4 accent-[#087443]"
                                 />
                               </td>
                               <td className="p-3 align-top">
@@ -661,11 +661,11 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                       src={rec.imageUrl}
                                       alt=""
                                       referrerPolicy="no-referrer"
-                                      className="w-10 h-10 rounded-lg object-cover border border-[#E5E7EB] shrink-0 bg-[#F5F5F5]"
+                                      className="w-10 h-10 rounded-lg object-cover border border-[#E5E7EB] shrink-0 bg-[#F4F8F5]"
                                     />
                                   )}
                                   <div className="min-w-0">
-                                    <p className="font-bold text-[#111111] line-clamp-2">
+                                    <p className="font-bold text-[#10251D] line-clamp-2">
                                       {rec.title}
                                     </p>
                                     {rec.subtitle && (
@@ -677,7 +677,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                 </div>
                               </td>
                               <td className="p-3 align-top">
-                                <p className="font-bold text-[#111111]">{rec.ownerName}</p>
+                                <p className="font-bold text-[#10251D]">{rec.ownerName}</p>
                                 {rec.ownerContact && (
                                   <p className="text-[11px] text-[#555555] font-mono tabular-nums">
                                     {rec.ownerContact}
@@ -685,7 +685,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                 )}
                               </td>
                               <td className="p-3 align-top text-[#444444]">
-                                <span className="font-bold text-[#111111] block">
+                                <span className="font-bold text-[#10251D] block">
                                   {rec.sectionTag}
                                 </span>
                                 <span className="text-[11px] text-[#555555]">
@@ -696,7 +696,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                 {new Date(rec.createdAt).toLocaleDateString('en-NG')}
                               </td>
                               <td className="p-3 align-top">
-                                <span className="text-xs font-bold text-[#111111]">
+                                <span className="text-xs font-bold text-[#10251D]">
                                   {rec.statusLabel}
                                 </span>
                               </td>
@@ -706,7 +706,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                     type="button"
                                     onClick={() => setInspectRecord(rec)}
                                     title="Inspect Record"
-                                    className="p-1.5 rounded-lg border border-[#E5E7EB] hover:border-[#0B6B3A] text-[#333333]"
+                                    className="p-1.5 rounded-lg border border-[#E5E7EB] hover:border-[#087443] text-[#333333]"
                                   >
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
@@ -724,7 +724,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                         });
                                       }}
                                       title="Edit Content"
-                                      className="p-1.5 rounded-lg border border-[#E5E7EB] hover:border-[#0B6B3A] text-[#0B6B3A]"
+                                      className="p-1.5 rounded-lg border border-[#E5E7EB] hover:border-[#087443] text-[#087443]"
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
                                     </button>
@@ -734,14 +734,14 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                       <button
                                         type="button"
                                         onClick={() => handleApproveRejectUnified(rec, 'approve')}
-                                        className="px-2 py-1 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-[11px] font-bold rounded-lg"
+                                        className="px-2 py-1 bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-bold rounded-lg"
                                       >
                                         Approve
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handleApproveRejectUnified(rec, 'reject')}
-                                        className="px-2 py-1 bg-[#F5F5F5] border border-[#E5E7EB] hover:border-[#111111] text-[#111111] text-[11px] font-bold rounded-lg"
+                                        className="px-2 py-1 bg-[#F4F8F5] border border-[#E5E7EB] hover:border-[#10251D] text-[#10251D] text-[11px] font-bold rounded-lg"
                                       >
                                         Reject
                                       </button>
@@ -786,8 +786,8 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                         onClick={() => setAdFilter(st)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                           adFilter === st
-                            ? 'bg-[#0B6B3A] text-white'
-                            : 'bg-[#F5F5F5] text-[#444444] hover:text-[#111111]'
+                            ? 'bg-[#087443] text-white'
+                            : 'bg-[#F4F8F5] text-[#444444] hover:text-[#10251D]'
                         }`}
                       >
                         {st === 'all' ? 'All Ads' : st.replace('_', ' ')}
@@ -803,7 +803,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                     placeholder="Search business, owner, phone..."
                     value={adSearch}
                     onChange={(e) => setAdSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#0B6B3A] rounded-xl outline-none"
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#087443] rounded-xl outline-none"
                   />
                 </div>
               </div>
@@ -826,21 +826,21 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                           src={ad.imageUrl}
                           alt={ad.title}
                           referrerPolicy="no-referrer"
-                          className="w-full sm:w-44 h-28 object-cover rounded-xl border border-[#E5E7EB] shrink-0 bg-[#F5F5F5]"
+                          className="w-full sm:w-44 h-28 object-cover rounded-xl border border-[#E5E7EB] shrink-0 bg-[#F4F8F5]"
                         />
                         <div className="space-y-1.5 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="font-black text-[#0B6B3A]">{ad.businessName}</span>
+                            <span className="font-black text-[#087443]">{ad.businessName}</span>
                             <span aria-hidden="true">·</span>
-                            <span className="font-bold text-[#111111]">{ad.packageName} ({formatNaira(ad.packagePrice)})</span>
+                            <span className="font-bold text-[#10251D]">{ad.packageName} ({formatNaira(ad.packagePrice)})</span>
                             <span aria-hidden="true">·</span>
-                            <span className="font-bold uppercase text-[#111111]">
+                            <span className="font-bold uppercase text-[#10251D]">
                               Status: {ad.status}
                             </span>
                             <span aria-hidden="true">·</span>
                             <span
                               className={`font-black uppercase ${
-                                ad.paymentStatus === 'paid' ? 'text-[#0B6B3A]' : 'text-[#B91C1C]'
+                                ad.paymentStatus === 'paid' ? 'text-[#087443]' : 'text-[#B91C1C]'
                               }`}
                             >
                               Payment: {ad.paymentStatus}
@@ -848,12 +848,12 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                             {ad.isFeatured && (
                               <>
                                 <span aria-hidden="true">·</span>
-                                <span className="font-black text-[#EA580C]">Featured ★</span>
+                                <span className="font-black text-[#D4A62A]">Featured ★</span>
                               </>
                             )}
                           </div>
 
-                          <h4 className="text-sm font-black text-[#111111]">{ad.title}</h4>
+                          <h4 className="text-sm font-black text-[#10251D]">{ad.title}</h4>
                           <p className="text-xs text-[#555555] line-clamp-2">{ad.description}</p>
 
                           <div className="text-[11px] text-[#444444] flex flex-wrap gap-x-3 gap-y-1 pt-1 tabular-nums">
@@ -898,7 +898,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                               setVerifyMode(ad.paymentReference ? 'paystack_ref' : 'ceo_manual');
                               setVerifyRefInput(ad.paymentReference || '');
                             }}
-                            className="px-3 py-1.5 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-black rounded-lg transition whitespace-nowrap flex items-center gap-1"
+                            className="px-3 py-1.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-lg transition whitespace-nowrap flex items-center gap-1"
                           >
                             <FileCheck2 className="w-3.5 h-3.5" />
                             <span>Verify Payment</span>
@@ -919,7 +919,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                                 setErrorMsg(err?.message);
                               }
                             }}
-                            className="px-3 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-lg transition whitespace-nowrap flex items-center gap-1"
+                            className="px-3 py-1.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-lg transition whitespace-nowrap flex items-center gap-1"
                           >
                             <PlayCircle className="w-3.5 h-3.5" />
                             <span>{ad.status === 'paused' ? 'Reactivate' : 'Approve & Publish'}</span>
@@ -935,7 +935,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                               await loadMasterData();
                               onDataChanged?.();
                             }}
-                            className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] text-xs font-bold rounded-lg transition whitespace-nowrap flex items-center gap-1"
+                            className="px-3 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-lg transition whitespace-nowrap flex items-center gap-1"
                           >
                             <PauseCircle className="w-3.5 h-3.5" />
                             <span>Pause</span>
@@ -951,7 +951,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                               await loadMasterData();
                               onDataChanged?.();
                             }}
-                            className="px-3 py-1.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] text-xs font-bold rounded-lg transition whitespace-nowrap"
+                            className="px-3 py-1.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-lg transition whitespace-nowrap"
                           >
                             Reject
                           </button>
@@ -972,7 +972,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                             }}
                             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1 ${
                               ad.isFeatured
-                                ? 'bg-[#F2B90D] border-[#F2B90D] text-[#111111]'
+                                ? 'bg-[#D4A62A] border-[#D4A62A] text-[#10251D]'
                                 : 'bg-white border-[#E5E7EB] text-[#444444]'
                             }`}
                           >
@@ -983,7 +983,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setEditingAd({ ...ad })}
-                            className="px-2.5 py-1.5 bg-white border border-[#E5E7EB] hover:border-[#0B6B3A] rounded-lg text-xs font-bold text-[#111111]"
+                            className="px-2.5 py-1.5 bg-white border border-[#E5E7EB] hover:border-[#087443] rounded-lg text-xs font-bold text-[#10251D]"
                           >
                             Edit
                           </button>
@@ -1015,7 +1015,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
             /* TAB 3: RECOVERY ARCHIVE */
             <div className="space-y-3">
               <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4">
-                <h3 className="text-sm font-black text-[#111111]">
+                <h3 className="text-sm font-black text-[#10251D]">
                   Soft-Deleted Content &amp; Recovery Archive
                 </h3>
                 <p className="text-xs text-[#555555]">
@@ -1035,10 +1035,10 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                   >
                     <div className="space-y-1">
                       <p className="text-xs text-[#555555] tabular-nums">
-                        <strong className="text-[#111111]">{arc.contentType}</strong> · {arc.categoryLabel} · Deleted{' '}
+                        <strong className="text-[#10251D]">{arc.contentType}</strong> · {arc.categoryLabel} · Deleted{' '}
                         {new Date(arc.deletedAt).toLocaleString('en-NG')}
                       </p>
-                      <h4 className="text-sm font-black text-[#111111]">{arc.title}</h4>
+                      <h4 className="text-sm font-black text-[#10251D]">{arc.title}</h4>
                       <p className="text-xs text-[#555555]">
                         Owner: {arc.ownerName} {arc.deletionReason ? `· Reason: "${arc.deletionReason}"` : ''}
                       </p>
@@ -1056,9 +1056,9 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                           setErrorMsg(err?.message || 'Restore failed.');
                         }
                       }}
-                      className="px-4 py-2 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                      className="px-4 py-2 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
                     >
-                      <ArchiveRestore className="w-4 h-4 text-[#F2B90D]" />
+                      <ArchiveRestore className="w-4 h-4 text-[#D4A62A]" />
                       <span>Restore Content</span>
                     </button>
                   </div>
@@ -1068,9 +1068,9 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
           ) : (
             /* TAB 4: PROTECTED RECORDS & AUDIT LOGS */
             <div className="space-y-5">
-              <div className="bg-[#FFF8DB] border border-[#F2B90D] rounded-2xl p-4 flex items-start gap-3">
-                <ShieldAlert className="w-5 h-5 text-[#111111] shrink-0 mt-0.5" />
-                <div className="text-xs text-[#111111] space-y-1">
+              <div className="bg-[#FFF8DB] border border-[#D4A62A] rounded-2xl p-4 flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-[#10251D] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#10251D] space-y-1">
                   <p className="font-black">Protected System Records (Excluded from Bulk Deletion)</p>
                   <p className="tabular-nums">
                     Admin accounts ({protectedStats.adminsProtected}), Verified Payment Ledgers ({payments.length}), Deletion Audit Logs ({auditLogs.length}), and Firebase Configuration are strictly protected against bulk deletion in both backend endpoints and Firestore Security Rules.
@@ -1080,7 +1080,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
 
               {/* Payment Ledger */}
               <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
-                <h3 className="text-sm font-black text-[#111111]">
+                <h3 className="text-sm font-black text-[#10251D]">
                   Verified Advertising Payment Records (`adPayments`)
                 </h3>
                 {payments.length === 0 ? (
@@ -1105,7 +1105,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                             <td className="p-2.5 font-mono text-[11px]">{p.reference}</td>
                             <td className="p-2.5 font-bold">{p.businessName}</td>
                             <td className="p-2.5 uppercase">{p.packageId}</td>
-                            <td className="p-2.5 font-black text-[#0B6B3A]">
+                            <td className="p-2.5 font-black text-[#087443]">
                               {formatNaira(p.amountNaira)}
                             </td>
                             <td className="p-2.5">{p.provider}</td>
@@ -1123,7 +1123,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
 
               {/* Immutable Deletion & Moderation Audit Log */}
               <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
-                <h3 className="text-sm font-black text-[#111111]">
+                <h3 className="text-sm font-black text-[#10251D]">
                   Immutable CEO Audit Logs (`adminAuditLogs`)
                 </h3>
                 {auditLogs.length === 0 ? (
@@ -1144,14 +1144,14 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                       <tbody className="divide-y divide-[#E5E7EB]">
                         {auditLogs.map((l) => (
                           <tr key={l.id}>
-                            <td className="p-2.5 font-black uppercase text-[#0B6B3A]">{l.action}</td>
+                            <td className="p-2.5 font-black uppercase text-[#087443]">{l.action}</td>
                             <td className="p-2.5 font-mono text-[11px]">{l.contentType}</td>
                             <td className="p-2.5">
                               <span className="font-mono text-[11px] text-[#555555] block">
                                 {l.recordId}
                               </span>
                               {l.recordTitle && (
-                                <span className="font-bold text-[#111111]">{l.recordTitle}</span>
+                                <span className="font-bold text-[#10251D]">{l.recordTitle}</span>
                               )}
                             </td>
                             <td className="p-2.5">{l.adminEmail}</td>
@@ -1174,13 +1174,13 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
       {/* EXACT ADMIN DELETE CONFIRMATION MODAL */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-6 space-y-4 shadow-2xl text-[#111111]">
+          <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-6 space-y-4 shadow-2xl text-[#10251D]">
             <h3 className="text-base font-black text-[#B91C1C]">
               {DELETE_CONFIRMATION_MESSAGE}
             </h3>
 
             {deleteConfirm.mode === 'bulk' ? (
-              <p className="text-xs font-bold text-[#111111] tabular-nums">
+              <p className="text-xs font-bold text-[#10251D] tabular-nums">
                 Selected records for deletion: {deleteConfirm.items.length}
               </p>
             ) : (
@@ -1205,7 +1205,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                   setDeleteConfirm((prev) => (prev ? { ...prev, reason: e.target.value } : null))
                 }
                 placeholder="e.g. Duplicate post, expired advert, spam, policy violation"
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
 
@@ -1220,7 +1220,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                       prev ? { ...prev, useSoft: e.target.checked } : null
                     )
                   }
-                  className="w-4 h-4 accent-[#0B6B3A]"
+                  className="w-4 h-4 accent-[#087443]"
                 />
                 <span>Soft-delete to Recovery Archive (can be restored later)</span>
               </label>
@@ -1231,7 +1231,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                 type="button"
                 disabled={deletingNow}
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] text-xs font-bold rounded-xl"
+                className="px-4 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl"
               >
                 Cancel
               </button>
@@ -1251,7 +1251,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
       {/* INSPECT RECORD MODAL */}
       {inspectRecord && (
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto text-[#111111]">
+          <div className="w-full max-w-lg bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto text-[#10251D]">
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
               <h3 className="text-sm font-black">
                 Inspect · {inspectRecord.sectionTag}
@@ -1265,7 +1265,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                 src={inspectRecord.imageUrl}
                 alt={inspectRecord.title}
                 referrerPolicy="no-referrer"
-                className="w-full max-h-60 object-contain rounded-xl bg-[#F5F5F5] border border-[#E5E7EB]"
+                className="w-full max-h-60 object-contain rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]"
               />
             )}
             <pre className="p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[11px] font-mono overflow-x-auto whitespace-pre-wrap">
@@ -1280,7 +1280,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
           <form
             onSubmit={handleSaveInlineEdit}
-            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3.5 text-[#111111]"
+            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3.5 text-[#10251D]"
           >
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
               <h3 className="text-sm font-black">Edit {editRecordTarget.sectionTag}</h3>
@@ -1295,7 +1295,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                 type="text"
                 value={editDraft.title}
                 onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
 
@@ -1305,7 +1305,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                 rows={3}
                 value={editDraft.description}
                 onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
-                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
 
@@ -1316,7 +1316,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                   type="number"
                   value={editDraft.price}
                   onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
                 />
               </div>
               <div>
@@ -1325,7 +1325,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                   type="text"
                   value={editDraft.location}
                   onChange={(e) => setEditDraft((d) => ({ ...d, location: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
                 />
               </div>
             </div>
@@ -1340,7 +1340,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-black bg-[#0B6B3A] text-white rounded-xl"
+                className="px-4 py-2 text-xs font-black bg-[#087443] text-white rounded-xl"
               >
                 Save Changes
               </button>
@@ -1354,7 +1354,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
           <form
             onSubmit={handleVerifyPayment}
-            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 text-[#111111]"
+            className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4 text-[#10251D]"
           >
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
               <h3 className="text-sm font-black">
@@ -1403,7 +1403,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                 placeholder={
                   verifyMode === 'paystack_ref' ? 'FUMKT_AD_...' : 'Bank receipt or WhatsApp confirmation'
                 }
-                className="w-full px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-xl outline-none focus:border-[#0B6B3A]"
+                className="w-full px-3 py-2 text-xs font-mono border border-[#E5E7EB] rounded-xl outline-none focus:border-[#087443]"
               />
             </div>
 
@@ -1417,7 +1417,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-black bg-[#0B6B3A] text-white rounded-xl"
+                className="px-4 py-2 text-xs font-black bg-[#087443] text-white rounded-xl"
               >
                 Mark Payment Verified
               </button>
@@ -1431,7 +1431,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleSaveAdEdits}
-            className="w-full max-w-lg bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3.5 text-[#111111]"
+            className="w-full max-w-lg bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3.5 text-[#10251D]"
           >
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
               <h3 className="text-sm font-black">Edit Advertisement</h3>
@@ -1551,7 +1551,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-black bg-[#0B6B3A] text-white rounded-xl"
+                className="px-4 py-2 text-xs font-black bg-[#087443] text-white rounded-xl"
               >
                 Save Advertisement
               </button>

@@ -16,7 +16,7 @@ export const CEO_EMAIL = 'stephenaleje61@gmail.com';
 export const CEO_DISPLAY_PHONE = '08167258121';
 export const CEO_WHATSAPP_INTL = '2348167258121';
 export const CEO_WHATSAPP_MESSAGE =
-  'Hello FU MARKET CEO, I want to advertise my birthday or event on FU MARKET. Please give me more information.';
+  'Hello NIGERIA CAMPUS MARKET CEO, I want to advertise my birthday or campus event on NIGERIA CAMPUS MARKET. Please give me more information.';
 
 export function getCeoWhatsAppUrl(eventTitle?: string): string {
   const message = eventTitle
@@ -318,7 +318,7 @@ export async function getAllEventsForCeoFromFirestore(): Promise<CampusEvent[]> 
 function assertValidCeoAndEventPayload(payload: Partial<CampusEvent>): void {
   if (!isFirebaseCeoVerified()) {
     throw new Error(
-      `Unauthorized: Only the verified FU MARKET CEO (${CEO_EMAIL}) can publish or modify announcements.`
+      `Unauthorized: Only the verified NIGERIA CAMPUS MARKET CEO (${CEO_EMAIL}) can publish or modify announcements.`
     );
   }
   if (!payload.celebrantName?.trim()) {
@@ -408,7 +408,7 @@ export async function updateEventInFirestore(
 ): Promise<CampusEvent> {
   if (!isFirebaseCeoVerified()) {
     throw new Error(
-      `Unauthorized: Only the verified FU MARKET CEO (${CEO_EMAIL}) can edit announcements.`
+      `Unauthorized: Only the verified NIGERIA CAMPUS MARKET CEO (${CEO_EMAIL}) can edit announcements.`
     );
   }
 
@@ -474,7 +474,7 @@ export async function updateEventInFirestore(
 export async function deleteEventFromFirestore(eventId: string): Promise<void> {
   if (!isFirebaseCeoVerified()) {
     throw new Error(
-      `Unauthorized: Only the verified FU MARKET CEO (${CEO_EMAIL}) can delete announcements.`
+      `Unauthorized: Only the verified NIGERIA CAMPUS MARKET CEO (${CEO_EMAIL}) can delete announcements.`
     );
   }
   try {

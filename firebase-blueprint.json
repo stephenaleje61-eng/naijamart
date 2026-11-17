@@ -20,6 +20,8 @@
         "imageUrl": { "type": "string", "description": "Primary product image URL" },
         "state": { "type": "string", "description": "Nigerian state location" },
         "city": { "type": "string", "description": "City or campus location" },
+        "institutionId": { "type": "string", "description": "Institution ID (defaults to fuwukari)" },
+        "campus": { "type": "string", "description": "Institution campus name" },
         "quantity": { "type": "number", "description": "Available stock quantity" },
         "status": { "type": "string", "enum": ["active", "sold", "unavailable", "expired"], "description": "Listing status" },
         "moderationStatus": { "type": "string", "enum": ["approved", "pending_review", "rejected"], "description": "Moderation status" },
@@ -189,6 +191,9 @@
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "categoryType": { "type": "string", "enum": ["sport_update"] },
         "sportCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "matchStatus": { "type": "string", "enum": ["upcoming", "live", "completed", "announcement", "other_sport"] },
+        "institutionId": { "type": "string", "maxLength": 128 },
+        "campus": { "type": "string", "maxLength": 120 },
         "title": { "type": "string", "minLength": 1, "maxLength": 180 },
         "teamOrPlayer": { "type": "string", "maxLength": 160 },
         "competitionName": { "type": "string", "maxLength": 140 },
@@ -223,6 +228,8 @@
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "categoryType": { "type": "string", "enum": ["general_announcement"] },
         "announcementCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "institutionId": { "type": "string", "maxLength": 128 },
+        "campus": { "type": "string", "maxLength": 120 },
         "title": { "type": "string", "minLength": 1, "maxLength": 180 },
         "eventDate": { "type": "string", "maxLength": 32 },
         "eventTime": { "type": "string", "maxLength": 60 },
@@ -298,6 +305,11 @@
         "imageUrl": { "type": "string", "minLength": 1, "maxLength": 900000 },
         "logoUrl": { "type": "string", "maxLength": 900000 },
         "location": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "institutionId": { "type": "string", "maxLength": 128 },
+        "campus": { "type": "string", "maxLength": 120 },
+        "placement": { "type": "string", "enum": ["ads_section", "homepage_hero", "category_feed", "institution_spotlight"] },
+        "visibilityScope": { "type": "string", "enum": ["all_institutions", "specific_institution"] },
+        "createdByCeoEmail": { "type": "string", "maxLength": 160 },
         "packageId": { "type": "string", "enum": ["basic", "premium", "featured"] },
         "packageName": { "type": "string", "maxLength": 80 },
         "packagePrice": { "type": "number" },
@@ -414,6 +426,8 @@
         "priceMax": { "type": "number" },
         "priceDisplay": { "type": "string", "maxLength": 80 },
         "location": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "institutionId": { "type": "string", "maxLength": 128 },
+        "campus": { "type": "string", "maxLength": 120 },
         "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
         "whatsapp": { "type": "string", "minLength": 5, "maxLength": 40 },
         "images": { "type": "array" },
@@ -624,7 +638,7 @@
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128 },
         "action": { "type": "string", "enum": ["VERIFIED", "UNVERIFIED", "LOGO_UPDATED", "LOGO_REMOVED"] },
-        "targetType": { "type": "string", "enum": ["user", "seller", "advertisement", "service", "verification_logo"] },
+        "targetType": { "type": "string", "enum": ["user", "seller", "advertisement", "service", "house_agent", "verification_logo"] },
         "targetId": { "type": "string", "maxLength": 128 },
         "targetName": { "type": "string", "maxLength": 180 },
         "ceoEmail": { "type": "string", "maxLength": 160 },
@@ -663,6 +677,516 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "sessionTimeoutMinutes", "updatedAt"]
+    },
+    "Institution": {
+      "title": "Institution",
+      "description": "Nigerian University, Polytechnic, or College of Education in the FU MARKET national directory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "shortName": { "type": "string" },
+        "type": { "type": "string" },
+        "state": { "type": "string" },
+        "location": { "type": "string" },
+        "campuses": { "type": "array" },
+        "campus": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["id", "name", "shortName", "type", "state", "status"]
+    },
+    "InstitutionUserProfile": {
+      "title": "InstitutionUserProfile",
+      "description": "User campus membership, account role, department, and contact preference",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "campus": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "accountType": { "type": "string", "enum": ["student", "seller", "house_agent", "landlord", "business_owner", "student_association", "sports_organizer"] },
+        "department": { "type": "string" },
+        "preferredContactMethod": { "type": "string", "enum": ["whatsapp", "phone", "both"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "institutionId", "name", "accountType"]
+    },
+    "AccommodationProperty": {
+      "title": "AccommodationProperty",
+      "description": "Student accommodation, hostel, lodge, or roommate listing scoped by institution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string", "enum": ["rent", "roommate"] },
+        "title": { "type": "string" },
+        "location": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "campus": { "type": "string" },
+        "distanceToCampus": { "type": "string" },
+        "price": { "type": "number" },
+        "pricePer": { "type": "string", "enum": ["year", "semester", "month"] },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "images": { "type": "array" },
+        "description": { "type": "string" },
+        "type": { "type": "string" },
+        "isAvailable": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "category", "title", "location", "institutionId", "price", "phone", "type", "userId"]
+    },
+    "HouseAgentProfile": {
+      "title": "HouseAgentProfile",
+      "description": "Campus house agent or landlord directory profile with CEO-only verification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "agentName": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "campus": { "type": "string" },
+        "areaCovered": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "bio": { "type": "string" },
+        "roleType": { "type": "string", "enum": ["house_agent", "landlord"] },
+        "isVerified": { "type": "boolean" },
+        "ceoVerified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "agentName", "institutionId", "campus", "areaCovered", "phone", "whatsapp"]
+    },
+    "ProductReview": {
+      "title": "ProductReview",
+      "description": "Verified student buyer product rating and review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "productId", "reviewerId", "rating", "comment"]
+    },
+    "SellerFollower": {
+      "title": "SellerFollower",
+      "description": "Student following relationship for a campus storefront",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "followerUid": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "followerUid", "sellerId"]
+    },
+    "InspectionRequest": {
+      "title": "InspectionRequest",
+      "description": "Scheduled accommodation property inspection request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "propertyTitle": { "type": "string" },
+        "studentUid": { "type": "string" },
+        "agentUserId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] }
+      },
+      "required": ["id", "propertyId", "propertyTitle", "studentUid", "agentUserId", "status"]
+    },
+    "AgentVerificationRequest": {
+      "title": "AgentVerificationRequest",
+      "description": "House agent KYC verification submission",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "agentName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["id", "agentId", "userId", "agentName", "status"]
+    },
+    "FoodVendor": {
+      "title": "FoodVendor",
+      "description": "Campus restaurant, cafeteria, or student kitchen vendor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "ceoVerified": { "type": "boolean" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "ownerUid", "vendorName", "institutionId"]
+    },
+    "FoodMenuItem": {
+      "title": "FoodMenuItem",
+      "description": "Campus food vendor menu dish",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "vendorId": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "name": { "type": "string" },
+        "priceNaira": { "type": "number" }
+      },
+      "required": ["id", "vendorId", "ownerUid", "name", "priceNaira"]
+    },
+    "FoodOrder": {
+      "title": "FoodOrder",
+      "description": "Campus food order with delivery/pickup tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "buyerUid": { "type": "string" },
+        "vendorId": { "type": "string" },
+        "vendorOwnerUid": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "buyerUid", "vendorId", "vendorOwnerUid", "items", "totalAmount", "status"]
+    },
+    "DeliveryPartner": {
+      "title": "DeliveryPartner",
+      "description": "Campus delivery rider profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userUid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "userUid", "fullName", "phone"]
+    },
+    "CampusJob": {
+      "title": "CampusJob",
+      "description": "Part-time job, internship, SIWES, or freelance opportunity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "posterUid": { "type": "string" },
+        "title": { "type": "string" },
+        "companyOrOrg": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "posterUid", "title", "companyOrOrg", "status"]
+    },
+    "CampusBook": {
+      "title": "CampusBook",
+      "description": "Past questions, lecture notes, textbooks, and study resources",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uploaderUid": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "uploaderUid", "title", "status"]
+    },
+    "StudentDeal": {
+      "title": "StudentDeal",
+      "description": "Student discount offer and campus flash deal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "creatorUid": { "type": "string" },
+        "title": { "type": "string" },
+        "businessName": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "creatorUid", "title", "businessName", "status"]
+    },
+    "StudentGiveaway": {
+      "title": "StudentGiveaway",
+      "description": "Verified campus promotional giveaway",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "hostUid": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "hostUid", "title", "status"]
+    },
+    "ReferralRecord": {
+      "title": "ReferralRecord",
+      "description": "Anti-abuse validated student referral record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "referrerUid": { "type": "string" },
+        "referredUid": { "type": "string" },
+        "referralCode": { "type": "string" }
+      },
+      "required": ["id", "referrerUid", "referredUid", "referralCode"]
+    },
+    "AmbassadorApplication": {
+      "title": "AmbassadorApplication",
+      "description": "Campus ambassador program application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userUid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "userUid", "fullName", "institutionId", "status"]
+    },
+    "GpaRecord": {
+      "title": "GpaRecord",
+      "description": "Private student saved semester GPA & CGPA estimate record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "semesters": { "type": "array" }
+      },
+      "required": ["id", "userId"]
+    },
+    "InstitutionGradingSystem": {
+      "title": "InstitutionGradingSystem",
+      "description": "CEO-configurable university GPA grading scale",
+      "type": "object",
+      "properties": {
+        "institutionId": { "type": "string" },
+        "scaleMax": { "type": "number" },
+        "grades": { "type": "array" }
+      },
+      "required": ["institutionId", "scaleMax", "grades"]
+    },
+    "NewsletterSubscriber": {
+      "title": "NewsletterSubscriber",
+      "description": "Email newsletter subscriber for NIGERIA UNIVERSITY HUB updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 5, "maxLength": 160 },
+        "source": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
+    "StudentPost": {
+      "title": "StudentPost",
+      "description": "Campus & national student social feed post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "authorId", "authorName", "institutionId", "content", "status", "createdAt"]
+    },
+    "StudentPostComment": {
+      "title": "StudentPostComment",
+      "description": "Comment or nested reply on a student social feed post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "postId", "authorId", "authorName", "text", "createdAt"]
+    },
+    "StudentPostLike": {
+      "title": "StudentPostLike",
+      "description": "Student post like record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "postId", "userId", "createdAt"]
+    },
+    "StudentPostReport": {
+      "title": "StudentPostReport",
+      "description": "Abuse or inappropriate content report for a student post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "postId", "reporterId", "reason", "status"]
+    },
+    "FollowedDiscussion": {
+      "title": "FollowedDiscussion",
+      "description": "Followed student social discussion link",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "postId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "postId", "createdAt"]
+    },
+    "UniversityCommunityMembership": {
+      "title": "UniversityCommunityMembership",
+      "description": "Student membership in a Nigerian university or polytechnic community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "joinedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "institutionId", "joinedAt"]
+    },
+    "StudentVerificationRequest": {
+      "title": "StudentVerificationRequest",
+      "description": "Genuine student identity or seller verification submission",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "verificationMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "institutionId", "verificationMethod", "status", "createdAt"]
+    },
+    "ScamReport": {
+      "title": "ScamReport",
+      "description": "Anti-scam complaint and investigation record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "targetType", "targetId", "reporterId", "reason", "status", "createdAt"]
+    },
+    "FlaggedIdentifier": {
+      "title": "FlaggedIdentifier",
+      "description": "Suspicious phone number or bank account flagged for verification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "identifierType": { "type": "string" },
+        "normalizedValue": { "type": "string" },
+        "reportCount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "identifierType", "normalizedValue", "reportCount", "status"]
+    },
+    "AccountAppeal": {
+      "title": "AccountAppeal",
+      "description": "Account suspension or fraud-flag appeal submitted for CEO review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "explanation": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "explanation", "status", "createdAt"]
+    },
+    "NationalCampusAnnouncement": {
+      "title": "NationalCampusAnnouncement",
+      "description": "Targeted national, state, polytechnic, or university-wide announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "audienceScope": { "type": "string" },
+        "authorId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "body", "audienceScope", "authorId", "status", "createdAt"]
+    },
+    "AppNotificationRecord": {
+      "title": "AppNotificationRecord",
+      "description": "In-app user notification alert",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "title", "body", "read", "createdAt"]
+    },
+    "NotificationPreferenceRecord": {
+      "title": "NotificationPreferenceRecord",
+      "description": "User notification delivery preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId"]
+    },
+    "BlockedUserRecord": {
+      "title": "BlockedUserRecord",
+      "description": "User-level chat and social block relationship",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "blockerId": { "type": "string" },
+        "blockedUserId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "blockerId", "blockedUserId", "createdAt"]
+    },
+    "ConversationReportRecord": {
+      "title": "ConversationReportRecord",
+      "description": "Private chat abuse or scam conversation report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reportedUserId": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "chatId", "reporterId", "reportedUserId", "reason", "status"]
     }
   },
   "firestore": {
@@ -789,6 +1313,150 @@
     "/ceo_settings/{settingId}": {
       "schema": "CeoSettings",
       "description": "CEO dashboard security settings"
+    },
+    "/institutions/{institutionId}": {
+      "schema": "Institution",
+      "description": "National directory of Nigerian universities, polytechnics, and colleges"
+    },
+    "/institutionUsers/{profileId}": {
+      "schema": "InstitutionUserProfile",
+      "description": "Campus membership and extended profile information"
+    },
+    "/accommodation/{propId}": {
+      "schema": "AccommodationProperty",
+      "description": "Institution-scoped student accommodation and roommate listings"
+    },
+    "/houseAgents/{agentId}": {
+      "schema": "HouseAgentProfile",
+      "description": "Registered house agents and landlords directory"
+    },
+    "/productReviews/{reviewId}": {
+      "schema": "ProductReview",
+      "description": "Student buyer product reviews"
+    },
+    "/sellerFollowers/{followId}": {
+      "schema": "SellerFollower",
+      "description": "Campus storefront follower connections"
+    },
+    "/inspectionRequests/{reqId}": {
+      "schema": "InspectionRequest",
+      "description": "Accommodation property inspection bookings"
+    },
+    "/agentVerificationRequests/{reqId}": {
+      "schema": "AgentVerificationRequest",
+      "description": "House agent KYC review submissions"
+    },
+    "/foodVendors/{vendorId}": {
+      "schema": "FoodVendor",
+      "description": "Campus food vendor profiles"
+    },
+    "/foodMenuItems/{itemId}": {
+      "schema": "FoodMenuItem",
+      "description": "Campus food menu dishes"
+    },
+    "/foodOrders/{orderId}": {
+      "schema": "FoodOrder",
+      "description": "Campus food orders and delivery tracking"
+    },
+    "/deliveryPartners/{partnerId}": {
+      "schema": "DeliveryPartner",
+      "description": "Campus food and parcel delivery partners"
+    },
+    "/campusJobs/{jobId}": {
+      "schema": "CampusJob",
+      "description": "Student part-time jobs, internships, and gigs"
+    },
+    "/campusBooks/{bookId}": {
+      "schema": "CampusBook",
+      "description": "Academic past questions, books, and notes"
+    },
+    "/studentDeals/{dealId}": {
+      "schema": "StudentDeal",
+      "description": "Student flash deals and discount codes"
+    },
+    "/studentGiveaways/{giveawayId}": {
+      "schema": "StudentGiveaway",
+      "description": "Verified campus giveaways"
+    },
+    "/referrals/{referralId}": {
+      "schema": "ReferralRecord",
+      "description": "Validated student referral rewards"
+    },
+    "/ambassadorApplications/{appId}": {
+      "schema": "AmbassadorApplication",
+      "description": "Campus ambassador applications"
+    },
+    "/gpaRecords/{userId}": {
+      "schema": "GpaRecord",
+      "description": "Private student GPA & CGPA records"
+    },
+    "/institutionGradingSystems/{instId}": {
+      "schema": "InstitutionGradingSystem",
+      "description": "Institution GPA grading configurations"
+    },
+    "/newsletterSubscribers/{subscriberId}": {
+      "schema": "NewsletterSubscriber",
+      "description": "Email newsletter subscribers for platform and campus updates"
+    },
+    "/studentPosts/{postId}": {
+      "schema": "StudentPost",
+      "description": "Student campus & cross-university social feed posts"
+    },
+    "/studentPostComments/{commentId}": {
+      "schema": "StudentPostComment",
+      "description": "Comments and replies on student social feed posts"
+    },
+    "/studentPostLikes/{likeId}": {
+      "schema": "StudentPostLike",
+      "description": "Likes on student social feed posts"
+    },
+    "/studentPostReports/{reportId}": {
+      "schema": "StudentPostReport",
+      "description": "Reports of inappropriate student social feed content"
+    },
+    "/followedDiscussions/{followId}": {
+      "schema": "FollowedDiscussion",
+      "description": "Student discussion follow subscriptions"
+    },
+    "/communityMemberships/{membershipId}": {
+      "schema": "UniversityCommunityMembership",
+      "description": "Student university and polytechnic community memberships"
+    },
+    "/studentVerifications/{requestId}": {
+      "schema": "StudentVerificationRequest",
+      "description": "Student identity and verification requests reviewed by CEO/Moderators"
+    },
+    "/scamReports/{reportId}": {
+      "schema": "ScamReport",
+      "description": "Anti-scam protection reports and fraud investigation records"
+    },
+    "/flaggedIdentifiers/{identifierId}": {
+      "schema": "FlaggedIdentifier",
+      "description": "Suspicious phone numbers and bank accounts registry"
+    },
+    "/accountAppeals/{appealId}": {
+      "schema": "AccountAppeal",
+      "description": "Appeals for suspended or flagged accounts"
+    },
+    "/nationalAnnouncements/{announcementId}": {
+      "schema": "NationalCampusAnnouncement",
+      "description": "Targeted nationwide, state, polytechnic, or university announcements"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "AppNotificationRecord",
+      "description": "Real-time user notifications"
+    },
+    "/notificationPreferences/{userId}": {
+      "schema": "NotificationPreferenceRecord",
+      "description": "Per-user notification preference settings"
+    },
+    "/blockedUsers/{blockId}": {
+      "schema": "BlockedUserRecord",
+      "description": "User-to-user messaging block records"
+    },
+    "/conversationReports/{reportId}": {
+      "schema": "ConversationReportRecord",
+      "description": "Reported private conversations for CEO/Moderator review"
     }
   }
 }

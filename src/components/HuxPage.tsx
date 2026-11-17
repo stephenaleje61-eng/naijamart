@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -14,31 +14,62 @@ import {
   Upload,
   ArrowLeft,
   Building,
+  Building2,
   CheckCircle2,
   AlertTriangle,
   Loader2,
   Trash2,
   Edit3,
   RefreshCw,
-  Tag
+  Tag,
+  UserCheck
 } from 'lucide-react';
 import { UploadTask } from 'firebase/storage';
-import { HuxListing, HuxCategory, HuxType, RegisteredUser } from '../types.js';
 import {
-  subscribeToHuxListings,
-  createHuxListing,
-  updateHuxListing,
-  deleteHuxListing,
-  reportHuxListing
-} from '../services/firebase.js';
+  AccommodationInspectionRequest,
+  AccommodationProperty,
+  HouseAgentProfile,
+  HouseAgentVerificationRequest,
+  HuxCategory,
+  HuxType,
+  Institution,
+  RegisteredUser
+} from '../types.js';
+import { reportHuxListing } from '../services/firebase.js';
+import {
+  createAccommodationProperty,
+  deleteAccommodationProperty,
+  subscribeToHouseAgents,
+  subscribeToInstitutionAccommodation,
+  updateAccommodationAvailability,
+  upsertHouseAgentProfile
+} from '../services/institutions.js';
+import {
+  submitAgentVerificationRequest,
+  submitInspectionRequest,
+  subscribeToAgentInspectionRequests,
+  subscribeToStudentInspectionRequests,
+  updateInspectionRequestStatus
+} from '../services/campusEcosystem.js';
+import {
+  DEFAULT_INSTITUTION_CAMPUS,
+  DEFAULT_INSTITUTION_ID,
+  VERIFIED_NIGERIAN_INSTITUTIONS,
+  getInstitutionById
+} from '../constants/institutions.js';
 import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
 import { isValidImageFormat } from '../utils/imagePersistence.js';
 import { getLocalStudentSession } from '../utils/studentAuth.js';
 import { StudentLoginModal } from './StudentLoginModal.js';
 import { useAuth } from '../context/AuthContext.js';
 import { formatNaira } from './ProductCard.js';
+import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 
 interface HuxPageProps {
+  selectedInstitutionId?: string;
+  selectedCampus?: string;
+  institutions?: Institution[];
+  onSwitchInstitution?: () => void;
   onBackToHome: () => void;
   onStartDirectChat: (target: { id: string; name: string; matricNumber?: string }) => void;
 }
@@ -62,6 +93,9 @@ export const HOUSING_TYPES: HuxType[] = [
   '1-Bedroom',
   '2-Bedroom',
   'Student lodge',
+  'Hostel',
+  'Off-campus accommodation',
+  'Shop & business space',
   'Shared room',
   'Flat',
   'Other'
@@ -93,6 +127,10 @@ interface HuxPhotoSlot {
 }
 
 export const HuxPage: React.FC<HuxPageProps> = ({
+  selectedInstitutionId = DEFAULT_INSTITUTION_ID,
+  selectedCampus = DEFAULT_INSTITUTION_CAMPUS,
+  institutions = VERIFIED_NIGERIAN_INSTITUTIONS,
+  onSwitchInstitution,
   onBackToHome,
   onStartDirectChat
 }) => {
@@ -100,9 +138,25 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   const [student, setStudent] = useState<RegisteredUser | null>(() => getLocalStudentSession());
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const [activeCategory, setActiveCategory] = useState<HuxCategory>('rent');
-  const [listings, setListings] = useState<HuxListing[]>([]);
+  const [activeTab, setActiveTab] = useState<'rent' | 'roommate' | 'agents' | 'inspections'>('rent');
+  const [studentInspections, setStudentInspections] = useState<AccommodationInspectionRequest[]>([]);
+  const [agentInspections, setAgentInspections] = useState<AccommodationInspectionRequest[]>([]);
+  const [bookingHux, setBookingHux] = useState<AccommodationProperty | null>(null);
+  const [inspDate, setInspDate] = useState('');
+  const [inspTime, setInspTime] = useState('10:00 AM');
+  const [inspPhone, setInspPhone] = useState('');
+  const [inspNotes, setInspNotes] = useState('');
+  const [inspSubmitting, setInspSubmitting] = useState(false);
+
+  const [verifIdType, setVerifIdType] = useState<HouseAgentVerificationRequest['idType']>('National ID (NIN)');
+  const [verifIdMasked, setVerifIdMasked] = useState('');
+  const [verifDocUrl, setVerifDocUrl] = useState('');
+  const [verifUploading, setVerifUploading] = useState(false);
+
+  const [listings, setListings] = useState<AccommodationProperty[]>([]);
+  const [houseAgents, setHouseAgents] = useState<HouseAgentProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAgents, setLoadingAgents] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -119,11 +173,17 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Post Property Modal State
   const [showPostModal, setShowPostModal] = useState(false);
-  const [editingHux, setEditingHux] = useState<HuxListing | null>(null);
+  const [editingHux, setEditingHux] = useState<AccommodationProperty | null>(null);
   const [formCategory, setFormCategory] = useState<HuxCategory>('rent');
+  const [formInstitutionId, setFormInstitutionId] = useState<string>(
+    selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId
+  );
+  const [formCampus, setFormCampus] = useState<string>(selectedCampus || DEFAULT_INSTITUTION_CAMPUS);
   const [formTitle, setFormTitle] = useState('');
   const [formLocation, setFormLocation] = useState(WUKARI_HOUSING_LOCATIONS[0]);
+  const [formDistanceToCampus, setFormDistanceToCampus] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formPricePer, setFormPricePer] = useState<'year' | 'semester' | 'month'>('year');
   const [formPhone, setFormPhone] = useState('');
@@ -136,31 +196,56 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   const [formIsAgent, setFormIsAgent] = useState(true);
   const [formAgentName, setFormAgentName] = useState('');
 
+  // Agent Registration Modal State
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [agentFormName, setAgentFormName] = useState('');
+  const [agentFormAgency, setAgentFormAgency] = useState('');
+  const [agentFormRole, setAgentFormRole] = useState<'house_agent' | 'landlord'>('house_agent');
+  const [agentFormInstId, setAgentFormInstId] = useState<string>(
+    selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId
+  );
+  const [agentFormCampus, setAgentFormCampus] = useState<string>(
+    selectedCampus || DEFAULT_INSTITUTION_CAMPUS
+  );
+  const [agentFormArea, setAgentFormArea] = useState('');
+  const [agentFormPhone, setAgentFormPhone] = useState('');
+  const [agentFormWhatsapp, setAgentFormWhatsapp] = useState('');
+  const [agentFormBio, setAgentFormBio] = useState('');
+  const [agentSubmitting, setAgentSubmitting] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
+
   const [photoSlots, setPhotoSlots] = useState<HuxPhotoSlot[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [reportingHux, setReportingHux] = useState<HuxListing | null>(null);
+  const [reportingHux, setReportingHux] = useState<AccommodationProperty | null>(null);
   const [reportReason, setReportReason] = useState('Suspected fake lodge or agent scam');
   const [reportDetails, setReportDetails] = useState('');
   const [reportError, setReportError] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
-  const [detailHux, setDetailHux] = useState<HuxListing | null>(null);
+  const [detailHux, setDetailHux] = useState<AccommodationProperty | null>(null);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
+  const activeInst = useMemo(
+    () => getInstitutionById(selectedInstitutionId, institutions),
+    [selectedInstitutionId, institutions]
+  );
+
   useEffect(() => {
-    document.title = 'Wukari Agent — Campus Housing | FU MARKET';
-  }, []);
+    document.title = `${
+      selectedInstitutionId === 'all' ? 'Campus Housing & Agents' : activeInst.shortName + ' Housing & Agents'
+    } | FU MARKET`;
+  }, [activeInst.shortName, selectedInstitutionId]);
 
   useEffect(() => {
     if (authUser && (!student || student.id !== authUser.id)) {
       setStudent({
         id: authUser.id,
         name: authUser.name,
-        matricNumber: student?.matricNumber || 'FUW-STUDENT',
+        matricNumber: student?.matricNumber || 'CAMPUS-USER',
         phone: authUser.phone || authUser.whatsappNumber || '',
         whatsappNumber: authUser.whatsappNumber || authUser.phone || '',
         isOnline: true,
@@ -170,13 +255,27 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   }, [authUser]);
 
   useEffect(() => {
+    if (activeTab === 'agents' || activeTab === 'inspections') return;
     setLoading(true);
-    const unsub = subscribeToHuxListings(activeCategory, (items) => {
-      setListings(items);
-      setLoading(false);
+    const unsub = subscribeToInstitutionAccommodation(
+      selectedInstitutionId,
+      activeTab,
+      (items) => {
+        setListings(items);
+        setLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [selectedInstitutionId, activeTab]);
+
+  useEffect(() => {
+    setLoadingAgents(true);
+    const unsub = subscribeToHouseAgents(selectedInstitutionId, (agents) => {
+      setHouseAgents(agents);
+      setLoadingAgents(false);
     });
     return () => unsub();
-  }, [activeCategory]);
+  }, [selectedInstitutionId]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -202,10 +301,20 @@ export const HuxPage: React.FC<HuxPageProps> = ({
         } catch {}
       }
     });
+    const effInstId =
+      selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId;
+    const effInst = getInstitutionById(effInstId, institutions);
     setEditingHux(null);
-    setFormCategory(activeCategory);
+    setFormCategory(activeTab === 'roommate' ? 'roommate' : 'rent');
+    setFormInstitutionId(effInst.id);
+    setFormCampus(selectedCampus || effInst.campus);
     setFormTitle('');
-    setFormLocation(WUKARI_HOUSING_LOCATIONS[0]);
+    setFormLocation(
+      effInst.id === DEFAULT_INSTITUTION_ID
+        ? WUKARI_HOUSING_LOCATIONS[0]
+        : `${effInst.location} (${effInst.campus})`
+    );
+    setFormDistanceToCampus('');
     setFormPrice('');
     setFormPricePer('year');
     setFormPhone(student?.phone || student?.whatsappNumber || '');
@@ -230,12 +339,37 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     setShowPostModal(true);
   };
 
-  const openEditModal = (hux: HuxListing, e?: React.MouseEvent) => {
+  const openAgentRegistration = () => {
+    if (!student) {
+      setShowLoginModal(true);
+      return;
+    }
+    const effInstId =
+      selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId;
+    const effInst = getInstitutionById(effInstId, institutions);
+    setAgentFormName(student.name || '');
+    setAgentFormAgency('');
+    setAgentFormRole('house_agent');
+    setAgentFormInstId(effInst.id);
+    setAgentFormCampus(selectedCampus || effInst.campus);
+    setAgentFormArea(effInst.location || '');
+    setAgentFormPhone(student.phone || student.whatsappNumber || '');
+    setAgentFormWhatsapp(student.whatsappNumber || student.phone || '');
+    setAgentFormBio('');
+    setAgentError(null);
+    setShowAgentModal(true);
+  };
+
+  const openEditModal = (hux: AccommodationProperty, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    const effInst = getInstitutionById(hux.institutionId, institutions);
     setEditingHux(hux);
     setFormCategory(hux.category);
+    setFormInstitutionId(effInst.id);
+    setFormCampus(hux.campus || effInst.campus);
     setFormTitle(hux.title);
     setFormLocation(hux.location);
+    setFormDistanceToCampus(hux.distanceToCampus || '');
     setFormPrice(String(hux.price));
     setFormPricePer(hux.pricePer);
     setFormPhone(hux.phone);
@@ -263,7 +397,9 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   const uploadSinglePhotoSlot = async (slotId: string, file: File) => {
     if (!student) return;
     setPhotoSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, status: 'uploading', progress: 10, errorMessage: undefined } : s))
+      prev.map((s) =>
+        s.id === slotId ? { ...s, status: 'uploading', progress: 10, errorMessage: undefined } : s
+      )
     );
 
     try {
@@ -420,10 +556,13 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     setIsPosting(true);
     try {
       if (editingHux) {
-        await updateHuxListing(editingHux.id, {
+        await updateAccommodationAvailability(editingHux, {
           category: formCategory,
+          institutionId: formInstitutionId,
+          campus: formCampus,
           title: formTitle.trim(),
-          location: formLocation,
+          location: formLocation.trim(),
+          distanceToCampus: formDistanceToCampus.trim() || undefined,
           price: priceNum,
           pricePer: formPricePer,
           phone: formPhone.trim(),
@@ -440,10 +579,13 @@ export const HuxPage: React.FC<HuxPageProps> = ({
         });
         showToast('Accommodation listing updated on FU MARKET!');
       } else {
-        await createHuxListing({
+        await createAccommodationProperty({
           category: formCategory,
+          institutionId: formInstitutionId,
+          campus: formCampus,
           title: formTitle.trim(),
-          location: formLocation,
+          location: formLocation.trim(),
+          distanceToCampus: formDistanceToCampus.trim() || undefined,
           price: priceNum,
           pricePer: formPricePer,
           phone: formPhone.trim(),
@@ -461,7 +603,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           userName: student.name,
           matricNumber: student.matricNumber
         });
-        showToast('Your listing has been posted on Wukari Agent!');
+        showToast('Your accommodation listing has been published on FU MARKET!');
       }
 
       setShowPostModal(false);
@@ -473,22 +615,66 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     }
   };
 
-  const handleToggleAvailability = async (hux: HuxListing, e: React.MouseEvent) => {
+  const handleAgentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student) {
+      setShowLoginModal(true);
+      return;
+    }
+    setAgentError(null);
+    if (!agentFormName.trim()) {
+      setAgentError('Please enter your full name.');
+      return;
+    }
+    if (!agentFormArea.trim()) {
+      setAgentError('Please enter the campus areas/locations you cover.');
+      return;
+    }
+    if (!agentFormPhone || agentFormPhone.replace(/[^0-9]/g, '').length < 10) {
+      setAgentError('Please enter a valid Nigerian phone number.');
+      return;
+    }
+
+    setAgentSubmitting(true);
+    try {
+      await upsertHouseAgentProfile({
+        userId: student.id,
+        agentName: agentFormName.trim(),
+        agencyName: agentFormAgency.trim() || undefined,
+        institutionId: agentFormInstId,
+        campus: agentFormCampus,
+        areaCovered: agentFormArea.trim(),
+        phone: agentFormPhone.trim(),
+        whatsapp: (agentFormWhatsapp || agentFormPhone).trim(),
+        bio: agentFormBio.trim() || 'Campus housing & lodge inspection assistance.',
+        roleType: agentFormRole
+      });
+      setShowAgentModal(false);
+      setActiveTab('agents');
+      showToast('House Agent profile saved! Only CEO can assign verified badges.');
+    } catch (err: any) {
+      setAgentError(err?.message || 'Could not register House Agent profile.');
+    } finally {
+      setAgentSubmitting(false);
+    }
+  };
+
+  const handleToggleAvailability = async (hux: AccommodationProperty, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const next = hux.isAvailable === false;
-      await updateHuxListing(hux.id, { isAvailable: next });
+      await updateAccommodationAvailability(hux, { isAvailable: next });
       showToast(next ? 'Marked accommodation as Available.' : 'Marked accommodation as Occupied.');
     } catch (err: any) {
       showToast(err?.message || 'Failed to update availability.');
     }
   };
 
-  const handleDeleteListing = async (id: string) => {
+  const handleDeleteListing = async (hux: AccommodationProperty) => {
     try {
-      await deleteHuxListing(id);
+      await deleteAccommodationProperty(hux);
       setConfirmDeleteId(null);
-      if (detailHux?.id === id) setDetailHux(null);
+      if (detailHux?.id === hux.id) setDetailHux(null);
       showToast('Accommodation listing deleted.');
     } catch (err: any) {
       showToast(err?.message || 'Could not delete listing.');
@@ -506,7 +692,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
         huxTitle: reportingHux.title,
         reason: reportReason,
         details: reportDetails,
-        reporterName: student?.name || 'FUWUKARI Student',
+        reporterName: student?.name || 'Campus User',
         reporterContact: student?.phone || student?.matricNumber || 'Campus User'
       });
       setReportSuccess(true);
@@ -522,15 +708,26 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     }
   };
 
-  const buildWaLink = (hux: HuxListing) => {
-    let cleaned = (hux.whatsapp || hux.phone || '').replace(/[^0-9]/g, '');
+  const buildWaLink = (title: string, location: string, whatsappOrPhone: string) => {
+    let cleaned = (whatsappOrPhone || '').replace(/[^0-9]/g, '');
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello, I saw "${hux.title}" at ${hux.location} on FU MARKET (Wukari Agent). Is it still available for inspection?`
+      `Hello, I saw "${title}" (${location}) on FU MARKET Campus Housing. Is it still available for inspection?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
+
+  const availableLocationOptions = useMemo(() => {
+    const locs = new Set<string>();
+    if (selectedInstitutionId === DEFAULT_INSTITUTION_ID || selectedInstitutionId === 'all') {
+      WUKARI_HOUSING_LOCATIONS.forEach((l) => locs.add(l));
+    }
+    listings.forEach((l) => {
+      if (l.location) locs.add(l.location);
+    });
+    return Array.from(locs);
+  }, [listings, selectedInstitutionId]);
 
   const filteredListings = listings
     .filter((item) => {
@@ -543,6 +740,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           item.title.toLowerCase().includes(q) ||
           item.location.toLowerCase().includes(q) ||
           (item.description || '').toLowerCase().includes(q) ||
+          (item.agentName || '').toLowerCase().includes(q) ||
           (item.facilities || []).some((f) => f.toLowerCase().includes(q))
         );
       }
@@ -554,77 +752,288 @@ export const HuxPage: React.FC<HuxPageProps> = ({
       return 0;
     });
 
+  const filteredAgents = houseAgents.filter((agent) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      agent.agentName.toLowerCase().includes(q) ||
+      (agent.agencyName || '').toLowerCase().includes(q) ||
+      agent.areaCovered.toLowerCase().includes(q) ||
+      agent.campus.toLowerCase().includes(q)
+    );
+  });
+
+  const formModalInst = getInstitutionById(formInstitutionId, institutions);
+  const agentModalInst = getInstitutionById(agentFormInstId, institutions);
+
+  useEffect(() => {
+    const effectiveUid = authUser?.id || student?.id;
+    if (!effectiveUid) return;
+    const u1 = subscribeToStudentInspectionRequests(effectiveUid, setStudentInspections);
+    const u2 = subscribeToAgentInspectionRequests(effectiveUid, setAgentInspections);
+    return () => {
+      u1();
+      u2();
+    };
+  }, [authUser?.id, student?.id]);
+
+  const handleBookInspection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingHux) return;
+    const effectiveUid = authUser?.id || student?.id;
+    if (!effectiveUid) {
+      setShowLoginModal(true);
+      return;
+    }
+    setInspSubmitting(true);
+    try {
+      await submitInspectionRequest({
+        propertyId: bookingHux.id,
+        propertyTitle: bookingHux.title,
+        propertyLocation: bookingHux.location,
+        agentUserId: bookingHux.userId,
+        agentName: bookingHux.agentName || bookingHux.userName,
+        agentPhone: bookingHux.phone,
+        studentUid: effectiveUid,
+        studentName: authUser?.name || student?.name || 'Student',
+        studentPhone: inspPhone.trim() || student?.phone || authUser?.phone || '',
+        preferredDate: inspDate,
+        preferredTime: inspTime,
+        notes: inspNotes.trim() || undefined,
+        institutionId: bookingHux.institutionId || selectedInstitutionId
+      });
+      setBookingHux(null);
+      setInspNotes('');
+      setActiveTab('inspections');
+      showToast('Property inspection request sent! Check status in the Inspections tab.');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to schedule inspection.');
+    } finally {
+      setInspSubmitting(false);
+    }
+  };
+
+  const handleUploadVerificationDoc = async (file?: File) => {
+    const effectiveUid = authUser?.id || student?.id;
+    if (!file || !effectiveUid) return;
+    setVerifUploading(true);
+    try {
+      const { downloadUrl } = await uploadImageToFirebaseStorage(file, {
+        folder: 'hux',
+        ownerId: effectiveUid,
+        allowPersistentFallback: true
+      });
+      setVerifDocUrl(downloadUrl);
+    } catch (err: any) {
+      showToast(err?.message || 'Document upload failed.');
+    } finally {
+      setVerifUploading(false);
+    }
+  };
+
+  const handleSubmitAgentVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const effectiveUid = authUser?.id || student?.id;
+    if (!effectiveUid) {
+      setShowLoginModal(true);
+      return;
+    }
+    const myAgent = houseAgents.find((a) => a.userId === effectiveUid);
+    await submitAgentVerificationRequest({
+      agentId: myAgent?.id || effectiveUid,
+      userId: effectiveUid,
+      agentName: myAgent?.agentName || authUser?.name || student?.name || 'Agent',
+      agencyName: myAgent?.agencyName,
+      institutionId: myAgent?.institutionId || (selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId),
+      phone: myAgent?.phone || student?.phone || authUser?.phone || '',
+      idType: verifIdType,
+      idNumberMasked: verifIdMasked.trim(),
+      documentUrl: verifDocUrl || undefined
+    });
+    showToast('Verification request submitted to CEO Super Admin for approval.');
+  };
+
   return (
-    <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col font-sans pb-24 sm:pb-8">
+    <div className="min-h-screen bg-[#F4F8F5] text-[#10251D] flex flex-col font-sans pb-24 sm:pb-8">
       {toastMsg && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-[#0B6B3A] text-white px-4 py-3 rounded-2xl shadow-2xl border border-[#F2B90D] flex items-center gap-2 text-xs font-bold">
-          <CheckCircle2 className="w-4 h-4 text-[#F2B90D] shrink-0" />
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-[#087443] text-[#FFFFFF] px-4 py-3 rounded-2xl shadow-2xl border border-[#D4A62A] flex items-center gap-2 text-xs font-bold">
+          <CheckCircle2 className="w-4 h-4 text-[#D4A62A] shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
 
       {/* Top Header */}
-      <div className="bg-[#0B6B3A] border-b border-[#14532D] px-3 sm:px-4 py-3 sticky top-0 z-30 flex items-center justify-between text-white">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="bg-[#087443] border-b border-[#065D36] px-3 sm:px-4 py-3 sticky top-0 z-30 flex items-center justify-between text-[#FFFFFF] gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onBackToHome}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#14532D] border border-white/20 hover:bg-[#F2B90D] hover:text-[#111111] rounded-xl text-xs font-bold text-white transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#065D36] border border-white/20 hover:bg-[#D4A62A] hover:text-[#10251D] rounded-xl text-xs font-bold text-[#FFFFFF] transition shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to FU MARKET</span>
+            <span className="hidden sm:inline">Back Home</span>
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-[#F2B90D]">
-                Wukari Agent
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-[#D4A62A] truncate">
+                CAMPUS ACCOMMODATION &ndash; FIND YOUR NEXT HOME
               </h1>
-              <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-md">
-                Campus Housing
+              <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-md">
+                {selectedInstitutionId === 'all' ? 'All Institutions' : activeInst.shortName}
               </span>
+              {onSwitchInstitution && (
+                <button
+                  type="button"
+                  onClick={onSwitchInstitution}
+                  className="text-[10px] font-bold underline text-[#FFFFFF]/90 hover:text-[#D4A62A]"
+                >
+                  Change Campus
+                </button>
+              )}
             </div>
-            <p className="text-[11px] text-white/85">
-              Self-contain, lodges, bedrooms &amp; roommate matching around FUWUKARI
+            <p className="text-[11px] text-[#FFFFFF]/85 truncate">
+              Hostels, self-contain, lodges, roommates, inspections &amp; verified agents at{' '}
+              {selectedInstitutionId === 'all' ? 'Nigerian Universities & Polytechnics' : activeInst.name}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="px-3.5 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition active:scale-95 flex items-center gap-1.5 shadow-sm"
-        >
-          <PlusCircle className="w-3.5 h-3.5" />
-          <span>Post Property</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={openAgentRegistration}
+            className="hidden sm:flex px-3 py-2 bg-[#065D36] hover:bg-[#10251D] text-[#FFFFFF] border border-[#D4A62A]/40 text-xs font-black rounded-xl transition items-center gap-1.5"
+          >
+            <UserCheck className="w-3.5 h-3.5 text-[#D4A62A]" />
+            <span>Agent Sign-Up</span>
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="px-3.5 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Post Property</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Container */}
       <div className="max-w-6xl w-full mx-auto p-3 sm:p-5 flex-1">
-        {/* Category Tabs */}
-        <div className="bg-[#FFFFFF] rounded-2xl p-1 border border-[#E5E7EB] flex items-center mb-4 shadow-xs">
+        {/* 4 Category Tabs */}
+        <div className="bg-[#FFFFFF] rounded-2xl p-1 border border-[#E5E7EB] grid grid-cols-2 sm:grid-cols-4 gap-1 mb-4 shadow-xs">
           <button
-            onClick={() => setActiveCategory('rent')}
-            className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 ${
-              activeCategory === 'rent'
-                ? 'bg-[#0B6B3A] text-white'
-                : 'text-[#555555] hover:text-[#111111]'
+            onClick={() => setActiveTab('rent')}
+            className={`py-2.5 px-2 rounded-xl text-[11px] sm:text-sm font-black transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'rent'
+                ? 'bg-[#087443] text-[#FFFFFF]'
+                : 'text-[#555555] hover:text-[#10251D]'
             }`}
           >
-            <Building className="w-4 h-4" />
-            <span>Houses &amp; Lodges for Rent</span>
+            <Building className="w-4 h-4 shrink-0" />
+            <span className="truncate">Houses &amp; Lodges</span>
           </button>
 
           <button
-            onClick={() => setActiveCategory('roommate')}
-            className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 ${
-              activeCategory === 'roommate'
-                ? 'bg-[#0B6B3A] text-white'
-                : 'text-[#555555] hover:text-[#111111]'
+            onClick={() => setActiveTab('roommate')}
+            className={`py-2.5 px-2 rounded-xl text-[11px] sm:text-sm font-black transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'roommate'
+                ? 'bg-[#087443] text-[#FFFFFF]'
+                : 'text-[#555555] hover:text-[#10251D]'
             }`}
           >
-            <Users className="w-4 h-4" />
-            <span>Find Roommate</span>
+            <Users className="w-4 h-4 shrink-0" />
+            <span className="truncate">Find Roommate</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('agents')}
+            className={`py-2.5 px-2 rounded-xl text-[11px] sm:text-sm font-black transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'agents'
+                ? 'bg-[#10251D] text-[#D4A62A]'
+                : 'text-[#555555] hover:text-[#10251D]'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <span className="truncate">House Agents ({houseAgents.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('inspections')}
+            className={`py-2.5 px-2 rounded-xl text-[11px] sm:text-sm font-black transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'inspections'
+                ? 'bg-[#087443] text-[#FFFFFF]'
+                : 'text-[#555555] hover:text-[#10251D]'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 shrink-0" />
+            <span className="truncate">Inspections &amp; KYC ({studentInspections.length + agentInspections.length})</span>
           </button>
         </div>
+
+        {activeTab === 'inspections' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
+            <div className="lg:col-span-7 space-y-4">
+              <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-black text-[#10251D]">My Booked Property Inspections ({studentInspections.length})</h3>
+                {studentInspections.length === 0 ? (
+                  <p className="text-xs text-[#556B60]">Click &quot;Book Inspection&quot; on any property card to request an in-person tour before paying rent.</p>
+                ) : (
+                  studentInspections.map((req) => (
+                    <div key={req.id} className="p-3 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl text-xs flex justify-between items-center gap-2">
+                      <div>
+                        <div className="font-black">{req.propertyTitle} ({req.propertyLocation})</div>
+                        <div className="text-[#556B60]">Agent: {req.agentName} &bull; {req.preferredDate} at {req.preferredTime}</div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded bg-[#087443] text-[#D4A62A] font-black uppercase">{req.status}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-black text-[#10251D]">Agent Incoming Inspection Requests ({agentInspections.length})</h3>
+                {agentInspections.length === 0 ? (
+                  <p className="text-xs text-[#556B60]">No incoming inspection requests for your listed properties yet.</p>
+                ) : (
+                  agentInspections.map((req) => (
+                    <div key={req.id} className="p-3 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl text-xs space-y-2">
+                      <div className="flex justify-between font-black">
+                        <span>{req.propertyTitle} &bull; {req.studentName} ({req.studentPhone})</span>
+                        <span className="uppercase text-[#087443]">{req.status}</span>
+                      </div>
+                      <div className="text-[#556B60]">Requested: {req.preferredDate} at {req.preferredTime}</div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => updateInspectionRequestStatus(req.id, 'confirmed', 'Agent confirmed tour slot', req.studentUid, req.propertyTitle)} className="px-3 py-1 bg-[#087443] text-white rounded-lg font-bold">Confirm</button>
+                        <button type="button" onClick={() => updateInspectionRequestStatus(req.id, 'completed', 'Inspection completed', req.studentUid, req.propertyTitle)} className="px-3 py-1 bg-[#D4A62A] text-[#10251D] rounded-lg font-bold">Completed</button>
+                        <button type="button" onClick={() => updateInspectionRequestStatus(req.id, 'declined', 'Unavailable at requested time', req.studentUid, req.propertyTitle)} className="px-3 py-1 bg-white border border-[#D8E5DD] rounded-lg font-bold">Decline</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3">
+              <h3 className="text-sm font-black text-[#10251D]">House Agent Verification Request</h3>
+              <p className="text-xs text-[#556B60]">Submit valid identity details for CEO Super Admin review to earn verified House Agent status.</p>
+              <form onSubmit={handleSubmitAgentVerification} className="space-y-3 text-xs">
+                <select value={verifIdType} onChange={(e) => setVerifIdType(e.target.value as any)} className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl">
+                  <option value="National ID (NIN)">National ID (NIN)</option>
+                  <option value="Student/Staff ID">Student / Staff ID</option>
+                  <option value="CAC Business Name">CAC Business Name</option>
+                  <option value="Voter Card">Voter Card</option>
+                  <option value="Driver License">Driver License</option>
+                </select>
+                <input required value={verifIdMasked} onChange={(e) => setVerifIdMasked(e.target.value)} placeholder="Last 4 digits or reference number *" className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl" />
+                <label className="block p-3 bg-[#F4F8F5] border border-dashed border-[#087443] rounded-xl text-center cursor-pointer font-bold text-[#087443]">
+                  {verifUploading ? 'Uploading ID Document...' : verifDocUrl ? 'Document Uploaded' : 'Upload ID / Agency Document'}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadVerificationDoc(e.target.files?.[0])} />
+                </label>
+                <button type="submit" disabled={verifUploading} className="w-full py-2.5 bg-[#087443] text-white font-black rounded-xl">
+                  Submit for CEO Verification
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Search & Filters */}
         <div className="bg-[#FFFFFF] rounded-2xl p-3.5 border border-[#E5E7EB] mb-5 space-y-3 shadow-xs">
@@ -634,90 +1043,247 @@ export const HuxPage: React.FC<HuxPageProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search lodge name, location, facilities (water, tile, prepaid meter)..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] placeholder-[#6B7280] outline-none"
+              placeholder={
+                activeTab === 'agents'
+                  ? 'Search registered house agents, landlords, or areas covered...'
+                  : 'Search lodge name, location, facilities (water, tile, prepaid meter)...'
+              }
+              className="w-full pl-10 pr-4 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] placeholder-[#6B7280] outline-none"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <div className="flex items-center gap-1.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#0B6B3A]" />
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="bg-transparent text-[#111111] text-xs font-bold outline-none cursor-pointer"
-              >
-                <option value="all">All Wukari Locations</option>
-                {WUKARI_HOUSING_LOCATIONS.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {activeTab !== 'agents' && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex items-center gap-1.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#087443]" />
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="bg-transparent text-[#10251D] text-xs font-bold outline-none cursor-pointer"
+                >
+                  <option value="all">All Locations</option>
+                  {availableLocationOptions.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="flex items-center gap-1.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
-              <Building className="w-3.5 h-3.5 text-[#0B6B3A]" />
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="bg-transparent text-[#111111] text-xs font-bold outline-none cursor-pointer"
-              >
-                <option value="all">All Property Types</option>
-                {HOUSING_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex items-center gap-1.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
+                <Building className="w-3.5 h-3.5 text-[#087443]" />
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="bg-transparent text-[#10251D] text-xs font-bold outline-none cursor-pointer"
+                >
+                  <option value="all">All Property Types</option>
+                  {HOUSING_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="flex items-center gap-1.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
-              <select
-                value={availabilityFilter}
-                onChange={(e) => setAvailabilityFilter(e.target.value as any)}
-                className="bg-transparent text-[#111111] text-xs font-bold outline-none cursor-pointer"
-              >
-                <option value="all">All Availability</option>
-                <option value="available">Available Only</option>
-              </select>
-            </div>
+              <div className="flex items-center gap-1.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
+                <select
+                  value={availabilityFilter}
+                  onChange={(e) => setAvailabilityFilter(e.target.value as any)}
+                  className="bg-transparent text-[#10251D] text-xs font-bold outline-none cursor-pointer"
+                >
+                  <option value="all">All Availability</option>
+                  <option value="available">Available Only</option>
+                </select>
+              </div>
 
-            <div className="flex items-center gap-1.5 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
-              <Tag className="w-3.5 h-3.5 text-[#0B6B3A]" />
-              <select
-                value={priceSort}
-                onChange={(e) => setPriceSort(e.target.value as any)}
-                className="bg-transparent text-[#111111] text-xs font-bold outline-none cursor-pointer"
-              >
-                <option value="default">Sort: Newest</option>
-                <option value="price-asc">Rent: Lowest to Highest</option>
-                <option value="price-desc">Rent: Highest to Lowest</option>
-              </select>
+              <div className="flex items-center gap-1.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl px-2.5 py-1.5">
+                <Tag className="w-3.5 h-3.5 text-[#087443]" />
+                <select
+                  value={priceSort}
+                  onChange={(e) => setPriceSort(e.target.value as any)}
+                  className="bg-transparent text-[#10251D] text-xs font-bold outline-none cursor-pointer"
+                >
+                  <option value="default">Sort: Newest</option>
+                  <option value="price-asc">Rent: Lowest to Highest</option>
+                  <option value="price-desc">Rent: Highest to Lowest</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Listings Grid */}
-        {loading ? (
+        {/* House Agents Directory View */}
+        {activeTab === 'agents' ? (
+          loadingAgents ? (
+            <div className="py-20 text-center">
+              <Loader2 className="w-8 h-8 text-[#087443] animate-spin mx-auto mb-2" />
+              <p className="text-xs font-bold text-[#555555]">
+                Loading registered campus house agents &amp; landlords...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-[#10251D] text-[#FFFFFF] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-4 border-[#D4A62A]">
+                <div>
+                  <h2 className="text-sm sm:text-base font-black text-[#D4A62A]">
+                    Registered Campus House Agents &amp; Landlords
+                  </h2>
+                  <p className="text-[11px] text-[#F4F8F5]/85">
+                    Official FU MARKET Verified Badges are awarded strictly by the CEO Administrator after review.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openAgentRegistration}
+                  className="px-4 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Register as House Agent / Landlord</span>
+                </button>
+              </div>
+
+              {filteredAgents.length === 0 ? (
+                <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-lg mx-auto my-6 shadow-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-[#087443]/10 border border-[#087443]/20 text-[#087443] flex items-center justify-center mx-auto mb-4">
+                    <UserCheck className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-base font-black text-[#10251D]">
+                    No registered house agents found for {activeInst.shortName} yet
+                  </h3>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    Property agents and landlords around {activeInst.name} can create their official directory profile here.
+                  </p>
+                  <button
+                    onClick={openAgentRegistration}
+                    className="mt-4 px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-xs font-black rounded-xl transition"
+                  >
+                    Register as House Agent / Landlord
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredAgents.map((agent) => {
+                    const inst = getInstitutionById(agent.institutionId, institutions);
+                    return (
+                      <div
+                        key={agent.id}
+                        className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] hover:border-[#087443] p-4 flex flex-col justify-between gap-3 shadow-xs"
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="text-sm font-black text-[#10251D] truncate">
+                                  {agent.agentName}
+                                </h3>
+                                <CeoVerifiedBadge
+                                  verified={Boolean(agent.ceoVerified || agent.isVerified)}
+                                  variant="compact"
+                                />
+                              </div>
+                              {agent.agencyName && (
+                                <p className="text-[11px] font-bold text-[#087443]">
+                                  {agent.agencyName}
+                                </p>
+                              )}
+                            </div>
+                            <span className="px-2 py-0.5 rounded bg-[#F4F8F5] border border-[#E5E7EB] text-[10px] font-black uppercase text-[#10251D] shrink-0">
+                              {agent.roleType === 'landlord' ? 'Landlord' : 'House Agent'}
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] text-[#4B5563] space-y-1">
+                            <div className="flex items-center gap-1.5 font-semibold text-[#10251D]">
+                              <Building2 className="w-3.5 h-3.5 text-[#087443] shrink-0" />
+                              <span className="truncate">
+                                {inst.shortName} • {agent.campus}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-[#087443] shrink-0" />
+                              <span className="truncate">Areas: {agent.areaCovered}</span>
+                            </div>
+                          </div>
+
+                          {agent.bio && (
+                            <p className="text-[11px] text-[#555555] line-clamp-2 leading-relaxed">
+                              {agent.bio}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-[#E5E7EB] flex items-center gap-2">
+                          <a
+                            href={`tel:${agent.phone}`}
+                            className="p-2 bg-[#F4F8F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#10251D] rounded-xl transition"
+                            title="Call Agent"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-[#087443]" />
+                          </a>
+                          <a
+                            href={buildWaLink(
+                              agent.agencyName || agent.agentName,
+                              `${inst.shortName} (${agent.areaCovered})`,
+                              agent.whatsapp || agent.phone
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 py-2 px-3 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-[11px] font-black rounded-xl transition flex items-center justify-center gap-1"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 text-[#D4A62A]" />
+                            <span>WhatsApp</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onStartDirectChat({
+                                id: agent.userId,
+                                name: agent.agentName
+                              })
+                            }
+                            className="px-3 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-[11px] font-black rounded-xl transition flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Chat</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        ) : loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-8 h-8 text-[#0B6B3A] animate-spin mx-auto mb-2" />
-            <p className="text-xs font-bold text-[#555555]">Loading genuine Wukari accommodation...</p>
+            <Loader2 className="w-8 h-8 text-[#087443] animate-spin mx-auto mb-2" />
+            <p className="text-xs font-bold text-[#555555]">
+              Loading campus accommodation for {activeInst.shortName}...
+            </p>
           </div>
         ) : filteredListings.length === 0 ? (
           <div className="bg-[#FFFFFF] rounded-3xl p-10 text-center border border-[#E5E7EB] max-w-lg mx-auto my-8 shadow-sm">
-            <div className="w-14 h-14 rounded-2xl bg-[#0B6B3A]/10 border border-[#0B6B3A]/20 text-[#0B6B3A] flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#087443]/10 border border-[#087443]/20 text-[#087443] flex items-center justify-center mx-auto mb-4">
               <Building className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-black text-[#111111]">
-              No accommodation listings available yet. Check back later or contact a registered agent.
+            <h3 className="text-base font-black text-[#10251D]">
+              No accommodation listings available yet for {activeInst.shortName}. Check back later or contact a registered agent.
             </h3>
-            <button
-              onClick={openCreateModal}
-              className="mt-5 px-5 py-2.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl transition"
-            >
-              Register / Post Accommodation
-            </button>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+              <button
+                onClick={openCreateModal}
+                className="px-5 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition"
+              >
+                Post Accommodation
+              </button>
+              <button
+                onClick={() => setActiveTab('agents')}
+                className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-xs font-black rounded-xl transition"
+              >
+                Browse House Agents
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -725,6 +1291,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
               const isSaved = savedHuxIds.includes(hux.id);
               const isOwn = student && hux.userId === student.id;
               const isAvail = hux.isAvailable !== false;
+              const listingInst = getInstitutionById(hux.institutionId, institutions);
 
               return (
                 <div
@@ -733,10 +1300,10 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                     setDetailHux(hux);
                     setActiveImageIdx(0);
                   }}
-                  className="bg-[#FFFFFF] rounded-2xl overflow-hidden border border-[#E5E7EB] hover:border-[#0B6B3A] transition flex flex-col justify-between cursor-pointer group shadow-xs hover:shadow-md"
+                  className="bg-[#FFFFFF] rounded-2xl overflow-hidden border border-[#E5E7EB] hover:border-[#087443] transition flex flex-col justify-between cursor-pointer group shadow-xs hover:shadow-md"
                 >
                   <div>
-                    <div className="relative aspect-[16/10] bg-[#F5F5F5] overflow-hidden flex items-center justify-center border-b border-[#E5E7EB]">
+                    <div className="relative aspect-[16/10] bg-[#F4F8F5] overflow-hidden flex items-center justify-center border-b border-[#E5E7EB]">
                       {hux.imageUrl ? (
                         <img
                           src={hux.imageUrl}
@@ -746,26 +1313,26 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center text-[#555555]">
-                          <Building className="w-8 h-8 mb-1 text-[#0B6B3A]" />
-                          <span className="text-[10px] font-bold">Wukari Property</span>
+                          <Building className="w-8 h-8 mb-1 text-[#087443]" />
+                          <span className="text-[10px] font-bold">{listingInst.shortName} Property</span>
                         </div>
                       )}
 
                       <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5">
-                        <span className="bg-[#111111]/85 text-white text-[10px] font-black px-2 py-0.5 rounded-md">
+                        <span className="bg-[#10251D]/85 text-[#FFFFFF] text-[10px] font-black px-2 py-0.5 rounded-md">
                           {hux.type}
                         </span>
                         <span
                           className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                             isAvail
-                              ? 'bg-[#0B6B3A] text-[#F2B90D]'
-                              : 'bg-[#111111] text-white'
+                              ? 'bg-[#087443] text-[#D4A62A]'
+                              : 'bg-[#10251D] text-[#FFFFFF]'
                           }`}
                         >
                           {isAvail ? 'Available' : 'Occupied'}
                         </span>
                         {hux.isAgent && (
-                          <span className="bg-[#F2B90D] text-[#111111] text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
                             <ShieldCheck className="w-3 h-3" />
                             <span>Agent</span>
                           </span>
@@ -777,15 +1344,15 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                         onClick={(e) => toggleSaveHux(hux.id, e)}
                         className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition shadow-sm ${
                           isSaved
-                            ? 'bg-[#F2B90D] text-[#111111]'
-                            : 'bg-[#FFFFFF]/90 text-[#111111] border border-[#E5E7EB] hover:border-[#0B6B3A]'
+                            ? 'bg-[#D4A62A] text-[#10251D]'
+                            : 'bg-[#FFFFFF]/90 text-[#10251D] border border-[#E5E7EB] hover:border-[#087443]'
                         }`}
                       >
                         <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
                       </button>
 
                       {hux.images.length > 1 && (
-                        <span className="absolute bottom-2.5 right-2.5 bg-[#111111]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        <span className="absolute bottom-2.5 right-2.5 bg-[#10251D]/80 text-[#FFFFFF] text-[10px] font-bold px-2 py-0.5 rounded-md">
                           {hux.images.length} photos
                         </span>
                       )}
@@ -793,28 +1360,37 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
                     <div className="p-3.5 space-y-2">
                       <div className="flex items-baseline justify-between gap-2">
-                        <div className="inline-flex items-baseline bg-[#0B6B3A] px-2.5 py-1 rounded-lg">
-                          <span className="text-sm sm:text-base font-black text-[#F2B90D]">
+                        <div className="inline-flex items-baseline bg-[#087443] px-2.5 py-1 rounded-lg">
+                          <span className="text-sm sm:text-base font-black text-[#D4A62A]">
                             {formatNaira(hux.price)}
                           </span>
-                          <span className="text-[10px] text-white/90 font-bold uppercase ml-1">
+                          <span className="text-[10px] text-[#FFFFFF]/90 font-bold uppercase ml-1">
                             / {hux.pricePer}
                           </span>
                         </div>
                         {hux.rooms && (
-                          <span className="text-[10px] font-bold text-[#111111] bg-[#F5F5F5] border border-[#E5E7EB] px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] font-bold text-[#10251D] bg-[#F4F8F5] border border-[#E5E7EB] px-2 py-0.5 rounded-md">
                             {hux.rooms} {hux.rooms === 1 ? 'Room' : 'Rooms'}
                           </span>
                         )}
                       </div>
 
-                      <h3 className="font-black text-xs sm:text-sm text-[#111111] line-clamp-1 group-hover:text-[#0B6B3A] transition">
-                        {hux.title}
-                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-black text-xs sm:text-sm text-[#10251D] line-clamp-1 group-hover:text-[#087443] transition">
+                          {hux.title}
+                        </h3>
+                        <CeoVerifiedBadge
+                          verified={Boolean(hux.ceoVerified || hux.isVerified)}
+                          variant="compact"
+                        />
+                      </div>
 
                       <div className="flex items-center gap-1.5 text-[11px] text-[#555555] font-semibold">
-                        <MapPin className="w-3.5 h-3.5 text-[#0B6B3A] shrink-0" />
-                        <span className="truncate">{hux.location}</span>
+                        <MapPin className="w-3.5 h-3.5 text-[#087443] shrink-0" />
+                        <span className="truncate">
+                          {hux.location}
+                          {hux.distanceToCampus ? ` • ${hux.distanceToCampus}` : ''}
+                        </span>
                       </div>
 
                       {hux.facilities && hux.facilities.length > 0 && (
@@ -822,7 +1398,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                           {hux.facilities.slice(0, 3).map((fac) => (
                             <span
                               key={fac}
-                              className="text-[10px] text-[#111111] bg-[#F5F5F5] border border-[#E5E7EB] px-1.5 py-0.5 rounded"
+                              className="text-[10px] text-[#10251D] bg-[#F4F8F5] border border-[#E5E7EB] px-1.5 py-0.5 rounded"
                             >
                               {fac}
                             </span>
@@ -846,16 +1422,16 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                           <button
                             type="button"
                             onClick={(e) => handleToggleAvailability(hux, e)}
-                            className="py-1.5 px-2 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-[10px] font-bold rounded-lg"
+                            className="py-1.5 px-2 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-[10px] font-bold rounded-lg"
                           >
                             {isAvail ? 'Mark Occupied' : 'Mark Available'}
                           </button>
                           <button
                             type="button"
                             onClick={(e) => openEditModal(hux, e)}
-                            className="py-1.5 px-2 bg-[#F5F5F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#111111] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
+                            className="py-1.5 px-2 bg-[#F4F8F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#10251D] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
                           >
-                            <Edit3 className="w-3 h-3 text-[#0B6B3A]" />
+                            <Edit3 className="w-3 h-3 text-[#087443]" />
                             <span>Edit</span>
                           </button>
                           <button
@@ -864,7 +1440,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                               e.stopPropagation();
                               setConfirmDeleteId(hux.id);
                             }}
-                            className="py-1.5 px-2 bg-[#F5F5F5] hover:bg-[#111111] hover:text-[#F2B90D] border border-[#E5E7EB] text-[#111111] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
+                            className="py-1.5 px-2 bg-[#F4F8F5] hover:bg-[#10251D] hover:text-[#D4A62A] border border-[#E5E7EB] text-[#10251D] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
                           >
                             <Trash2 className="w-3 h-3" />
                             <span>Delete</span>
@@ -874,21 +1450,21 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                         {confirmDeleteId === hux.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-[#FFF8DB] border border-[#F2B90D] rounded-xl flex items-center justify-between text-[11px]"
+                            className="p-2 bg-[#FFF8DB] border border-[#D4A62A] rounded-xl flex items-center justify-between text-[11px]"
                           >
-                            <span className="text-[#111111] font-bold">Confirm delete?</span>
+                            <span className="text-[#10251D] font-bold">Confirm delete?</span>
                             <div className="flex gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => setConfirmDeleteId(null)}
-                                className="px-2 py-0.5 bg-[#FFFFFF] border border-[#E5E7EB] text-[#111111] rounded font-bold"
+                                className="px-2 py-0.5 bg-[#FFFFFF] border border-[#E5E7EB] text-[#10251D] rounded font-bold"
                               >
                                 No
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteListing(hux.id)}
-                                className="px-2 py-0.5 bg-[#111111] text-[#F2B90D] rounded font-bold"
+                                onClick={() => handleDeleteListing(hux)}
+                                className="px-2 py-0.5 bg-[#10251D] text-[#D4A62A] rounded font-bold"
                               >
                                 Delete
                               </button>
@@ -902,20 +1478,20 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                           <a
                             href={`tel:${hux.phone}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-[#F5F5F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#111111] rounded-xl transition"
+                            className="p-2 bg-[#F4F8F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#10251D] rounded-xl transition"
                             title="Call Agent"
                           >
-                            <Phone className="w-3.5 h-3.5 text-[#0B6B3A]" />
+                            <Phone className="w-3.5 h-3.5 text-[#087443]" />
                           </a>
 
                           <a
-                            href={buildWaLink(hux)}
+                            href={buildWaLink(hux.title, hux.location, hux.whatsapp || hux.phone)}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="px-2.5 py-1.5 bg-[#0B6B3A] hover:bg-[#14532D] text-white text-[11px] font-black rounded-xl transition flex items-center gap-1"
+                            className="px-2.5 py-1.5 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-[11px] font-black rounded-xl transition flex items-center gap-1"
                           >
-                            <MessageCircle className="w-3.5 h-3.5 text-[#F2B90D]" />
+                            <MessageCircle className="w-3.5 h-3.5 text-[#D4A62A]" />
                             <span>WhatsApp</span>
                           </a>
 
@@ -929,7 +1505,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                                 matricNumber: hux.matricNumber
                               });
                             }}
-                            className="px-2.5 py-1.5 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-[11px] font-black rounded-xl transition flex items-center gap-1"
+                            className="px-2.5 py-1.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-[11px] font-black rounded-xl transition flex items-center gap-1"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                             <span>Chat</span>
@@ -942,7 +1518,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                             e.stopPropagation();
                             setReportingHux(hux);
                           }}
-                          className="text-[#555555] hover:text-[#111111] text-[10px] font-bold p-1 rounded flex items-center gap-1"
+                          className="text-[#555555] hover:text-[#10251D] text-[10px] font-bold p-1 rounded flex items-center gap-1"
                         >
                           <Flag className="w-3 h-3" />
                           <span>Report</span>
@@ -960,20 +1536,22 @@ export const HuxPage: React.FC<HuxPageProps> = ({
       {/* Create / Edit Property Modal */}
       {showPostModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="relative w-full max-w-lg bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#111111]">
-            <div className="bg-[#0B6B3A] text-white border-b border-[#14532D] p-4 sm:p-5 flex items-center justify-between">
+          <div className="relative w-full max-w-lg bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
+            <div className="bg-[#087443] text-[#FFFFFF] border-b border-[#065D36] p-4 sm:p-5 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-black text-[#F2B90D]">
-                  {editingHux ? 'Edit Property Listing' : 'Post on Wukari Agent'}
+                <h3 className="text-base font-black text-[#D4A62A]">
+                  {editingHux ? 'Edit Property Listing' : 'Post Campus Accommodation'}
                 </h3>
-                <p className="text-[11px] text-white/85">FUWUKARI Accommodation &amp; Roommates</p>
+                <p className="text-[11px] text-[#FFFFFF]/85">
+                  Student Lodges, Hostels, Agents &amp; Roommates
+                </p>
               </div>
               <button
                 onClick={() => {
                   resetForm();
                   setShowPostModal(false);
                 }}
-                className="w-8 h-8 rounded-full bg-[#14532D] text-white hover:bg-[#F2B90D] hover:text-[#111111] flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-[#065D36] text-[#FFFFFF] hover:bg-[#D4A62A] hover:text-[#10251D] flex items-center justify-center transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -981,8 +1559,8 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
             <form onSubmit={handlePostSubmit} className="p-4 sm:p-6 space-y-4 max-h-[82vh] overflow-y-auto">
               {postError && (
-                <div className="p-3 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl flex items-start gap-2 font-semibold">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#111111]" />
+                <div className="p-3 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl flex items-start gap-2 font-semibold">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#10251D]" />
                   <span>{postError}</span>
                 </div>
               )}
@@ -993,8 +1571,8 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   onClick={() => setFormCategory('rent')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-black border transition ${
                     formCategory === 'rent'
-                      ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
-                      : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#555555]'
+                      ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#555555]'
                   }`}
                 >
                   House / Lodge for Rent
@@ -1004,16 +1582,60 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   onClick={() => setFormCategory('roommate')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-black border transition ${
                     formCategory === 'roommate'
-                      ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
-                      : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#555555]'
+                      ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#555555]'
                   }`}
                 >
                   Find Roommate
                 </button>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-[#F4F8F5] border border-[#E5E7EB]">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#10251D] mb-1">
+                    Institution *
+                  </label>
+                  <select
+                    value={formInstitutionId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setFormInstitutionId(nextId);
+                      const nextInst = getInstitutionById(nextId, institutions);
+                      setFormCampus(nextInst.campus);
+                      if (nextId !== DEFAULT_INSTITUTION_ID) {
+                        setFormLocation(`${nextInst.location}`);
+                      } else {
+                        setFormLocation(WUKARI_HOUSING_LOCATIONS[0]);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#10251D] outline-none focus:border-[#087443]"
+                  >
+                    {institutions.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.shortName} — {inst.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#10251D] mb-1">Campus</label>
+                  <select
+                    value={formCampus}
+                    onChange={(e) => setFormCampus(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#10251D] outline-none focus:border-[#087443]"
+                  >
+                    {formModalInst.campuses.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">
+                <label className="block text-xs font-bold text-[#10251D] mb-1">
                   Property / Lodge Name *
                 </label>
                 <input
@@ -1021,33 +1643,63 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="e.g. Executive Tiled Self-Contain at Behind LT"
-                  className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                  placeholder="e.g. Executive Tiled Self-Contain near Main Gate"
+                  className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Location *</label>
-                  <select
-                    value={formLocation}
-                    onChange={(e) => setFormLocation(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
-                  >
-                    {WUKARI_HOUSING_LOCATIONS.map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
+                    Area / Street Location *
+                  </label>
+                  {formInstitutionId === DEFAULT_INSTITUTION_ID ? (
+                    <select
+                      value={WUKARI_HOUSING_LOCATIONS.includes(formLocation) ? formLocation : WUKARI_HOUSING_LOCATIONS[0]}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
+                    >
+                      {WUKARI_HOUSING_LOCATIONS.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={formLocation}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      placeholder={`Area near ${formModalInst.shortName}`}
+                      className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
+                    />
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Property Type *</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
+                    Distance to Campus
+                  </label>
+                  <input
+                    type="text"
+                    value={formDistanceToCampus}
+                    onChange={(e) => setFormDistanceToCampus(e.target.value)}
+                    placeholder="e.g. 5 mins walk to Main Gate"
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
+                    Property Type *
+                  </label>
                   <select
                     value={formType}
                     onChange={(e) => setFormType(e.target.value as HuxType)}
-                    className="w-full px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   >
                     {HOUSING_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -1058,35 +1710,37 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Available Rooms</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
+                    Available Rooms
+                  </label>
                   <input
                     type="number"
                     min="1"
                     value={formRooms}
                     onChange={(e) => setFormRooms(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Rent Price (₦) *</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Rent Price (₦) *</label>
                   <input
                     type="number"
                     required
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
                     placeholder="e.g. 180000"
-                    className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Billing Cycle</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Billing Cycle</label>
                   <select
                     value={formPricePer}
                     onChange={(e) => setFormPricePer(e.target.value as any)}
-                    className="w-full px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   >
                     <option value="year">Per Year (Session)</option>
                     <option value="semester">Per Semester</option>
@@ -1097,31 +1751,30 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Agent / Owner Phone *</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Agent / Owner Phone *</label>
                   <input
                     type="tel"
                     required
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="080..."
-                    className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">WhatsApp Number</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">WhatsApp Number</label>
                   <input
                     type="tel"
                     value={formWhatsapp}
                     onChange={(e) => setFormWhatsapp(e.target.value)}
                     placeholder="Same as phone if blank"
-                    className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   />
                 </div>
               </div>
 
-              {/* Facilities Tag Picker */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                <label className="block text-xs font-bold text-[#10251D] mb-1.5">
                   Facilities Available
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -1134,8 +1787,8 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                         onClick={() => toggleFacility(fac)}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
                           selected
-                            ? 'bg-[#0B6B3A] border-[#0B6B3A] text-white'
-                            : 'bg-[#F5F5F5] border-[#E5E7EB] text-[#555555] hover:text-[#111111]'
+                            ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                            : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#555555] hover:text-[#10251D]'
                         }`}
                       >
                         {fac}
@@ -1145,102 +1798,102 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                 </div>
               </div>
 
-              {/* Agent & Availability Controls */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <label className="p-3 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl flex items-center justify-between cursor-pointer">
+                <label className="p-3 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl flex items-center justify-between cursor-pointer">
                   <div>
-                    <p className="text-xs font-bold text-[#111111]">Registered Agent / Landlord</p>
-                    <p className="text-[10px] text-[#555555]">Shows Agent badge</p>
+                    <p className="text-xs font-bold text-[#10251D]">Registered Agent / Landlord</p>
+                    <p className="text-[10px] text-[#555555]">Shows Agent label</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={formIsAgent}
                     onChange={(e) => setFormIsAgent(e.target.checked)}
-                    className="w-4 h-4 accent-[#0B6B3A]"
+                    className="w-4 h-4 accent-[#087443]"
                   />
                 </label>
 
-                <label className="p-3 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl flex items-center justify-between cursor-pointer">
+                <label className="p-3 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl flex items-center justify-between cursor-pointer">
                   <div>
-                    <p className="text-xs font-bold text-[#111111]">Currently Available</p>
+                    <p className="text-xs font-bold text-[#10251D]">Currently Available</p>
                     <p className="text-[10px] text-[#555555]">Uncheck if fully occupied</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={formIsAvailable}
                     onChange={(e) => setFormIsAvailable(e.target.checked)}
-                    className="w-4 h-4 accent-[#0B6B3A]"
+                    className="w-4 h-4 accent-[#087443]"
                   />
                 </label>
               </div>
 
               {formIsAgent && (
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Agent / Lodge Caretaker Name</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">
+                    Agent / Lodge Caretaker Name
+                  </label>
                   <input
                     type="text"
                     value={formAgentName}
                     onChange={(e) => setFormAgentName(e.target.value)}
                     placeholder="e.g. Musa Campus Homes"
-                    className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#111111] outline-none"
+                    className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs font-semibold text-[#10251D] outline-none"
                   />
                 </div>
               )}
 
-              {/* Photos upload with real progress, Cancel & Retry */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                <label className="block text-xs font-bold text-[#10251D] mb-1.5">
                   Property Photos <span className="font-normal text-[#555555]">(Up to 3 • JPG, JPEG, PNG, WebP)</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
                   {photoSlots.map((slot) => (
                     <div
                       key={slot.id}
-                      className="relative aspect-square rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F5F5F5]"
+                      className="relative aspect-square rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F4F8F5]"
                     >
                       <img src={slot.preview} alt="Property preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => handleRemovePhotoSlot(slot.id)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#111111] text-[#F2B90D] flex items-center justify-center"
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#10251D] text-[#D4A62A] flex items-center justify-center"
                         title="Remove"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
 
-                      <div className="absolute inset-x-0 bottom-0 bg-[#111111]/85 p-1.5 text-[10px]">
+                      <div className="absolute inset-x-0 bottom-0 bg-[#10251D]/85 p-1.5 text-[10px]">
                         {slot.status === 'uploading' && (
                           <div className="space-y-1">
-                            <div className="flex justify-between text-white font-bold">
+                            <div className="flex justify-between text-[#FFFFFF] font-bold">
                               <span>Uploading</span>
                               <span>{slot.progress}%</span>
                             </div>
                             <div className="w-full bg-white/25 h-1 rounded-full overflow-hidden">
-                              <div className="bg-[#F2B90D] h-full" style={{ width: `${slot.progress}%` }} />
+                              <div className="bg-[#D4A62A] h-full" style={{ width: `${slot.progress}%` }} />
                             </div>
                             <button
                               type="button"
                               onClick={() => handleCancelPhotoSlot(slot.id)}
-                              className="w-full py-0.5 bg-white/15 text-[#F2B90D] rounded font-bold"
+                              className="w-full py-0.5 bg-white/15 text-[#D4A62A] rounded font-bold"
                             >
                               Cancel
                             </button>
                           </div>
                         )}
                         {slot.status === 'success' && (
-                          <div className="text-[#F2B90D] font-bold flex items-center gap-1">
+                          <div className="text-[#D4A62A] font-bold flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 shrink-0" />
                             <span>Ready</span>
                           </div>
                         )}
                         {slot.status === 'error' && (
                           <div className="space-y-1">
-                            <div className="text-[#F2B90D] line-clamp-1">{slot.errorMessage || 'Failed'}</div>
+                            <div className="text-[#D4A62A] line-clamp-1">{slot.errorMessage || 'Failed'}</div>
                             {slot.file && (
                               <button
                                 type="button"
                                 onClick={() => uploadSinglePhotoSlot(slot.id, slot.file!)}
-                                className="w-full py-0.5 bg-[#F2B90D] text-[#111111] rounded font-black flex items-center justify-center gap-1"
+                                className="w-full py-0.5 bg-[#D4A62A] text-[#10251D] rounded font-black flex items-center justify-center gap-1"
                               >
                                 <RefreshCw className="w-2.5 h-2.5" />
                                 <span>Retry</span>
@@ -1256,9 +1909,9 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed border-[#0B6B3A]/40 hover:border-[#0B6B3A] bg-[#F5F5F5] flex flex-col items-center justify-center cursor-pointer text-[#111111] transition"
+                      className="aspect-square rounded-xl border-2 border-dashed border-[#087443]/40 hover:border-[#087443] bg-[#F4F8F5] flex flex-col items-center justify-center cursor-pointer text-[#10251D] transition"
                     >
-                      <Upload className="w-5 h-5 text-[#0B6B3A] mb-1" />
+                      <Upload className="w-5 h-5 text-[#087443] mb-1" />
                       <span className="text-[10px] font-bold">Add Photo</span>
                     </button>
                   )}
@@ -1274,20 +1927,20 @@ export const HuxPage: React.FC<HuxPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1">Description &amp; Rules</label>
+                <label className="block text-xs font-bold text-[#10251D] mb-1">Description &amp; Rules</label>
                 <textarea
                   rows={3}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Describe distance to gate, light, water, inspection hours..."
-                  className="w-full px-3.5 py-2.5 bg-[#F5F5F5] border border-[#E5E7EB] focus:border-[#0B6B3A] focus:bg-[#FFFFFF] rounded-xl text-xs text-[#111111] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] focus:bg-[#FFFFFF] rounded-xl text-xs text-[#10251D] outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isPosting || photoSlots.some((s) => s.status === 'uploading')}
-                className="w-full py-3 bg-[#0B6B3A] hover:bg-[#14532D] disabled:opacity-50 text-white text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#087443] hover:bg-[#065D36] disabled:opacity-50 text-[#FFFFFF] text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2"
               >
                 {isPosting ? (
                   <>
@@ -1296,7 +1949,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-[#F2B90D]" />
+                    <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" />
                     <span>{editingHux ? 'Save Changes' : 'Publish Property Listing'}</span>
                   </>
                 )}
@@ -1306,18 +1959,190 @@ export const HuxPage: React.FC<HuxPageProps> = ({
         </div>
       )}
 
+      {/* House Agent / Landlord Registration Modal */}
+      {showAgentModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="relative w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
+            <div className="bg-[#10251D] text-[#FFFFFF] border-b-4 border-[#D4A62A] p-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-[#D4A62A]">
+                  Register as House Agent / Landlord
+                </h3>
+                <p className="text-[11px] text-[#F4F8F5]/80">
+                  List your campus housing agency profile on FU MARKET
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAgentModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 text-[#FFFFFF] hover:bg-[#D4A62A] hover:text-[#10251D] flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAgentSubmit} className="p-5 space-y-3.5 max-h-[80vh] overflow-y-auto">
+              {agentError && (
+                <div className="p-3 bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] text-xs rounded-xl font-bold">
+                  {agentError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAgentFormRole('house_agent')}
+                  className={`py-2 rounded-xl text-xs font-black border ${
+                    agentFormRole === 'house_agent'
+                      ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#555555]'
+                  }`}
+                >
+                  House Agent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAgentFormRole('landlord')}
+                  className={`py-2 rounded-xl text-xs font-black border ${
+                    agentFormRole === 'landlord'
+                      ? 'bg-[#087443] border-[#087443] text-[#FFFFFF]'
+                      : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#555555]'
+                  }`}
+                >
+                  Landlord / Owner
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">Your Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={agentFormName}
+                  onChange={(e) => setAgentFormName(e.target.value)}
+                  placeholder="e.g. Ibrahim Audu"
+                  className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold outline-none focus:border-[#087443]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">Agency / Lodge Name (Optional)</label>
+                <input
+                  type="text"
+                  value={agentFormAgency}
+                  onChange={(e) => setAgentFormAgency(e.target.value)}
+                  placeholder="e.g. Campus Gate Properties"
+                  className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold outline-none focus:border-[#087443]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-bold mb-1">Institution *</label>
+                  <select
+                    value={agentFormInstId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setAgentFormInstId(nextId);
+                      const nextInst = getInstitutionById(nextId, institutions);
+                      setAgentFormCampus(nextInst.campus);
+                    }}
+                    className="w-full px-2.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-bold outline-none focus:border-[#087443]"
+                  >
+                    {institutions.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.shortName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1">Campus</label>
+                  <select
+                    value={agentFormCampus}
+                    onChange={(e) => setAgentFormCampus(e.target.value)}
+                    className="w-full px-2.5 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-bold outline-none focus:border-[#087443]"
+                  >
+                    {agentModalInst.campuses.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">Areas / Locations Covered *</label>
+                <input
+                  type="text"
+                  required
+                  value={agentFormArea}
+                  onChange={(e) => setAgentFormArea(e.target.value)}
+                  placeholder="e.g. Behind LT, Bye Pass, Main Gate"
+                  className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold outline-none focus:border-[#087443]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-bold mb-1">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={agentFormPhone}
+                    onChange={(e) => setAgentFormPhone(e.target.value)}
+                    placeholder="080..."
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold outline-none focus:border-[#087443]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1">WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={agentFormWhatsapp}
+                    onChange={(e) => setAgentFormWhatsapp(e.target.value)}
+                    placeholder="Same if blank"
+                    className="w-full px-3 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold outline-none focus:border-[#087443]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">Short Bio &amp; Inspection Terms</label>
+                <textarea
+                  rows={2}
+                  value={agentFormBio}
+                  onChange={(e) => setAgentFormBio(e.target.value)}
+                  placeholder="Describe your available lodges and inspection hours..."
+                  className="w-full px-3 py-2 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs outline-none focus:border-[#087443]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={agentSubmitting}
+                className="w-full py-3 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] text-xs font-black rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" />
+                <span>{agentSubmitting ? 'Saving Profile...' : 'Save Agent Profile'}</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
       {detailHux && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="relative w-full max-w-xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#111111]">
+          <div className="relative w-full max-w-xl bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 text-[#10251D]">
             <button
               onClick={() => setDetailHux(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-[#111111]/80 text-white flex items-center justify-center"
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-[#10251D]/80 text-[#FFFFFF] flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="relative aspect-[16/10] bg-[#F5F5F5]">
+            <div className="relative aspect-[16/10] bg-[#F4F8F5]">
               {detailHux.images.length > 0 ? (
                 <img
                   src={detailHux.images[activeImageIdx] || detailHux.imageUrl}
@@ -1326,19 +2151,19 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#555555]">
-                  <Building className="w-12 h-12 text-[#0B6B3A]" />
+                  <Building className="w-12 h-12 text-[#087443]" />
                 </div>
               )}
             </div>
 
             {detailHux.images.length > 1 && (
-              <div className="flex items-center gap-2 p-2 bg-[#F5F5F5] border-b border-[#E5E7EB] justify-center">
+              <div className="flex items-center gap-2 p-2 bg-[#F4F8F5] border-b border-[#E5E7EB] justify-center">
                 {detailHux.images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveImageIdx(i)}
                     className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition ${
-                      activeImageIdx === i ? 'border-[#0B6B3A]' : 'border-transparent opacity-60'
+                      activeImageIdx === i ? 'border-[#087443]' : 'border-transparent opacity-60'
                     }`}
                   >
                     <img src={img} alt="thumb" className="w-full h-full object-cover" />
@@ -1349,23 +2174,23 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
             <div className="p-4 sm:p-6 space-y-3">
               <div className="flex items-baseline justify-between gap-2">
-                <div className="inline-flex items-baseline bg-[#0B6B3A] px-3 py-1 rounded-xl">
-                  <span className="text-lg sm:text-xl font-black text-[#F2B90D]">
+                <div className="inline-flex items-baseline bg-[#087443] px-3 py-1 rounded-xl">
+                  <span className="text-lg sm:text-xl font-black text-[#D4A62A]">
                     {formatNaira(detailHux.price)}
                   </span>
-                  <span className="text-xs text-white/90 font-semibold uppercase ml-1">
+                  <span className="text-xs text-[#FFFFFF]/90 font-semibold uppercase ml-1">
                     / {detailHux.pricePer}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] px-2.5 py-1 rounded-md">
+                  <span className="text-xs font-bold bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] px-2.5 py-1 rounded-md">
                     {detailHux.type}
                   </span>
                   <span
                     className={`text-xs font-black px-2.5 py-1 rounded-md ${
                       detailHux.isAvailable !== false
-                        ? 'bg-[#0B6B3A] text-[#F2B90D]'
-                        : 'bg-[#111111] text-white'
+                        ? 'bg-[#087443] text-[#D4A62A]'
+                        : 'bg-[#10251D] text-[#FFFFFF]'
                     }`}
                   >
                     {detailHux.isAvailable !== false ? 'Available' : 'Occupied'}
@@ -1373,11 +2198,20 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                 </div>
               </div>
 
-              <h2 className="text-base sm:text-lg font-black text-[#111111]">{detailHux.title}</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-[#10251D]">{detailHux.title}</h2>
+                <CeoVerifiedBadge
+                  verified={Boolean(detailHux.ceoVerified || detailHux.isVerified)}
+                  variant="compact"
+                />
+              </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-[#555555] font-bold">
-                <MapPin className="w-4 h-4 text-[#0B6B3A]" />
-                <span>{detailHux.location}</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#555555] font-bold">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-[#087443]" />
+                  {detailHux.location}
+                </span>
+                {detailHux.distanceToCampus && <span>• {detailHux.distanceToCampus}</span>}
                 {detailHux.rooms && <span>• {detailHux.rooms} room(s)</span>}
               </div>
 
@@ -1386,7 +2220,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   {detailHux.facilities.map((fac) => (
                     <span
                       key={fac}
-                      className="text-[11px] bg-[#F5F5F5] border border-[#E5E7EB] text-[#111111] px-2.5 py-1 rounded-lg font-semibold"
+                      className="text-[11px] bg-[#F4F8F5] border border-[#E5E7EB] text-[#10251D] px-2.5 py-1 rounded-lg font-semibold"
                     >
                       {fac}
                     </span>
@@ -1395,8 +2229,10 @@ export const HuxPage: React.FC<HuxPageProps> = ({
               )}
 
               {detailHux.description && (
-                <div className="bg-[#F5F5F5] rounded-2xl p-3.5 border border-[#E5E7EB]">
-                  <h4 className="text-xs font-bold text-[#111111] uppercase mb-1">Details &amp; Inspection Info</h4>
+                <div className="bg-[#F4F8F5] rounded-2xl p-3.5 border border-[#E5E7EB]">
+                  <h4 className="text-xs font-bold text-[#10251D] uppercase mb-1">
+                    Details &amp; Inspection Info
+                  </h4>
                   <p className="text-xs text-[#555555] leading-relaxed whitespace-pre-wrap">
                     {detailHux.description}
                   </p>
@@ -1405,27 +2241,44 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
               <div className="flex items-center justify-between text-xs text-[#555555] pt-2 border-t border-[#E5E7EB]">
                 <span>
-                  Listed by: <strong className="text-[#111111]">{detailHux.agentName || detailHux.userName}</strong>
+                  Listed by:{' '}
+                  <strong className="text-[#10251D]">{detailHux.agentName || detailHux.userName}</strong>
                 </span>
                 {detailHux.matricNumber && <span className="font-mono">{detailHux.matricNumber}</span>}
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingHux(detailHux);
+                    setDetailHux(null);
+                  }}
+                  className="py-3 bg-[#10251D] hover:bg-black text-[#D4A62A] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Book Inspection</span>
+                </button>
+
                 <a
                   href={`tel:${detailHux.phone}`}
-                  className="py-3 bg-[#F5F5F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#111111] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  className="py-3 bg-[#F4F8F5] hover:bg-[#E5E7EB] border border-[#E5E7EB] text-[#10251D] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
                 >
-                  <Phone className="w-4 h-4 text-[#0B6B3A]" />
+                  <Phone className="w-4 h-4 text-[#087443]" />
                   <span>Call</span>
                 </a>
 
                 <a
-                  href={buildWaLink(detailHux)}
+                  href={buildWaLink(
+                    detailHux.title,
+                    detailHux.location,
+                    detailHux.whatsapp || detailHux.phone
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-3 bg-[#0B6B3A] hover:bg-[#14532D] text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  className="py-3 bg-[#087443] hover:bg-[#065D36] text-[#FFFFFF] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
                 >
-                  <MessageCircle className="w-4 h-4 text-[#F2B90D]" />
+                  <MessageCircle className="w-4 h-4 text-[#D4A62A]" />
                   <span>WhatsApp</span>
                 </a>
 
@@ -1439,7 +2292,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                       matricNumber: detailHux.matricNumber
                     });
                   }}
-                  className="py-3 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  className="py-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black rounded-xl text-xs flex items-center justify-center gap-1.5"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>In-App Chat</span>
@@ -1450,13 +2303,56 @@ export const HuxPage: React.FC<HuxPageProps> = ({
         </div>
       )}
 
+      {/* Book Inspection Modal (Separate from Product Order Checkout) */}
+      {bookingHux && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-sm flex items-center justify-center p-3">
+          <div className="w-full max-w-md bg-white border border-[#D8E5DD] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-[#087443] border-b-4 border-[#D4A62A] px-5 py-4 flex items-center justify-between text-white">
+              <div>
+                <h3 className="text-sm font-black uppercase">Book Property Inspection</h3>
+                <p className="text-[11px] text-white/90 truncate">{bookingHux.title}</p>
+              </div>
+              <button type="button" onClick={() => setBookingHux(null)} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleBookInspection} className="p-5 space-y-3 text-xs">
+              <p className="text-[#556B60]">
+                Request an in-person inspection with <strong>{bookingHux.agentName || bookingHux.userName}</strong> before making any payment.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold block mb-1">Preferred Date *</label>
+                  <input type="date" required value={inspDate} onChange={(e) => setInspDate(e.target.value)} className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl" />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">Preferred Time *</label>
+                  <input type="text" required value={inspTime} onChange={(e) => setInspTime(e.target.value)} placeholder="10:00 AM" className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl" />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Your Phone / WhatsApp *</label>
+                <input type="tel" required value={inspPhone} onChange={(e) => setInspPhone(e.target.value)} placeholder="080..." className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl" />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Notes (Optional)</label>
+                <textarea rows={2} value={inspNotes} onChange={(e) => setInspNotes(e.target.value)} placeholder="Preferred meetup landmark..." className="w-full p-2.5 bg-[#F4F8F5] border border-[#D8E5DD] rounded-xl" />
+              </div>
+              <button type="submit" disabled={inspSubmitting} className="w-full py-3 bg-[#D4A62A] text-[#10251D] font-black rounded-xl">
+                {inspSubmitting ? 'Submitting Request...' : 'Send Inspection Request'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Scam Report Modal */}
       {reportingHux && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="relative w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 p-5 text-[#111111]">
+          <div className="relative w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-2xl overflow-hidden my-4 p-5 text-[#10251D]">
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB] mb-3">
-              <div className="flex items-center gap-2 text-[#111111] font-black text-sm">
-                <Flag className="w-4 h-4 text-[#0B6B3A]" />
+              <div className="flex items-center gap-2 text-[#10251D] font-black text-sm">
+                <Flag className="w-4 h-4 text-[#087443]" />
                 <span>Report Suspicious Listing</span>
               </div>
               <button
@@ -1464,7 +2360,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   setReportingHux(null);
                   setReportError('');
                 }}
-                className="w-7 h-7 rounded-full bg-[#F5F5F5] border border-[#E5E7EB] text-[#555555] hover:text-[#111111] flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-[#F4F8F5] border border-[#E5E7EB] text-[#555555] hover:text-[#10251D] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1472,52 +2368,56 @@ export const HuxPage: React.FC<HuxPageProps> = ({
 
             {reportSuccess ? (
               <div className="py-6 text-center">
-                <CheckCircle2 className="w-12 h-12 text-[#0B6B3A] mx-auto mb-2" />
-                <h4 className="text-sm font-bold text-[#111111]">Report Submitted</h4>
+                <CheckCircle2 className="w-12 h-12 text-[#087443] mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-[#10251D]">Report Submitted</h4>
                 <p className="text-xs text-[#555555] mt-1">
-                  Thank you for helping protect FUWUKARI students from housing fraud.
+                  Thank you for helping protect students from housing fraud.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleReportSubmit} className="space-y-3">
                 {reportError && (
-                  <div className="p-2.5 bg-[#FFF8DB] border border-[#F2B90D] text-[#111111] text-xs rounded-xl font-semibold">
+                  <div className="p-2.5 bg-[#FFF8DB] border border-[#D4A62A] text-[#10251D] text-xs rounded-xl font-semibold">
                     {reportError}
                   </div>
                 )}
                 <p className="text-xs text-[#555555]">
-                  Listing: <strong className="text-[#111111]">{reportingHux.title}</strong>
+                  Listing: <strong className="text-[#10251D]">{reportingHux.title}</strong>
                 </p>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Reason for Report</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Reason for Report</label>
                   <select
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold text-[#111111] outline-none focus:border-[#0B6B3A]"
+                    className="w-full px-3 py-2 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold text-[#10251D] outline-none focus:border-[#087443]"
                   >
-                    <option value="Suspected fake lodge or agent scam">Suspected fake lodge or agent scam</option>
-                    <option value="Demanding advance payment before inspection">Demanding advance payment before inspection</option>
+                    <option value="Suspected fake lodge or agent scam">
+                      Suspected fake lodge or agent scam
+                    </option>
+                    <option value="Demanding advance payment before inspection">
+                      Demanding advance payment before inspection
+                    </option>
                     <option value="Incorrect location or price">Incorrect location or price</option>
                     <option value="Lodge already fully occupied">Lodge already fully occupied</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1">Additional Details</label>
+                  <label className="block text-xs font-bold text-[#10251D] mb-1">Additional Details</label>
                   <textarea
                     rows={3}
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
                     placeholder="Explain what happened..."
-                    className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E7EB] rounded-xl text-xs text-[#111111] outline-none focus:border-[#0B6B3A]"
+                    className="w-full px-3 py-2 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={reportSubmitting}
-                  className="w-full py-2.5 bg-[#111111] hover:bg-black text-[#F2B90D] text-xs font-black rounded-xl"
+                  className="w-full py-2.5 bg-[#10251D] hover:bg-black text-[#D4A62A] text-xs font-black rounded-xl"
                 >
                   {reportSubmitting ? 'Submitting Report...' : 'Submit Scam Report'}
                 </button>
@@ -1536,8 +2436,8 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           setFormWhatsapp(loggedStudent.whatsappNumber || loggedStudent.phone || '');
         }}
         initialData={student}
-        title="Wukari Agent Profile — FU MARKET"
-        subtitle="Enter your name and matric number / agent ID to post and manage campus accommodation."
+        title="Campus Housing Profile — FU MARKET"
+        subtitle="Enter your name and ID to post accommodation or register as a House Agent."
       />
     </div>
   );

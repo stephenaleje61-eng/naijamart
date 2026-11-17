@@ -103,15 +103,15 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
       id="fu-market-campus-emergency"
       className="scroll-mt-24 rounded-3xl overflow-hidden border border-[#0F1E3D]/15 bg-white shadow-sm"
     >
-      {/* Navy Safety Banner Header */}
-      <div className="bg-[#0F1E3D] text-white p-5 sm:p-7 border-b border-[#1E3A6E]">
+      {/* Royal Navy Safety Banner Header */}
+      <div className="bg-[#10251D] text-white p-5 sm:p-7 border-b border-[#18362B]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl">
             <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#DC2626] text-white">
-              FUWUKARI Campus Safety Desk
+              National Campus Safety Desk
             </span>
             <h2 className="font-display text-xl sm:text-2xl font-black tracking-tight text-white">
-              FU MARKET CAMPUS EMERGENCY &amp; HELP CENTRE
+              NIGERIA CAMPUS MARKET CAMPUS EMERGENCY &amp; HELP CENTRE
             </h2>
             <p className="text-xs sm:text-sm text-white/85 font-medium">
               Your Safety Matters. Get Help. Report Concerns. Stay Informed.
@@ -134,7 +134,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
                 onClick={handleToggleAlerts}
                 className={`min-h-[44px] px-4 py-2 text-xs font-black rounded-xl inline-flex items-center gap-2 transition ${
                   notifyOptedIn
-                    ? 'bg-[#0B6B3A] hover:bg-[#14532D] text-white border border-[#16A34A]'
+                    ? 'bg-[#087443] hover:bg-[#065D36] text-white border border-[#16A34A]'
                     : 'bg-white text-[#0F1E3D] hover:bg-[#F8FAFC]'
                 }`}
               >
@@ -156,7 +156,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
               <button
                 type="button"
                 onClick={onOpenAdminEmergency}
-                className="min-h-[44px] px-4 py-2 bg-[#F2B90D] hover:bg-[#FFC107] text-[#111111] text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
+                className="min-h-[44px] px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
               >
                 <Sliders className="w-4 h-4" />
                 <span>Manage Emergency Centre</span>
@@ -223,7 +223,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
         {/* Quick Verified Emergency Contacts Strip (Strictly real verified records only) */}
         {verifiedContacts.length > 0 && (
           <div className="p-3.5 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-black text-[#0B6B3A]">
+            <div className="flex items-center gap-2 text-xs font-black text-[#087443]">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>Verified Quick-Dial Numbers:</span>
             </div>
@@ -232,7 +232,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
                 <a
                   key={contact.id}
                   href={buildEmergencyCallHref(contact.phone)}
-                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#0B6B3A] hover:bg-[#14532D] text-white text-xs font-black inline-flex items-center gap-1.5 transition"
+                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black inline-flex items-center gap-1.5 transition"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>
@@ -339,7 +339,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
             onClick={onOpenLostAndFound}
             className="min-h-[60px] p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#ECFDF5] border border-[#CBD5E1] hover:border-[#A7F3D0] text-[#0F1E3D] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#087443] text-white flex items-center justify-center shrink-0">
               <PackageSearch className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -356,14 +356,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={onOpenSafetyInfo}
-            className="min-h-[60px] sm:col-span-2 p-4 rounded-2xl bg-[#ECFDF5] hover:bg-[#D1FAE5] border border-[#A7F3D0] text-[#0B6B3A] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] sm:col-span-2 p-4 rounded-2xl bg-[#ECFDF5] hover:bg-[#D1FAE5] border border-[#A7F3D0] text-[#087443] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#0B6B3A] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#087443] text-white flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Campus Safety Information</span>
-              <span className="text-[11px] text-[#14532D]">
+              <span className="text-[11px] text-[#065D36]">
                 Personal safety, night movement, scam awareness, phone theft tips &amp; emergency procedures
               </span>
             </div>

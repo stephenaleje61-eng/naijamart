@@ -12,18 +12,221 @@ import {
   verifyFirebaseIdToken
 } from '../auth.js';
 import { ensureCeoCustomClaim, isFirebaseAdminConfigured } from '../firebaseAdmin.js';
-import { ceoStore } from '../ceoStore.js';
+import { ceoStore, PwaEventType, RegionalModeratorRecord } from '../ceoStore.js';
 import { db } from '../db.js';
 
 const router = Router();
 
-// Public read-only verification logo config for public VERIFIED BY FU MARKET CEO badges
+// Public read-only verification logo config for public VERIFIED BY NIGERIA CAMPUS MARKET CEO badges
 router.get('/verification-config', (_req: Request, res: Response) => {
   const data = ceoStore.getData();
   res.json({
     config: data.verificationConfig
   });
 });
+
+// Public read-only app download & APK settings for Download App modal / CTA
+router.get('/app-settings', (_req: Request, res: Response) => {
+  const data = ceoStore.getData();
+  res.json({
+    appSettings: data.appSettings
+  });
+});
+
+// CEO-only update for App Management (APK URL, Play Store URL, enable/disable APK, version, release notes)
+router.put(
+  '/app-settings',
+  requireCeoAdmin,
+  requireCeoRecentReauth(),
+  (req: AuthenticatedRequest, res: Response) => {
+    const fbUser = req.firebaseUser!;
+    const updated = ceoStore.updateAppSettings(req.body || {}, fbUser.email);
+    ceoStore.recordSecurityLog({
+      eventType: 'CEO_APP_SETTINGS_UPDATED',
+      severity: 'info',
+      actorEmail: fbUser.email,
+      actorUid: fbUser.uid,
+      ipAddress: getClientIp(req),
+      summary: `CEO updated App Management (v${updated.appVersion}, apkEnabled=${updated.apkEnabled}).`
+    });
+    res.json({ appSettings: updated });
+  }
+);
+
+// Public genuine PWA / APK install event tracking (no fabricated stats)
+router.post('/pwa-track', (req: Request, res: Response) => {
+  const { eventType, platform, institutionId } = req.body || {};
+  const allowedEvents: PwaEventType[] = [
+    'prompt_shown',
+    'install_accepted',
+    'install_dismissed',
+    'apk_download',
+    'playstore_click'
+  ];
+  if (!allowedEvents.includes(eventType)) {
+    return res.status(400).json({ error: 'Invalid PWA telemetry event type.' });
+  }
+  const safePlatform = ['android', 'ios', 'desktop', 'unknown'].includes(platform)
+    ? platform
+    : 'unknown';
+
+  const recorded = ceoStore.recordPwaEvent({
+    eventType,
+    platform: safePlatform,
+    userAgent: String(req.headers['user-agent'] || '').slice(0, 180),
+    institutionId: typeof institutionId === 'string' ? institutionId.slice(0, 80) : undefined
+  });
+  res.status(201).json({ recorded: true, event: recorded });
+});
+
+// Protected CEO-only genuine PWA & APK analytics summary
+router.get('/analytics/installs', requireCeoAdmin, (_req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    installs: ceoStore.getPwaAnalyticsSummary(),
+    appSettings: ceoStore.getData().appSettings
+  });
+});
+
+// Protected CEO-only Regional / Institution Moderator Management (never grants CEO privileges)
+router.get('/moderators', requireCeoAdmin, (_req: AuthenticatedRequest, res: Response) => {
+  res.json({ moderators: ceoStore.getData().moderators });
+});
+
+router.post(
+  '/moderators',
+  requireCeoAdmin,
+  requireCeoRecentReauth(),
+  (req: AuthenticatedRequest, res: Response) => {
+    const fbUser = req.firebaseUser!;
+    const { email, name, assignedInstitutionId, assignedState, permissions } = req.body || {};
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    const cleanName = String(name || '').trim().slice(0, 120);
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Valid moderator email address is required.' });
+    }
+    if (cleanEmail === CEO_EMAIL) {
+      return res.status(400).json({ error: 'The CEO Super Administrator already holds master authority.' });
+    }
+    if (!cleanName) {
+      return res.status(400).json({ error: 'Moderator name is required.' });
+    }
+
+    const allowedPerms: RegionalModeratorRecord['permissions'] = Array.isArray(permissions)
+      ? permissions.filter((p): p is RegionalModeratorRecord['permissions'][number] =>
+          ['moderate_listings', 'review_reports', 'manage_announcements'].includes(p)
+        )
+      : ['moderate_listings', 'review_reports'];
+
+    const storeData = ceoStore.getData();
+    const existingIdx = storeData.moderators.findIndex((m) => m.email === cleanEmail);
+    const nowIso = new Date().toISOString();
+
+    const record: RegionalModeratorRecord = {
+      id: existingIdx >= 0 ? storeData.moderators[existingIdx].id : `mod_${Date.now()}`,
+      email: cleanEmail,
+      name: cleanName,
+      assignedInstitutionId:
+        typeof assignedInstitutionId === 'string' && assignedInstitutionId.trim()
+          ? assignedInstitutionId.trim().slice(0, 100)
+          : undefined,
+      assignedState:
+        typeof assignedState === 'string' && assignedState.trim()
+          ? assignedState.trim().slice(0, 60)
+          : undefined,
+      permissions: allowedPerms.length > 0 ? allowedPerms : ['moderate_listings'],
+      status: 'active',
+      assignedByEmail: fbUser.email,
+      createdAt: existingIdx >= 0 ? storeData.moderators[existingIdx].createdAt : nowIso,
+      updatedAt: nowIso
+    };
+
+    if (existingIdx >= 0) {
+      storeData.moderators[existingIdx] = record;
+    } else {
+      storeData.moderators.unshift(record);
+    }
+    ceoStore.save();
+
+    ceoStore.recordSecurityLog({
+      eventType: 'CEO_MODERATOR_UPDATED',
+      severity: 'info',
+      actorEmail: fbUser.email,
+      actorUid: fbUser.uid,
+      targetType: 'moderator',
+      targetId: record.id,
+      ipAddress: getClientIp(req),
+      summary: `CEO assigned/updated regional moderator ${record.email} (scope: ${record.assignedInstitutionId || record.assignedState || 'National Support'}).`
+    });
+
+    res.status(201).json({ moderator: record });
+  }
+);
+
+router.patch(
+  '/moderators/:id',
+  requireCeoAdmin,
+  requireCeoRecentReauth(),
+  (req: AuthenticatedRequest, res: Response) => {
+    const fbUser = req.firebaseUser!;
+    const storeData = ceoStore.getData();
+    const mod = storeData.moderators.find((m) => m.id === req.params.id);
+    if (!mod) {
+      return res.status(404).json({ error: 'Moderator not found.' });
+    }
+    if (req.body?.status === 'active' || req.body?.status === 'suspended') {
+      mod.status = req.body.status;
+    }
+    if (Array.isArray(req.body?.permissions)) {
+      const nextPerms = req.body.permissions.filter((p: string) =>
+        ['moderate_listings', 'review_reports', 'manage_announcements'].includes(p)
+      );
+      if (nextPerms.length > 0) mod.permissions = nextPerms;
+    }
+    mod.updatedAt = new Date().toISOString();
+    ceoStore.save();
+
+    ceoStore.recordSecurityLog({
+      eventType: 'CEO_MODERATOR_UPDATED',
+      severity: 'warning',
+      actorEmail: fbUser.email,
+      actorUid: fbUser.uid,
+      targetType: 'moderator',
+      targetId: mod.id,
+      ipAddress: getClientIp(req),
+      summary: `CEO updated moderator ${mod.email} (status=${mod.status}).`
+    });
+    res.json({ moderator: mod });
+  }
+);
+
+router.delete(
+  '/moderators/:id',
+  requireCeoAdmin,
+  requireCeoRecentReauth(),
+  (req: AuthenticatedRequest, res: Response) => {
+    const fbUser = req.firebaseUser!;
+    const storeData = ceoStore.getData();
+    const target = storeData.moderators.find((m) => m.id === req.params.id);
+    if (!target) {
+      return res.status(404).json({ error: 'Moderator not found.' });
+    }
+    storeData.moderators = storeData.moderators.filter((m) => m.id !== req.params.id);
+    ceoStore.save();
+
+    ceoStore.recordSecurityLog({
+      eventType: 'CEO_MODERATOR_UPDATED',
+      severity: 'warning',
+      actorEmail: fbUser.email,
+      actorUid: fbUser.uid,
+      targetType: 'moderator',
+      targetId: target.id,
+      ipAddress: getClientIp(req),
+      summary: `CEO revoked moderator access for ${target.email}.`
+    });
+    res.json({ success: true });
+  }
+);
 
 // Check brute-force lockout status before login attempt
 router.get('/session/lockout-status', (req: Request, res: Response) => {
@@ -115,7 +318,8 @@ router.post('/session/verify', async (req: Request, res: Response) => {
       summary: `Blocked non-CEO Firebase account "${fbUser.email}" (emailVerified=${fbUser.emailVerified}) from CEO login.`
     });
     return res.status(ipFail.locked ? 429 : 403).json({
-      error: 'Access Denied: Only the verified FU MARKET CEO SUPER ADMINISTRATOR account may sign in here.',
+      error:
+        'Access Denied: Only the verified NIGERIA CAMPUS MARKET CEO SUPER ADMINISTRATOR account may sign in here.',
       locked: ipFail.locked,
       remainingSeconds: ipFail.remainingSeconds
     });
@@ -151,7 +355,6 @@ router.post('/session/verify', async (req: Request, res: Response) => {
     phoneVerified = true;
   }
 
-  // Success: clear brute-force counters
   ceoStore.clearFailedAttempts(`ip:${ipAddress}`);
   ceoStore.clearFailedAttempts(`email:${CEO_EMAIL}`);
 
@@ -212,7 +415,6 @@ router.post('/session/reauth', requireCeoAdmin, async (req: AuthenticatedRequest
     }
   }
 
-  // Require Firebase auth_time within last 5 minutes for true password/Google reauth proof
   const authAgeMs = fbUser.authTime ? Date.now() - fbUser.authTime * 1000 : 0;
   if (fbUser.authTime && authAgeMs > 5 * 60 * 1000) {
     return res.status(401).json({
@@ -329,6 +531,7 @@ router.get('/settings', requireCeoAdmin, (_req: AuthenticatedRequest, res: Respo
   res.json({
     settings: ceoStore.getData().ceoSettings,
     verificationConfig: ceoStore.getData().verificationConfig,
+    appSettings: ceoStore.getData().appSettings,
     adminSdkConfigured: isFirebaseAdminConfigured()
   });
 });
@@ -379,7 +582,7 @@ router.post(
       actorEmail: fbUser.email,
       actorUid: fbUser.uid,
       ipAddress: getClientIp(req),
-      summary: 'CEO uploaded or updated the official FU MARKET verification logo.'
+      summary: 'CEO uploaded or updated the official NIGERIA CAMPUS MARKET verification logo.'
     });
 
     res.json({ config });
@@ -409,7 +612,7 @@ router.delete(
       actorEmail: fbUser.email,
       actorUid: fbUser.uid,
       ipAddress: getClientIp(req),
-      summary: 'CEO removed the official FU MARKET verification logo.'
+      summary: 'CEO removed the official NIGERIA CAMPUS MARKET verification logo.'
     });
 
     res.json({ config });
@@ -426,7 +629,7 @@ router.post('/verify-entity', requireCeoAdmin, (req: AuthenticatedRequest, res: 
   const fbUser = req.firebaseUser!;
   if (targetType === 'seller' || targetType === 'user') {
     const sellerProf = db.sellerProfiles.find(
-      s => s.id === targetId || s.userId === targetId
+      (s) => s.id === targetId || s.userId === targetId
     );
     if (sellerProf) {
       sellerProf.isVerified = verify;
@@ -468,7 +671,7 @@ router.post(
   requireCeoRecentReauth(),
   (req: AuthenticatedRequest, res: Response) => {
     const { action, reason } = req.body || {};
-    const targetUser = db.users.find(u => u.id === req.params.id);
+    const targetUser = db.users.find((u) => u.id === req.params.id);
     const fbUser = req.firebaseUser!;
 
     if (!targetUser) {
@@ -481,13 +684,13 @@ router.post(
 
     if (action === 'suspend') {
       targetUser.isSuspended = true;
-      targetUser.suspensionReason = String(reason || 'Suspended by FU MARKET CEO.');
-      const sellerProf = db.sellerProfiles.find(s => s.userId === targetUser.id);
+      targetUser.suspensionReason = String(reason || 'Suspended by NIGERIA CAMPUS MARKET CEO.');
+      const sellerProf = db.sellerProfiles.find((s) => s.userId === targetUser.id);
       if (sellerProf) sellerProf.isSuspended = true;
     } else if (action === 'activate') {
       targetUser.isSuspended = false;
       delete targetUser.suspensionReason;
-      const sellerProf = db.sellerProfiles.find(s => s.userId === targetUser.id);
+      const sellerProf = db.sellerProfiles.find((s) => s.userId === targetUser.id);
       if (sellerProf) sellerProf.isSuspended = false;
     }
 

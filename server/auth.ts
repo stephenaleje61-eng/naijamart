@@ -207,12 +207,12 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     }
     if (fbUser.email.toLowerCase().trim() !== CEO_EMAIL || !fbUser.emailVerified) {
       return res.status(403).json({
-        error: 'Unauthorized: Only the verified FU MARKET CEO account can access master controls.'
+        error: 'Unauthorized: Only the verified NIGERIA CAMPUS MARKET CEO account can access master controls.'
       });
     }
     req.user = {
       id: fbUser.uid,
-      name: fbUser.displayName || 'FU MARKET CEO',
+      name: fbUser.displayName || 'NIGERIA CAMPUS MARKET CEO',
       email: fbUser.email,
       passwordHash: '',
       role: 'admin',
@@ -221,7 +221,7 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     return next();
   }
 
-  return res.status(401).json({ error: 'Administrator authentication required. Please sign in as FU MARKET CEO.' });
+  return res.status(401).json({ error: 'Administrator authentication required. Please sign in as NIGERIA UNIVERSITY HUB CEO.' });
 }
 
 /**
@@ -257,7 +257,7 @@ export async function requireCeoAdmin(
         summary: `Blocked ${regularUser.role} account (${regularUser.email}) from accessing CEO endpoint ${req.method} ${req.originalUrl}.`
       });
       return res.status(403).json({
-        error: 'Forbidden: Only the authorized FU MARKET CEO SUPER ADMINISTRATOR may perform this action.'
+        error: 'Forbidden: Only the authorized NIGERIA UNIVERSITY HUB CEO SUPER ADMINISTRATOR may perform this action.'
       });
     }
     bearerCeoSession = verifyCeoSessionToken(bearerToken);
@@ -276,7 +276,7 @@ export async function requireCeoAdmin(
       summary: `Rejected expired or tampered CEO session token on ${req.method} ${req.originalUrl}.`
     });
     return res.status(401).json({
-      error: 'CEO session expired or invalid. Please sign in again via FU MARKET CEO ADMIN LOGIN.'
+      error: 'CEO session expired or invalid. Please sign in again via NIGERIA UNIVERSITY HUB CEO ADMIN LOGIN.'
     });
   }
 
@@ -285,7 +285,7 @@ export async function requireCeoAdmin(
 
   if (!fbIdToken) {
     return res.status(401).json({
-      error: 'CEO Firebase authentication required. Please sign in at FU MARKET CEO ADMIN LOGIN.'
+      error: 'CEO Firebase authentication required. Please sign in at NIGERIA UNIVERSITY HUB CEO ADMIN LOGIN.'
     });
   }
 
@@ -315,7 +315,7 @@ export async function requireCeoAdmin(
       summary: `Denied non-CEO Firebase user (${fbUser.email}, verified=${fbUser.emailVerified}) attempting ${req.method} ${req.originalUrl}.`
     });
     return res.status(403).json({
-      error: 'Forbidden: Account is not the authorized FU MARKET CEO SUPER ADMINISTRATOR.'
+      error: 'Forbidden: Account is not the authorized NIGERIA UNIVERSITY HUB CEO SUPER ADMINISTRATOR.'
     });
   }
 
@@ -338,7 +338,7 @@ export async function requireCeoAdmin(
   req.ceoSession = parsedCeoSession || undefined;
   req.user = {
     id: fbUser.uid,
-    name: fbUser.displayName || 'FU MARKET CEO',
+    name: fbUser.displayName || 'NIGERIA UNIVERSITY HUB CEO',
     email: fbUser.email,
     passwordHash: '',
     role: 'admin',
