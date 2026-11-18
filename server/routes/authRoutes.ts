@@ -15,6 +15,9 @@ const handleRegister = async (req: any, res: Response) => {
       email,
       password,
       role = 'buyer',
+      accountType,
+      institutionId,
+      campus,
       phone,
       whatsapp,
       whatsappNumber = whatsapp,
@@ -45,6 +48,7 @@ const handleRegister = async (req: any, res: Response) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     const userId = `user-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const nowIso = new Date().toISOString();
 
     const newUser: User = {
       id: userId,
@@ -52,11 +56,15 @@ const handleRegister = async (req: any, res: Response) => {
       email: normalizedEmail,
       passwordHash,
       role: role === 'seller' ? 'seller' : 'buyer',
+      accountType: typeof accountType === 'string' ? accountType.trim() : role === 'seller' ? 'seller' : 'student',
+      institutionId: typeof institutionId === 'string' && institutionId.trim() ? institutionId.trim() : 'fuwukari',
+      campus: typeof campus === 'string' && campus.trim() ? campus.trim() : undefined,
       phone: phone?.trim(),
       whatsappNumber: whatsappNumber?.trim() || phone?.trim() || '',
       state: state?.trim() || 'Taraba',
       city: city?.trim() || 'Wukari',
-      createdAt: new Date().toISOString()
+      lastSeenAt: nowIso,
+      createdAt: nowIso
     };
 
     db.users.push(newUser);
@@ -138,19 +146,30 @@ router.post('/sync', (req, res) => {
         ? 'seller'
         : 'buyer';
 
-    if (!db.users.some(u => u.id === user.id || u.email === normalizedEmail)) {
+    const existingUser = db.users.find(u => u.id === user.id || u.email === normalizedEmail);
+    const nowIso = new Date().toISOString();
+    if (!existingUser) {
       db.users.push({
         id: String(user.id),
-        name: String(user.name || 'FUWUKARI Student'),
+        name: String(user.name || 'Campus Student'),
         email: normalizedEmail,
         passwordHash: '',
         role: safeRole,
+        accountType: user.accountType ? String(user.accountType) : undefined,
+        institutionId: user.institutionId ? String(user.institutionId) : 'fuwukari',
+        campus: user.campus ? String(user.campus) : undefined,
         phone: user.phone || '',
         whatsappNumber: user.whatsappNumber || user.phone || '',
         state: user.state || 'Taraba',
         city: user.city || 'Wukari',
-        createdAt: user.createdAt || new Date().toISOString()
+        lastSeenAt: nowIso,
+        createdAt: user.createdAt || nowIso
       });
+    } else {
+      existingUser.lastSeenAt = nowIso;
+      if (user.institutionId) existingUser.institutionId = String(user.institutionId);
+      if (user.campus) existingUser.campus = String(user.campus);
+      if (user.accountType) existingUser.accountType = String(user.accountType);
     }
     if (sellerProfile?.id && !db.sellerProfiles.some(p => p.id === sellerProfile.id || p.userId === user.id)) {
       db.sellerProfiles.push(sellerProfile);
@@ -187,6 +206,9 @@ router.post('/login', async (req, res) => {
         error: `Account suspended by marketplace moderation: ${user.suspensionReason || 'Violation of trust & safety policy.'}`
       });
     }
+
+    user.lastSeenAt = new Date().toISOString();
+    db.save();
 
     const token = generateToken({
       userId: user.id,

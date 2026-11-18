@@ -949,7 +949,7 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     )}
 
-                    {(user.role === 'admin' || isCeo) && (
+                    {isCeo && (
                       <button
                         type="button"
                         onClick={() => {

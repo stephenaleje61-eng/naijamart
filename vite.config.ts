@@ -13,6 +13,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: [
           'icon.svg',
+          'offline.html',
           'fuwukari-crest.png',
           'fuwukari-logo.png',
           'apple-touch-icon.png',
@@ -56,14 +57,11 @@ export default defineConfig(() => {
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          navigateFallback: '/offline.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/auth\//, /^\/uploads\//],
           runtimeCaching: [
             {
               urlPattern: /^.*\/api\/(ceo|payments|admin|auth)\/.*/i,
-              handler: 'NetworkOnly',
-            },
-            {
-              urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
               handler: 'NetworkOnly',
             },
             {
@@ -97,7 +95,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
+          enabled: false,
           type: 'module',
         },
       }),

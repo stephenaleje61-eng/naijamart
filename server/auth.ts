@@ -180,36 +180,43 @@ export function requireSeller(req: AuthenticatedRequest, res: Response, next: Ne
 }
 
 export async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  // 1. Check Express HMAC JWT if provided
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = verifyToken(token);
-    if (payload) {
-      const user = db.users.find(u => u.id === payload.userId);
-      if (user && user.role === 'admin') {
-        req.user = user;
-        return next();
-      }
-      if (user) {
-        return res.status(403).json({ error: 'Unauthorized: Administrator access required.' });
-      }
-    }
-  }
+  const ipAddress = getClientIp(req);
+  const userAgent = String(req.headers['user-agent'] || '').slice(0, 200);
 
-  // 2. Check cryptographic Firebase ID token for the authorized CEO account
+  // 1. Check cryptographic Firebase ID token for the authorized administrator account
   const rawFbHeader = req.headers['x-firebase-id-token'];
   const fbIdToken = typeof rawFbHeader === 'string' ? rawFbHeader.trim() : '';
   if (fbIdToken) {
     const fbUser = await verifyFirebaseIdToken(fbIdToken);
     if (!fbUser) {
+      ceoStore.recordSecurityLog({
+        eventType: 'UNAUTHORIZED_CEO_ACCESS',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        summary: `Rejected invalid/expired Firebase token on admin route ${req.method} ${req.originalUrl}.`
+      });
       return res.status(401).json({ error: 'Invalid or expired Firebase authentication token.' });
     }
-    if (fbUser.email.toLowerCase().trim() !== CEO_EMAIL || !fbUser.emailVerified) {
+    if (
+      fbUser.email.toLowerCase().trim() !== CEO_EMAIL ||
+      !fbUser.emailVerified ||
+      fbUser.ceoAdminClaim === false
+    ) {
+      ceoStore.recordSecurityLog({
+        eventType: 'UNAUTHORIZED_CEO_ACCESS',
+        severity: 'critical',
+        actorEmail: fbUser.email,
+        actorUid: fbUser.uid,
+        ipAddress,
+        userAgent,
+        summary: `Blocked unauthorized user (${fbUser.email}, verified=${fbUser.emailVerified}) from admin route ${req.method} ${req.originalUrl}.`
+      });
       return res.status(403).json({
-        error: 'Unauthorized: Only the verified NIGERIA CAMPUS MARKET CEO account can access master controls.'
+        error: 'Access Denied: Only the verified NIGERIA CAMPUS MARKET administrator account can access admin controls.'
       });
     }
+    req.firebaseUser = fbUser;
     req.user = {
       id: fbUser.uid,
       name: fbUser.displayName || 'NIGERIA CAMPUS MARKET CEO',
@@ -221,7 +228,49 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     return next();
   }
 
-  return res.status(401).json({ error: 'Administrator authentication required. Please sign in as NIGERIA UNIVERSITY HUB CEO.' });
+  // 2. Reject any Express JWT whose email is not the authorized administrator
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    const ceoSession = verifyCeoSessionToken(token);
+    if (ceoSession && ceoSession.email.toLowerCase().trim() === CEO_EMAIL) {
+      req.ceoSession = ceoSession;
+      req.user = {
+        id: ceoSession.uid,
+        name: 'NIGERIA CAMPUS MARKET CEO',
+        email: ceoSession.email,
+        passwordHash: '',
+        role: 'admin',
+        createdAt: new Date().toISOString()
+      };
+      return next();
+    }
+
+    const payload = verifyToken(token);
+    if (payload) {
+      const user = db.users.find((u) => u.id === payload.userId);
+      if (user && user.role === 'admin' && user.email.toLowerCase().trim() === CEO_EMAIL) {
+        req.user = user;
+        return next();
+      }
+      ceoStore.recordSecurityLog({
+        eventType: 'UNAUTHORIZED_CEO_ACCESS',
+        severity: 'critical',
+        actorEmail: payload.email,
+        actorUid: payload.userId,
+        ipAddress,
+        userAgent,
+        summary: `Blocked non-administrator account (${payload.email}) from accessing admin route ${req.method} ${req.originalUrl}.`
+      });
+      return res.status(403).json({
+        error: 'Access Denied: Ordinary accounts cannot access administrator endpoints.'
+      });
+    }
+  }
+
+  return res.status(401).json({
+    error: 'Administrator authentication required. Please sign in with the authorized administrator account.'
+  });
 }
 
 /**

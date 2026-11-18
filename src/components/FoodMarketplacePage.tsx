@@ -21,7 +21,7 @@ import {
   Utensils,
   X
 } from 'lucide-react';
-import campusFoodShowcaseImg from '../assets/images/nigeria_campus_food_1794902752058.jpg';
+import campusFoodShowcaseImg from '../assets/images/nigeria_campus_food_1794988912277.jpg';
 import {
   CodPolicySettings,
   DeliveryPartner,

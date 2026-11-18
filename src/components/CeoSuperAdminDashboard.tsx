@@ -48,7 +48,6 @@ import {
   ceoUpdateAppSettings,
   ceoUpdateModeratorStatus,
   ceoUpdateSecuritySettings,
-  ceoUpdateUserSuspension,
   ceoUploadAndSaveVerificationLogo,
   ceoVerifyOrUnverifyEntity,
   fetchCeoDashboardSnapshot,
@@ -111,6 +110,8 @@ import { formatNaira } from './ProductCard.js';
 import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 import { CeoOfficialAdsPanel } from './CeoOfficialAdsPanel.js';
 import { CeoContentManagementPanel } from './CeoContentManagementPanel.js';
+import { AdminOverviewAnalytics } from './admin/AdminOverviewAnalytics.js';
+import { AdminUsersManagement } from './admin/AdminUsersManagement.js';
 import {
   adminUpdateFirestoreProduct,
   auth,
@@ -738,20 +739,29 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
 
           {/* Live Summary Mini Stats */}
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-4 shadow-xs space-y-2 text-xs">
-            <p className="font-black uppercase tracking-wider text-[10px] text-[#555555]">
-              Live Platform Pulse
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="font-black uppercase tracking-wider text-[10px] text-[#555555]">
+                Live Platform Pulse
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveSection('analytics')}
+                className="text-[10px] font-black text-[#087443] hover:underline"
+              >
+                Full Analytics →
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2">
+              <div className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <span className="text-[10px] text-[#555555] block">Visitors</span>
+                <strong className="text-base font-black text-[#087443] tabular-nums">
+                  {snapshot?.visitorAnalytics?.totalUniqueVisitors ?? snapshot?.visitorAnalytics?.totalVisits ?? 0}
+                </strong>
+              </div>
               <div className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
                 <span className="text-[10px] text-[#555555] block">Users</span>
                 <strong className="text-base font-black text-[#10251D] tabular-nums">
                   {analytics.totalUsers}
-                </strong>
-              </div>
-              <div className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#555555] block">Verified</span>
-                <strong className="text-base font-black text-[#087443] tabular-nums">
-                  {analytics.verifiedSellers + analytics.verifiedUsers}
                 </strong>
               </div>
               <div className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
@@ -1956,103 +1966,25 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
                 </div>
               )}
 
-              {/* 2. USER MANAGEMENT */}
+              {/* 5. REGISTERED USERS MANAGEMENT */}
               {activeSection === 'users' && (
-                <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-base sm:text-lg font-black">
-                      User Management ({snapshot.users.length})
-                    </h2>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#F9FAFB] text-[#555555] uppercase text-[10px] border-b border-[#E5E7EB]">
-                        <tr>
-                          <th className="p-3">User</th>
-                          <th className="p-3">Role</th>
-                          <th className="p-3">Verification</th>
-                          <th className="p-3">Actions (Reauth Protected)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#E5E7EB]">
-                        {snapshot.users
-                          .filter(
-                            (u) =>
-                              !q ||
-                              u.name.toLowerCase().includes(q) ||
-                              u.email.toLowerCase().includes(q)
-                          )
-                          .map((u) => {
-                            const verified = Boolean(u.ceoVerified || u.isVerified);
-                            const isSelfCeo = u.email.toLowerCase() === CEO_EMAIL;
-                            return (
-                              <tr key={u.id}>
-                                <td className="p-3">
-                                  <p className="font-bold text-[#10251D]">{u.name}</p>
-                                  <p className="text-[11px] text-[#555555]">{u.email}</p>
-                                </td>
-                                <td className="p-3 uppercase font-bold text-[10px]">{u.role}</td>
-                                <td className="p-3">
-                                  {verified ? (
-                                    <CeoVerifiedBadge verified variant="compact" />
-                                  ) : (
-                                    <span className="text-[11px] text-[#6B7280]">Unverified</span>
-                                  )}
-                                </td>
-                                <td className="p-3">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleToggleVerification({
-                                          targetType: 'user',
-                                          targetId: u.id,
-                                          targetName: u.name,
-                                          currentlyVerified: verified
-                                        })
-                                      }
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#087443] border border-emerald-200 font-bold text-[11px]"
-                                    >
-                                      {verified ? 'Unverify' : 'Verify'}
-                                    </button>
-                                    {!isSelfCeo && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          executeSensitiveAction(async () => {
-                                            await ceoUpdateUserSuspension({
-                                              userId: u.id,
-                                              suspend: !u.isSuspended,
-                                              reason: u.isSuspended
-                                                ? undefined
-                                                : 'Suspended by NIGERIA CAMPUS MARKET CEO'
-                                            });
-                                            flash(
-                                              `${u.name} is now ${
-                                                !u.isSuspended ? 'SUSPENDED' : 'ACTIVE'
-                                              }.`
-                                            );
-                                            await loadSnapshot();
-                                          })
-                                        }
-                                        className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
-                                          u.isSuspended
-                                            ? 'bg-[#087443] text-white'
-                                            : 'bg-[#10251D] text-[#D4A62A]'
-                                        }`}
-                                      >
-                                        {u.isSuspended ? 'Reactivate' : 'Suspend'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <AdminUsersManagement
+                  mode="ceo"
+                  initialUsers={snapshot.users}
+                  institutions={snapshot.institutions}
+                  onRefreshSnapshot={loadSnapshot}
+                  onRunSensitiveAction={executeSensitiveAction}
+                  onStatusMessage={flash}
+                  onErrorMessage={setErrorMsg}
+                  onToggleCeoVerifyUser={(u) =>
+                    handleToggleVerification({
+                      targetType: 'user',
+                      targetId: u.id,
+                      targetName: u.name,
+                      currentlyVerified: Boolean(u.ceoVerified || u.isVerified)
+                    })
+                  }
+                />
               )}
 
               {/* 3. SELLER MANAGEMENT */}
@@ -3062,42 +2994,47 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
 
               {/* 16. WEBSITE ANALYTICS */}
               {activeSection === 'analytics' && (
-                <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-4">
-                  <h2 className="text-base sm:text-lg font-black">
-                    Live NIGERIA CAMPUS MARKET Analytics (Real Firestore Totals)
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Registered Users</span>
-                      <strong className="text-lg font-black">{analytics.totalUsers}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Active Products</span>
-                      <strong className="text-lg font-black">{analytics.activeProducts}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Product Views</span>
-                      <strong className="text-lg font-black">{analytics.productViews.toLocaleString()}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">WhatsApp Clicks</span>
-                      <strong className="text-lg font-black">{analytics.productWhatsappClicks.toLocaleString()}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Live Sponsored Ads</span>
-                      <strong className="text-lg font-black">{analytics.liveAds}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Ad Impressions</span>
-                      <strong className="text-lg font-black">{analytics.adImpressions.toLocaleString()}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Active Services</span>
-                      <strong className="text-lg font-black">{analytics.activeServices}</strong>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                      <span className="text-[#555555] block">Service Views</span>
-                      <strong className="text-lg font-black">{analytics.serviceViews.toLocaleString()}</strong>
+                <div className="space-y-4">
+                  <AdminOverviewAnalytics
+                    mode="ceo"
+                    users={snapshot.users}
+                    products={snapshot.products}
+                    sellers={snapshot.sellers}
+                    houseAgents={snapshot.houseAgents}
+                    institutions={snapshot.institutions}
+                    services={snapshot.services}
+                    advertisements={snapshot.advertisements}
+                    visitorAnalytics={snapshot.visitorAnalytics}
+                    accommodationsCount={snapshot.accommodationsCount}
+                    studentPostsCount={snapshot.studentPostsCount}
+                    studentRequestsCount={snapshot.studentRequestsCount}
+                    messagesCount={snapshot.messagesCount}
+                    activeUsersCount={snapshot.activeUsersCount}
+                    communityMembershipsCount={snapshot.communityMembershipsCount}
+                    pendingReportsCount={analytics.pendingReports}
+                  />
+
+                  <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-3">
+                    <h3 className="text-sm font-black text-[#10251D]">
+                      Engagement &amp; Conversion Totals (Real Database Metrics)
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                        <span className="text-[#555555] block">Product Views</span>
+                        <strong className="text-lg font-black tabular-nums">{analytics.productViews.toLocaleString()}</strong>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                        <span className="text-[#555555] block">WhatsApp Leads</span>
+                        <strong className="text-lg font-black tabular-nums">{analytics.productWhatsappClicks.toLocaleString()}</strong>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                        <span className="text-[#555555] block">Ad Impressions</span>
+                        <strong className="text-lg font-black tabular-nums">{analytics.adImpressions.toLocaleString()}</strong>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                        <span className="text-[#555555] block">Service Views</span>
+                        <strong className="text-lg font-black tabular-nums">{analytics.serviceViews.toLocaleString()}</strong>
+                      </div>
                     </div>
                   </div>
                 </div>

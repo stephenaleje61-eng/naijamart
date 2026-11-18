@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppSettings, PwaEventType, PwaInstallMetric } from '../types.js';
+import { AppSettings, DevicePlatformType, PwaEventType, PwaInstallMetric } from '../types.js';
 import { fetchPublicAppSettings, trackPwaInstallEvent } from '../services/ceoAdmin.js';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,22 +14,38 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   apkEnabled: false,
   appVersion: '2.0.0',
   releaseNotes: 'NIGERIA CAMPUS MARKET PWA with nationwide campus search, notifications, and NGN subscriptions.',
-  installAnnouncement: 'Install NIGERIA CAMPUS MARKET on your Android, iPhone, or laptop for fast campus trading.',
+  installAnnouncement: 'Install NIGERIA CAMPUS MARKET on your Android, iPhone, iPad, or desktop for fast campus trading.',
   installInstructions: 'Android/Chrome: Tap Install Web App. iPhone/iPad Safari: Tap Share -> Add to Home Screen.'
 };
 
-function detectPlatform(ua: string): PwaInstallMetric['platform'] {
-  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+export function detectVisitorDeviceType(): DevicePlatformType {
+  if (typeof window === 'undefined') return 'unknown';
+  const ua = window.navigator.userAgent.toLowerCase();
+  const maxTouchPoints = Number(window.navigator.maxTouchPoints || 0);
+  if (/ipad/.test(ua) || (/macintosh/.test(ua) && maxTouchPoints > 1)) {
+    return 'ipad';
+  }
+  if (/iphone|ipod/.test(ua)) return 'iphone';
   if (/android/.test(ua)) return 'android';
   if (/windows|macintosh|linux|cros/.test(ua)) return 'desktop';
+  return 'unknown';
+}
+
+function mapDeviceToPwaPlatform(device: DevicePlatformType): PwaInstallMetric['platform'] {
+  if (device === 'iphone' || device === 'ipad') return 'ios';
+  if (device === 'android') return 'android';
+  if (device === 'desktop') return 'desktop';
   return 'unknown';
 }
 
 export function usePWAInstall(activeInstitutionId?: string) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [platform, setPlatform] = useState<PwaInstallMetric['platform']>('unknown');
+  const [isIOS, setIsIOS] = useState(() => mapDeviceToPwaPlatform(detectVisitorDeviceType()) === 'ios');
+  const [deviceType, setDeviceType] = useState<DevicePlatformType>(() => detectVisitorDeviceType());
+  const [platform, setPlatform] = useState<PwaInstallMetric['platform']>(() =>
+    mapDeviceToPwaPlatform(detectVisitorDeviceType())
+  );
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
 
   useEffect(() => {
@@ -38,10 +54,11 @@ export function usePWAInstall(activeInstitutionId?: string) {
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const detected = detectPlatform(userAgent);
-    setPlatform(detected);
-    setIsIOS(detected === 'ios');
+    const detectedDevice = detectVisitorDeviceType();
+    const detectedPlatform = mapDeviceToPwaPlatform(detectedDevice);
+    setDeviceType(detectedDevice);
+    setPlatform(detectedPlatform);
+    setIsIOS(detectedPlatform === 'ios');
 
     let promptTrackedThisSession = false;
 
@@ -50,14 +67,14 @@ export function usePWAInstall(activeInstitutionId?: string) {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       if (!promptTrackedThisSession) {
         promptTrackedThisSession = true;
-        trackPwaInstallEvent('prompt_shown', detected, activeInstitutionId).catch(() => {});
+        trackPwaInstallEvent('prompt_shown', detectedPlatform, activeInstitutionId).catch(() => {});
       }
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
-      trackPwaInstallEvent('install_accepted', detected, activeInstitutionId).catch(() => {});
+      trackPwaInstallEvent('install_accepted', detectedPlatform, activeInstitutionId).catch(() => {});
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -105,6 +122,7 @@ export function usePWAInstall(activeInstitutionId?: string) {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isIOS,
+    deviceType,
     platform,
     appSettings,
     install,

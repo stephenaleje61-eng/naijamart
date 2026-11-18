@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline — NIGERIA CAMPUS MARKET</title>
+    <meta name="theme-color" content="#087443" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #f4f8f5;
+        color: #10251d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        width: 100%;
+        max-width: 440px;
+        background: #ffffff;
+        border: 1px solid #d9e5df;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(16, 37, 29, 0.12);
+        text-align: center;
+      }
+      .header {
+        background: linear-gradient(135deg, #10251d 0%, #087443 100%);
+        color: #ffffff;
+        padding: 28px 24px;
+        border-bottom: 4px solid #d4a62a;
+      }
+      .logo {
+        width: 68px;
+        height: 68px;
+        border-radius: 18px;
+        border: 2px solid #d4a62a;
+        background: #ffffff;
+        margin-bottom: 12px;
+      }
+      .badge {
+        display: inline-block;
+        background: #d4a62a;
+        color: #10251d;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 999px;
+        margin-bottom: 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+      }
+      .body {
+        padding: 24px;
+      }
+      p {
+        margin: 0 0 18px 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #374151;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      button,
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 13px 18px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+      }
+      .primary {
+        background: #087443;
+        color: #ffffff;
+      }
+      .secondary {
+        background: #f4f8f5;
+        color: #10251d;
+        border: 1px solid #d9e5df;
+      }
+      .footer {
+        margin-top: 18px;
+        font-size: 11px;
+        color: #6b7280;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="header">
+        <img src="/pwa-192x192.png" alt="NIGERIA CAMPUS MARKET" class="logo" />
+        <div class="badge">Offline Mode</div>
+        <h1>NIGERIA CAMPUS MARKET</h1>
+      </div>
+      <div class="body">
+        <p>
+          You appear to be offline right now. Reconnect to mobile data or campus Wi-Fi to browse live listings, hostels, jobs, and student messages across Nigeria.
+        </p>
+        <div class="actions">
+          <button type="button" class="primary" onclick="window.location.reload()">
+            Retry Connection
+          </button>
+          <a href="/" class="secondary">Return to Home</a>
+        </div>
+        <div class="footer">
+          Buy. Sell. Connect. Grow Across Nigerian Campuses.
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

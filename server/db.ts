@@ -20,6 +20,9 @@ export interface User {
   email: string;
   passwordHash: string;
   role: 'buyer' | 'seller' | 'admin';
+  accountType?: string;
+  institutionId?: string;
+  campus?: string;
   phone?: string;
   whatsappNumber?: string;
   state?: string;
@@ -27,6 +30,7 @@ export interface User {
   avatarUrl?: string;
   isSuspended?: boolean;
   suspensionReason?: string;
+  lastSeenAt?: string;
   createdAt: string;
 }
 
@@ -206,24 +210,20 @@ class Database {
       modified = true;
     }
 
-    // Check admin user
-    const adminExists = this.data.users.some(u => u.role === 'admin');
-    if (!adminExists) {
-      const salt = bcrypt.genSaltSync(10);
-      const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
-      const adminUser: User = {
-        id: 'admin-001',
-        name: 'NIGERIA UNIVERSITY HUB Moderation Desk',
-        email: 'admin@fumarket.ng',
-        passwordHash: adminPasswordHash,
-        role: 'admin',
-        phone: '08006245262',
-        state: 'Taraba',
-        city: 'Wukari',
-        createdAt: new Date().toISOString()
-      };
-      this.data.users.push(adminUser);
+    // Security hardening: ensure no legacy seeded backdoor admin account retains admin privileges
+    const CEO_EMAIL = 'stephenaleje61@gmail.com';
+    const beforeLen = this.data.users.length;
+    this.data.users = this.data.users.filter(
+      (u) => !(u.id === 'admin-001' && u.email.toLowerCase().trim() === 'admin@fumarket.ng')
+    );
+    if (this.data.users.length !== beforeLen) {
       modified = true;
+    }
+    for (const u of this.data.users) {
+      if (u.role === 'admin' && u.email.toLowerCase().trim() !== CEO_EMAIL) {
+        u.role = 'buyer';
+        modified = true;
+      }
     }
 
     // Do not seed fake or demo products: only real listings posted by users remain
@@ -391,6 +391,15 @@ class Database {
   // Get single product (never blocked by expiration)
   public getProductById(id: string): Product | undefined {
     return this.data.products.find(p => p.id === id);
+  }
+
+  public removeUserData(userId: string): void {
+    this.data.users = this.data.users.filter((u) => u.id !== userId);
+    this.data.sellerProfiles = this.data.sellerProfiles.filter(
+      (s) => s.userId !== userId && s.id !== userId
+    );
+    this.data.favourites = this.data.favourites.filter((f) => f.userId !== userId);
+    this.save();
   }
 
   // Raw accessors

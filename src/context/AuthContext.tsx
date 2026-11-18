@@ -102,14 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadUser]);
 
   useEffect(() => {
-    const targetUid = firebaseUser?.uid || user?.id;
-    if (!targetUid || firebaseUser?.isAnonymous) {
+    if (!firebaseUser?.uid || firebaseUser.isAnonymous) {
       setNotifications([]);
       return;
     }
-    const unsub = subscribeToUserNotifications(targetUid, setNotifications);
+    const unsub = subscribeToUserNotifications(firebaseUser.uid, setNotifications);
     return () => unsub();
-  }, [firebaseUser?.uid, firebaseUser?.isAnonymous, user?.id]);
+  }, [firebaseUser?.uid, firebaseUser?.isAnonymous]);
 
   const login = async (email: string, password: string): Promise<User> => {
     const data = await loginUser(email, password);

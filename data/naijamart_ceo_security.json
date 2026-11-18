@@ -48,7 +48,7 @@
   "verificationLogs": [],
   "verificationConfig": {
     "logoUrl": "",
-    "badgeText": "VERIFIED BY FU MARKET CEO",
+    "badgeText": "VERIFIED BY NIGERIA CAMPUS MARKET CEO",
     "updatedAt": "",
     "updatedBy": ""
   },
@@ -60,5 +60,140 @@
     "lockoutDurationMinutes": 15,
     "updatedAt": "2026-11-15T08:46:22.434Z"
   },
-  "failedAttempts": {}
+  "failedAttempts": {},
+  "appSettings": {
+    "id": "global_app_settings",
+    "apkUrl": "",
+    "playStoreUrl": "",
+    "apkEnabled": false,
+    "appVersion": "3.0.0",
+    "releaseNotes": "NIGERIA CAMPUS MARKET nationwide university marketplace, campus food, accommodation & GPA tools.",
+    "installAnnouncement": "Install NIGERIA CAMPUS MARKET on your phone or laptop for fast campus access.",
+    "installInstructions": "On Android/Chrome, tap \"Install App\" to install directly from your browser. On iPhone/iPad Safari, tap Share then \"Add to Home Screen\".",
+    "updatedAt": "",
+    "updatedBy": ""
+  },
+  "pwaInstallEvents": [],
+  "moderators": [],
+  "subscriptionPlans": [
+    {
+      "id": "plan_seller_pro",
+      "slug": "seller-pro",
+      "audience": "seller_pro",
+      "name": "Seller Pro Monthly",
+      "description": "Priority visibility in campus & nationwide searches plus storefront analytics.",
+      "priceNaira": 2500,
+      "durationDays": 30,
+      "currency": "NGN",
+      "features": [
+        "Priority ranking inside your campus & nationwide searches",
+        "Featured Storefront badge in Sellers directory",
+        "Detailed click & view insights"
+      ],
+      "isActive": true,
+      "targetScope": "campus",
+      "updatedAt": "2026-11-18T08:38:18.454Z"
+    },
+    {
+      "id": "plan_verified_business",
+      "slug": "verified-business",
+      "audience": "verified_business",
+      "name": "Verified Business Plan",
+      "description": "Eligibility review for CEO Verification & multi-campus business trust placement.",
+      "priceNaira": 5000,
+      "durationDays": 30,
+      "currency": "NGN",
+      "features": [
+        "Fast-track CEO verification review",
+        "Verified business spotlight on campus feeds",
+        "Direct WhatsApp & phone lead tracking"
+      ],
+      "isActive": true,
+      "targetScope": "state",
+      "updatedAt": "2026-11-18T08:38:18.455Z"
+    },
+    {
+      "id": "plan_house_agent",
+      "slug": "house-agent",
+      "audience": "house_agent",
+      "name": "House Agent Listing Plan",
+      "description": "Publish unlimited verified lodges & apartments with priority accommodation placement.",
+      "priceNaira": 4000,
+      "durationDays": 30,
+      "currency": "NGN",
+      "features": [
+        "Priority placement in Student Accommodation & Hux",
+        "Multiple lodge listings per campus",
+        "Direct call & WhatsApp inspection scheduling"
+      ],
+      "isActive": true,
+      "targetScope": "campus",
+      "updatedAt": "2026-11-18T08:38:18.455Z"
+    },
+    {
+      "id": "plan_campus_ad_boost",
+      "slug": "campus-ad-boost",
+      "audience": "campus_ad_boost",
+      "name": "Campus Ad Boost",
+      "description": "Sponsored placement inside a single target university or polytechnic campus.",
+      "priceNaira": 3500,
+      "durationDays": 14,
+      "currency": "NGN",
+      "features": [
+        "Targeted to one Nigerian university or polytechnic",
+        "Clear Sponsored tag & business logo",
+        "Impression, click, and WhatsApp lead reporting"
+      ],
+      "isActive": true,
+      "targetScope": "campus",
+      "updatedAt": "2026-11-18T08:38:18.455Z"
+    },
+    {
+      "id": "plan_national_ad_boost",
+      "slug": "national-ad-boost",
+      "audience": "national_ad_boost",
+      "name": "National Ad Boost",
+      "description": "Nationwide banner & discovery placement across all active Nigerian campuses.",
+      "priceNaira": 10000,
+      "durationDays": 30,
+      "currency": "NGN",
+      "features": [
+        "Appears across all active Nigerian universities & polytechnics",
+        "Homepage Sponsored showcase priority",
+        "State & Nationwide search spotlight"
+      ],
+      "isActive": true,
+      "targetScope": "nationwide",
+      "updatedAt": "2026-11-18T08:38:18.455Z"
+    }
+  ],
+  "paymentTransactions": [],
+  "codPolicy": {
+    "codEnabled": true,
+    "codFoodEnabled": true,
+    "codMaxOrderNaira": 150000,
+    "codNote": "Pay on delivery / campus handover available for eligible local campus orders.",
+    "updatedAt": "2026-11-18T08:38:18.455Z"
+  },
+  "gradingConfigs": {},
+  "visitorAnalytics": {
+    "lifetimeVisits": 1,
+    "uniqueVisitorIds": [
+      "verify-test-1"
+    ],
+    "dailyBuckets": {
+      "2026-11-18": {
+        "date": "2026-11-18",
+        "totalVisits": 1,
+        "uniqueVisitorIds": [
+          "verify-test-1"
+        ],
+        "android": 1,
+        "iphone": 0,
+        "ipad": 0,
+        "desktop": 0,
+        "other": 0
+      }
+    }
+  }
 }

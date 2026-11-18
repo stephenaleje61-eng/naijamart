@@ -12,8 +12,9 @@ import {
   verifyFirebaseIdToken
 } from '../auth.js';
 import { ensureCeoCustomClaim, isFirebaseAdminConfigured } from '../firebaseAdmin.js';
-import { ceoStore, PwaEventType, RegionalModeratorRecord } from '../ceoStore.js';
+import { ceoStore, PwaEventType, RegionalModeratorRecord, VisitorDeviceType } from '../ceoStore.js';
 import { db } from '../db.js';
+import { firestoreSync } from '../firestore.js';
 
 const router = Router();
 
@@ -82,8 +83,33 @@ router.post('/pwa-track', (req: Request, res: Response) => {
 // Protected CEO-only genuine PWA & APK analytics summary
 router.get('/analytics/installs', requireCeoAdmin, (_req: AuthenticatedRequest, res: Response) => {
   res.json({
+    summary: ceoStore.getPwaAnalyticsSummary(),
     installs: ceoStore.getPwaAnalyticsSummary(),
     appSettings: ceoStore.getData().appSettings
+  });
+});
+
+// Public lightweight genuine website visitor tracker
+router.post('/analytics/visit', (req: Request, res: Response) => {
+  const { visitorId, deviceType } = req.body || {};
+  const safeDevice: VisitorDeviceType = ['android', 'iphone', 'ipad', 'desktop', 'other'].includes(deviceType)
+    ? deviceType
+    : 'other';
+  const safeVisitor = typeof visitorId === 'string' && visitorId.trim()
+    ? visitorId.trim().slice(0, 80)
+    : `anon-${getClientIp(req)}-${String(req.headers['user-agent'] || '').slice(0, 40)}`;
+  const recorded = ceoStore.recordSiteVisit({
+    visitorId: safeVisitor,
+    deviceType: safeDevice
+  });
+  res.status(201).json({ recorded: true, ...recorded });
+});
+
+// Protected CEO-only genuine website visitor analytics summary
+router.get('/analytics/visitors', requireCeoAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const days = Math.min(90, Math.max(7, Number(req.query.days) || 14));
+  res.json({
+    visitorAnalytics: ceoStore.getVisitorAnalyticsSummary(days)
   });
 });
 
@@ -708,6 +734,52 @@ router.post(
     });
 
     res.json({ success: true, localUpdated: true });
+  }
+);
+
+// Protected + Sensitive Reauth: Permanently delete user account (syncs Express + Firestore)
+router.delete(
+  '/users/:id',
+  requireCeoAdmin,
+  requireCeoRecentReauth(),
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = String(req.params.id || '').trim();
+    const fbUser = req.firebaseUser!;
+    const targetUser = db.users.find((u) => u.id === userId);
+
+    if (targetUser && targetUser.email.toLowerCase().trim() === CEO_EMAIL) {
+      return res.status(400).json({ error: 'The authorized CEO Super Administrator account cannot be deleted.' });
+    }
+    if (userId === fbUser.uid) {
+      return res.status(400).json({ error: 'Cannot delete your own active CEO administrator account.' });
+    }
+
+    const removedEmail = targetUser?.email || userId;
+    db.removeUserData(userId);
+    db.auditLogs.unshift({
+      id: `audit-${Date.now()}`,
+      action: 'CEO_DELETED_USER',
+      actor: `${fbUser.email}`,
+      details: `CEO permanently deleted user account "${targetUser?.name || userId}" (${removedEmail}).`,
+      timestamp: new Date().toISOString()
+    });
+    db.save();
+
+    const rawFbToken = typeof req.headers['x-firebase-id-token'] === 'string' ? req.headers['x-firebase-id-token'].trim() : undefined;
+    await firestoreSync.deleteUserAndProfiles(userId, rawFbToken).catch(() => {});
+
+    ceoStore.recordSecurityLog({
+      eventType: 'CEO_USER_MODERATION',
+      severity: 'critical',
+      actorEmail: fbUser.email,
+      actorUid: fbUser.uid,
+      targetType: 'user',
+      targetId: userId,
+      ipAddress: getClientIp(req),
+      summary: `CEO permanently deleted user account ${removedEmail} (ID: ${userId}).`
+    });
+
+    res.json({ success: true, deletedUserId: userId });
   }
 );
 

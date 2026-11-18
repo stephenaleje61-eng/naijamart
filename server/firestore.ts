@@ -19,7 +19,7 @@ const configuredDbId: string | undefined =
     ? firebaseConfig.firestoreDatabaseId.trim()
     : undefined;
 
-const primaryDbId = configuredDbId || '(default)';
+export const primaryDbId = configuredDbId || '(default)';
 const legacyDbId = configuredDbId ? '(default)' : null;
 
 export interface LegacyDbStatus {
@@ -248,24 +248,41 @@ export async function listCollectionDocuments(
   authToken?: string
 ): Promise<DecodedFirestoreDoc[]> {
   const docs: DecodedFirestoreDoc[] = [];
-  let pageToken: string | undefined;
+  let lastDocName: string | undefined;
   const headers: Record<string, string> = {};
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
+  const url = `${buildDbBaseUrl(dbId)}:runQuery`;
+
   while (docs.length < maxDocs) {
     const remaining = Math.min(batchSize, maxDocs - docs.length);
-    const params = new URLSearchParams({ pageSize: String(remaining) });
-    if (pageToken) params.set('pageToken', pageToken);
-
-    const url = `${buildDbBaseUrl(dbId)}/${encodeURIComponent(collectionName)}?${params.toString()}`;
-    const res = await firestoreRestFetch(url, { method: 'GET', headers });
-    const rawDocs = Array.isArray(res?.documents) ? res.documents : [];
-    for (const d of rawDocs) {
-      docs.push(decodeFirestoreDocument(d));
+    const structuredQuery: any = {
+      from: [{ collectionId: collectionName }],
+      orderBy: [{ field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+      limit: remaining
+    };
+    if (lastDocName) {
+      structuredQuery.startAt = {
+        values: [{ referenceValue: lastDocName }],
+        before: false
+      };
     }
 
-    if (!res?.nextPageToken || rawDocs.length === 0) break;
-    pageToken = String(res.nextPageToken);
+    const rows = await firestoreRestFetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ structuredQuery })
+    });
+
+    const rawRows = Array.isArray(rows) ? rows.filter((r: any) => Boolean(r?.document)) : [];
+    for (const row of rawRows) {
+      docs.push(decodeFirestoreDocument(row.document));
+      if (row.document?.name) {
+        lastDocName = String(row.document.name);
+      }
+    }
+
+    if (rawRows.length < remaining || !lastDocName) break;
   }
 
   return docs;
@@ -699,6 +716,31 @@ export class FirestoreSync {
     }
 
     return list;
+  }
+
+  // Delete a user and any matching sellerProfiles from Firestore (used by CEO/Admin account deletion)
+  async deleteUserAndProfiles(userId: string, authToken?: string): Promise<void> {
+    try {
+      await deleteFirestoreDocument('users', userId, primaryDbId, authToken);
+    } catch (err: any) {
+      if (err?.code !== 'not-found') {
+        console.warn(`[FirestoreSync] Error deleting user ${userId}:`, err?.message || err);
+      }
+    }
+    try {
+      const profiles = await queryCollectionEquals(
+        'sellerProfiles',
+        [{ field: 'userId', value: userId }],
+        10,
+        primaryDbId,
+        authToken
+      );
+      for (const p of profiles) {
+        await deleteFirestoreDocument('sellerProfiles', p.id, primaryDbId, authToken).catch(() => {});
+      }
+    } catch (err: any) {
+      console.warn(`[FirestoreSync] Error deleting sellerProfiles for ${userId}:`, err?.message || err);
+    }
   }
 }
 

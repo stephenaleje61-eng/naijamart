@@ -7,9 +7,10 @@ import {
   Share,
   Smartphone,
   Sparkles,
+  Tablet,
   X
 } from 'lucide-react';
-import { AppSettings } from '../types.js';
+import { AppSettings, DevicePlatformType } from '../types.js';
 
 interface DownloadAppModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface DownloadAppModalProps {
   isInstalled: boolean;
   isInstallable: boolean;
   isIOS: boolean;
+  deviceType?: DevicePlatformType;
   appSettings: AppSettings;
   onTriggerInstall: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
   onTrackExternalDownload: (type: 'apk_download' | 'playstore_click') => void;
@@ -29,6 +31,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isInstalled,
   isInstallable,
   isIOS,
+  deviceType = 'unknown',
   appSettings,
   onTriggerInstall,
   onTrackExternalDownload,
@@ -56,11 +59,11 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
       className="fixed inset-0 z-50 bg-[#10251D]/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Download NIGERIA CAMPUS MARKET App"
+      aria-label="Download NIGERIA UNIVERSITY MARKET App"
     >
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-[#D9E5DF] overflow-hidden">
-        {/* Deep Forest Executive Header */}
-        <div className="bg-gradient-to-r from-[#10251D] to-[#087443] text-white p-5 flex items-center justify-between gap-4 border-b border-[#D4A62A]/60">
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#D9E5DF] overflow-hidden max-h-[92vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#10251D] to-[#087443] text-white p-5 flex items-center justify-between gap-4 border-b border-[#D4A62A]/60 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src="/pwa-192x192.png"
@@ -69,10 +72,10 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
             />
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-extrabold tracking-tight truncate">
-                GET THE NIGERIA CAMPUS MARKET APP
+                DOWNLOAD NIGERIA UNIVERSITY MARKET
               </h2>
               <p className="text-xs text-slate-100 mt-0.5 truncate">
-                Version {appSettings.appVersion || '2.0.0'} · Buy. Sell. Connect. Grow Across Nigerian Campuses.
+                Version {appSettings.appVersion || '2.0.0'} · Take your university marketplace everywhere.
               </p>
             </div>
           </div>
@@ -86,19 +89,17 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Announcement */}
+        <div className="p-5 space-y-4 overflow-y-auto">
           {appSettings.installAnnouncement && (
             <div className="p-3.5 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] text-xs text-[#10251D]">
               <p className="font-semibold flex items-center gap-1.5 text-[#10251D]">
                 <Sparkles className="w-4 h-4 text-[#D4A62A] shrink-0" />
-                <span>App Highlight</span>
+                <span>Multi-Device Campus App</span>
               </p>
               <p className="mt-1 text-slate-700">{appSettings.installAnnouncement}</p>
             </div>
           )}
 
-          {/* Installed State vs Install Actions */}
           {isInstalled ? (
             <div className="p-4 rounded-xl bg-[#087443]/10 border border-[#087443]/30 flex items-center gap-3">
               <CheckCircle2 className="w-6 h-6 text-[#087443] shrink-0" />
@@ -112,57 +113,100 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {/* Android / Desktop Chromium 1-Tap PWA Install */}
-              {isInstallable && (
-                <button
-                  type="button"
-                  onClick={handlePwaInstallClick}
-                  className="w-full py-3 px-4 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-sm font-extrabold flex items-center justify-center gap-2 shadow-sm transition"
-                >
-                  <Download className="w-4 h-4 text-[#D4A62A]" />
-                  <span>Install Web App Now (Android &amp; Desktop)</span>
-                </button>
-              )}
-
-              {/* iPhone / iPad Safari Guide */}
-              {isIOS ? (
-                <div className="p-4 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] space-y-2">
-                  <p className="text-xs font-extrabold text-[#10251D] flex items-center gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Android */}
+              <div
+                className={`p-3.5 rounded-xl border space-y-2.5 flex flex-col justify-between ${
+                  deviceType === 'android'
+                    ? 'bg-emerald-50/70 border-[#087443]'
+                    : 'bg-[#F4F8F5] border-[#D9E5DF]'
+                }`}
+              >
+                <div className="space-y-1.5">
+                  <p className="text-xs font-black text-[#10251D] flex items-center gap-1.5">
                     <Smartphone className="w-4 h-4 text-[#087443]" />
-                    <span>Install on iPhone / iPad (Safari)</span>
+                    <span>Android</span>
                   </p>
-                  <ol className="text-xs text-slate-700 space-y-1.5 list-decimal list-inside">
-                    <li>
-                      Tap the <Share className="w-3.5 h-3.5 inline text-[#087443]" />{' '}
-                      <strong>Share</strong> button in your Safari toolbar.
-                    </li>
-                    <li>
-                      Scroll down and tap <strong>Add to Home Screen</strong>.
-                    </li>
-                    <li>
-                      Tap <strong>Add</strong> in the top-right corner to launch NG Campus Market as an app.
-                    </li>
-                  </ol>
+                  <p className="text-[11px] text-slate-700 leading-relaxed">
+                    Tap Install below or open Chrome menu (<strong>⋮</strong>) →{' '}
+                    <strong>Install app</strong>.
+                  </p>
                 </div>
-              ) : (
-                !isInstallable && (
-                  <div className="p-4 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] space-y-1.5">
-                    <p className="text-xs font-extrabold text-[#10251D] flex items-center gap-1.5">
-                      <Laptop className="w-4 h-4 text-[#087443]" />
-                      <span>Browser Install Instructions</span>
-                    </p>
-                    <p className="text-xs text-slate-700">
-                      {appSettings.installInstructions ||
-                        'Open your Chrome, Edge, or Brave menu (⋮) and tap "Install NIGERIA CAMPUS MARKET" or "Add to Home Screen".'}
-                    </p>
-                  </div>
-                )
-              )}
+                {isInstallable && !isIOS ? (
+                  <button
+                    type="button"
+                    onClick={handlePwaInstallClick}
+                    className="w-full py-2 px-3 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-black flex items-center justify-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#D4A62A]" />
+                    <span>Download for Android</span>
+                  </button>
+                ) : (
+                  <span className="text-[10px] font-bold text-[#087443]">
+                    Chrome / Edge PWA Ready
+                  </span>
+                )}
+              </div>
+
+              {/* iPhone */}
+              <div
+                className={`p-3.5 rounded-xl border space-y-2 ${
+                  deviceType === 'iphone'
+                    ? 'bg-emerald-50/70 border-[#087443]'
+                    : 'bg-[#F4F8F5] border-[#D9E5DF]'
+                }`}
+              >
+                <p className="text-xs font-black text-[#10251D] flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-[#10251D]" />
+                  <span>Install on iPhone</span>
+                </p>
+                <ol className="text-[11px] text-slate-700 space-y-1 list-decimal list-inside">
+                  <li>Open in Safari.</li>
+                  <li>
+                    Tap <Share className="w-3 h-3 inline text-[#087443]" /> <strong>Share</strong>.
+                  </li>
+                  <li>
+                    Tap <strong>Add to Home Screen</strong> → <strong>Add</strong>.
+                  </li>
+                </ol>
+              </div>
+
+              {/* iPad */}
+              <div
+                className={`p-3.5 rounded-xl border space-y-2 ${
+                  deviceType === 'ipad'
+                    ? 'bg-emerald-50/70 border-[#087443]'
+                    : 'bg-[#F4F8F5] border-[#D9E5DF]'
+                }`}
+              >
+                <p className="text-xs font-black text-[#10251D] flex items-center gap-1.5">
+                  <Tablet className="w-4 h-4 text-[#087443]" />
+                  <span>Install on iPad</span>
+                </p>
+                <ol className="text-[11px] text-slate-700 space-y-1 list-decimal list-inside">
+                  <li>Open in iPadOS Safari.</li>
+                  <li>
+                    Tap <Share className="w-3 h-3 inline text-[#087443]" /> <strong>Share</strong> (top bar).
+                  </li>
+                  <li>
+                    Tap <strong>Add to Home Screen</strong> → <strong>Add</strong>.
+                  </li>
+                </ol>
+              </div>
             </div>
           )}
 
-          {/* CEO-Configured Official Android APK / Google Play Store Links */}
+          {!isInstalled && isInstallable && (
+            <button
+              type="button"
+              onClick={handlePwaInstallClick}
+              className="w-full py-3 px-4 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-sm transition"
+            >
+              <Laptop className="w-4 h-4 text-[#D4A62A]" />
+              <span>Install Web App Directly on This Device</span>
+            </button>
+          )}
+
           {(hasApk || hasPlayStore) && (
             <div className="pt-2 border-t border-slate-100 space-y-2">
               <p className="text-xs font-bold text-[#10251D]">Official Android Packages</p>

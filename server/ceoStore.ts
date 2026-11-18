@@ -188,6 +188,25 @@ export interface ServerInstitutionGradingConfig {
   updatedAt: string;
 }
 
+export type VisitorDeviceType = 'android' | 'iphone' | 'ipad' | 'desktop' | 'other';
+
+export interface VisitorDayBucket {
+  date: string; // YYYY-MM-DD (UTC/WAT aligned)
+  totalVisits: number;
+  uniqueVisitorIds: string[];
+  android: number;
+  iphone: number;
+  ipad: number;
+  desktop: number;
+  other: number;
+}
+
+export interface VisitorAnalyticsState {
+  lifetimeVisits: number;
+  uniqueVisitorIds: string[];
+  dailyBuckets: Record<string, VisitorDayBucket>;
+}
+
 export interface CeoSecurityStoreSchema {
   securityLogs: CeoSecurityLogRecord[];
   verificationLogs: CeoVerificationLogRecord[];
@@ -201,6 +220,7 @@ export interface CeoSecurityStoreSchema {
   paymentTransactions: ServerPaymentTransactionRecord[];
   codPolicy: CodPolicyRecord;
   gradingConfigs: Record<string, ServerInstitutionGradingConfig>;
+  visitorAnalytics: VisitorAnalyticsState;
 }
 
 export const DEFAULT_SUBSCRIPTION_PLANS: SubscriptionPlanRecord[] = [
@@ -342,7 +362,12 @@ const DEFAULT_STORE: CeoSecurityStoreSchema = {
   subscriptionPlans: DEFAULT_SUBSCRIPTION_PLANS,
   paymentTransactions: [],
   codPolicy: DEFAULT_COD_POLICY,
-  gradingConfigs: {}
+  gradingConfigs: {},
+  visitorAnalytics: {
+    lifetimeVisits: 0,
+    uniqueVisitorIds: [],
+    dailyBuckets: {}
+  }
 };
 
 class CeoSecurityStore {
@@ -401,7 +426,17 @@ class CeoSecurityStore {
           gradingConfigs:
             parsed.gradingConfigs && typeof parsed.gradingConfigs === 'object'
               ? parsed.gradingConfigs
-              : {}
+              : {},
+          visitorAnalytics: {
+            lifetimeVisits: Number(parsed?.visitorAnalytics?.lifetimeVisits) || 0,
+            uniqueVisitorIds: Array.isArray(parsed?.visitorAnalytics?.uniqueVisitorIds)
+              ? parsed.visitorAnalytics.uniqueVisitorIds.map(String)
+              : [],
+            dailyBuckets:
+              parsed?.visitorAnalytics?.dailyBuckets && typeof parsed.visitorAnalytics.dailyBuckets === 'object'
+                ? parsed.visitorAnalytics.dailyBuckets
+                : {}
+          }
         };
       }
     } catch (err) {
@@ -683,6 +718,137 @@ class CeoSecurityStore {
       delete this.data.failedAttempts[bucketKey];
       this.save();
     }
+  }
+
+  private getNigeriaDateKey(date = new Date()): string {
+    // Nigeria WAT is UTC+1 year-round
+    const watMs = date.getTime() + 60 * 60 * 1000;
+    return new Date(watMs).toISOString().slice(0, 10);
+  }
+
+  recordSiteVisit(params: {
+    visitorId: string;
+    deviceType: VisitorDeviceType;
+  }): { totalVisitors: number; lifetimeVisits: number; date: string } {
+    const cleanVisitor = String(params.visitorId || '').trim().slice(0, 80);
+    const device: VisitorDeviceType = ['android', 'iphone', 'ipad', 'desktop', 'other'].includes(params.deviceType)
+      ? params.deviceType
+      : 'other';
+    const dateKey = this.getNigeriaDateKey();
+
+    if (!this.data.visitorAnalytics) {
+      this.data.visitorAnalytics = {
+        lifetimeVisits: 0,
+        uniqueVisitorIds: [],
+        dailyBuckets: {}
+      };
+    }
+
+    const va = this.data.visitorAnalytics;
+    va.lifetimeVisits = (va.lifetimeVisits || 0) + 1;
+
+    if (cleanVisitor && !va.uniqueVisitorIds.includes(cleanVisitor)) {
+      va.uniqueVisitorIds.push(cleanVisitor);
+      if (va.uniqueVisitorIds.length > 50000) {
+        va.uniqueVisitorIds = va.uniqueVisitorIds.slice(-50000);
+      }
+    }
+
+    if (!va.dailyBuckets[dateKey]) {
+      va.dailyBuckets[dateKey] = {
+        date: dateKey,
+        totalVisits: 0,
+        uniqueVisitorIds: [],
+        android: 0,
+        iphone: 0,
+        ipad: 0,
+        desktop: 0,
+        other: 0
+      };
+    }
+
+    const bucket = va.dailyBuckets[dateKey];
+    bucket.totalVisits += 1;
+    bucket[device] = (bucket[device] || 0) + 1;
+    if (cleanVisitor && !bucket.uniqueVisitorIds.includes(cleanVisitor)) {
+      bucket.uniqueVisitorIds.push(cleanVisitor);
+      if (bucket.uniqueVisitorIds.length > 20000) {
+        bucket.uniqueVisitorIds = bucket.uniqueVisitorIds.slice(-20000);
+      }
+    }
+
+    // Prune daily buckets older than 120 days to keep JSON compact
+    const allDates = Object.keys(va.dailyBuckets).sort();
+    if (allDates.length > 120) {
+      for (const oldKey of allDates.slice(0, allDates.length - 120)) {
+        delete va.dailyBuckets[oldKey];
+      }
+    }
+
+    this.save();
+    return {
+      totalVisitors: va.uniqueVisitorIds.length || va.lifetimeVisits,
+      lifetimeVisits: va.lifetimeVisits,
+      date: dateKey
+    };
+  }
+
+  getVisitorAnalyticsSummary(days = 14) {
+    const va = this.data.visitorAnalytics || {
+      lifetimeVisits: 0,
+      uniqueVisitorIds: [],
+      dailyBuckets: {}
+    };
+
+    const todayKey = this.getNigeriaDateKey();
+    const todayBucket = va.dailyBuckets[todayKey];
+
+    const byDevice = { android: 0, iphone: 0, ipad: 0, desktop: 0, other: 0 };
+    for (const bucket of Object.values(va.dailyBuckets)) {
+      byDevice.android += Number(bucket.android) || 0;
+      byDevice.iphone += Number(bucket.iphone) || 0;
+      byDevice.ipad += Number(bucket.ipad) || 0;
+      byDevice.desktop += Number(bucket.desktop) || 0;
+      byDevice.other += Number(bucket.other) || 0;
+    }
+
+    const dailySeries: Array<{ date: string; label: string; visits: number; uniqueVisitors: number }> = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateKey = this.getNigeriaDateKey(d);
+      const b = va.dailyBuckets[dateKey];
+      dailySeries.push({
+        date: dateKey,
+        label: dateKey.slice(5),
+        visits: Number(b?.totalVisits) || 0,
+        uniqueVisitors: Array.isArray(b?.uniqueVisitorIds) ? b.uniqueVisitorIds.length : 0
+      });
+    }
+
+    const last7Unique = new Set<string>();
+    const last30Unique = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const b = va.dailyBuckets[this.getNigeriaDateKey(d)];
+      if (b?.uniqueVisitorIds) {
+        for (const id of b.uniqueVisitorIds) {
+          last30Unique.add(id);
+          if (i < 7) last7Unique.add(id);
+        }
+      }
+    }
+
+    return {
+      totalVisitors: Math.max(va.uniqueVisitorIds.length, va.lifetimeVisits > 0 ? 1 : 0),
+      totalPageViews: va.lifetimeVisits,
+      todayVisitors: Array.isArray(todayBucket?.uniqueVisitorIds) ? todayBucket.uniqueVisitorIds.length : 0,
+      todayPageViews: Number(todayBucket?.totalVisits) || 0,
+      thisWeekVisitors: last7Unique.size,
+      thisMonthVisitors: last30Unique.size,
+      byDevice,
+      dailySeries
+    };
   }
 }
 

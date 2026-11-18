@@ -7,7 +7,9 @@ import {
   AdminMetrics,
   ReportItem,
   AuditLogItem,
-  BikeRider
+  BikeRider,
+  DevicePlatformType,
+  VisitorAnalyticsSummary
 } from '../types.js';
 import {
   getProductsFromFirestore,
@@ -722,6 +724,60 @@ export async function adminToggleUserSuspension(id: string, reason?: string): Pr
     headers: await getAdminHeaders(),
     body: JSON.stringify({ reason })
   });
+}
+
+export async function adminDeleteUserAccount(id: string): Promise<any> {
+  return safeFetchJson(`/api/admin/users/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: await getAdminHeaders()
+  });
+}
+
+export async function fetchAdminAnalyticsSummary(days = 30): Promise<VisitorAnalyticsSummary | null> {
+  try {
+    const res = await safeFetchJson(`/api/admin/analytics-summary?days=${days}`, {
+      headers: await getAdminHeaders()
+    });
+    return (res?.visitors as VisitorAnalyticsSummary) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function recordSiteVisit(
+  deviceType: DevicePlatformType,
+  institutionId?: string
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const SESSION_KEY = 'ncm_visit_recorded_v1';
+    if (sessionStorage.getItem(SESSION_KEY) === '1') return;
+
+    const VISITOR_ID_KEY = 'ncm_visitor_id_v1';
+    let visitorId = localStorage.getItem(VISITOR_ID_KEY);
+    if (!visitorId) {
+      visitorId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `vis_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(VISITOR_ID_KEY, visitorId);
+    }
+
+    sessionStorage.setItem(SESSION_KEY, '1');
+    const base = getApiBaseUrl();
+    const url = base ? `${base}/api/analytics/visit` : '/api/analytics/visit';
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visitorId,
+        deviceType,
+        institutionId
+      })
+    });
+  } catch {
+    // Telemetry must never interrupt visitor browsing
+  }
 }
 
 export async function adminTriggerExpirationPurge(): Promise<any> {

@@ -306,7 +306,7 @@ export const UniversityCommunityPage: React.FC<UniversityCommunityPageProps> = (
                   {instAnnouncements.map((item) => (
                     <div key={item.id} className="p-4 rounded-xl bg-[#F5F8F6] border border-[#D9E5DF]">
                       <span className="text-[10px] font-extrabold text-[#087443] uppercase">
-                        {item.subCategory}
+                        {'announcementCategory' in item ? item.announcementCategory : item.sportCategory}
                       </span>
                       <h4 className="text-sm font-extrabold text-[#172B24] mt-1">{item.title}</h4>
                       <p className="text-xs text-slate-600 mt-1 line-clamp-3">{item.description}</p>
@@ -454,7 +454,9 @@ export const UniversityCommunityPage: React.FC<UniversityCommunityPageProps> = (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {instSports.map((sp) => (
                   <div key={sp.id} className="p-4 rounded-xl bg-[#F5F8F6] border border-[#D9E5DF]">
-                    <span className="text-[10px] font-extrabold text-[#087443] uppercase">{sp.subCategory}</span>
+                    <span className="text-[10px] font-extrabold text-[#087443] uppercase">
+                      {'sportCategory' in sp ? sp.sportCategory : sp.announcementCategory}
+                    </span>
                     <h4 className="text-sm font-extrabold text-[#172B24] mt-1">{sp.title}</h4>
                     <p className="text-xs text-slate-600 mt-1">{sp.description}</p>
                   </div>

@@ -133,9 +133,9 @@ service cloud.firestore {
       allow delete: if isCeo() || isAdmin();
     }
 
-    // Admins collection (strictly admin only)
+    // Admins collection (strictly CEO managed)
     match /admins/{adminId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isCeo();
     }
 
     // Reports collection (public report submission; private admin review)
@@ -1959,6 +1959,11 @@ service cloud.firestore {
     match /nationalAnnouncements/{annId} {
       allow read: if true;
       allow write: if isCeo() || isAdmin();
+    }
+
+    // Website visitor analytics (CEO/Admin only)
+    match /siteVisitors/{dateKey} {
+      allow read, write: if isCeo() || isAdmin();
     }
 
     // Connection test document

@@ -22,6 +22,7 @@ import {
   loginCeoWithGoogle,
   sendCeoPasswordReset
 } from '../services/ceoAdmin.js';
+import { sendEmailVerification } from 'firebase/auth';
 import { CeoSessionState } from '../types.js';
 import { auth } from '../services/firebase.js';
 
@@ -80,6 +81,27 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
     !currentFbUser.isAnonymous &&
     currentFbUser.email &&
     !isAuthorizedCeoEmail(currentFbUser.email);
+  const ceoNeedsEmailVerification =
+    currentFbUser &&
+    !currentFbUser.isAnonymous &&
+    isAuthorizedCeoEmail(currentFbUser.email) &&
+    !currentFbUser.emailVerified;
+  const [verifySentLoading, setVerifySentLoading] = useState(false);
+
+  const handleResendVerification = async () => {
+    if (!currentFbUser) return;
+    setErrorMsg(null);
+    setStatusMsg(null);
+    setVerifySentLoading(true);
+    try {
+      await sendEmailVerification(currentFbUser);
+      setStatusMsg('Verification email sent to stephenaleje61@gmail.com. Check your inbox and reload after verifying.');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to send verification email right now.');
+    } finally {
+      setVerifySentLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +200,28 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
                     Active account ({currentFbUser.email}) does not have CEO Super Administrator authorization. Sign in with the authorized CEO account below.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {ceoNeedsEmailVerification && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black">Email verification required for CEO access</p>
+                    <p className="mt-0.5 text-[11px]">
+                      Please verify {currentFbUser?.email} via the verification link in your email before opening the National Control Centre.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={verifySentLoading}
+                  className="px-3 py-1.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-black transition cursor-pointer"
+                >
+                  {verifySentLoading ? 'Sending Verification...' : 'Send Verification Email'}
+                </button>
               </div>
             )}
 

@@ -108,7 +108,11 @@ export type StorageFolder =
   | 'books'
   | 'deals'
   | 'agent_kyc'
-  | 'avatars';
+  | 'avatars'
+  | 'scam_evidence'
+  | 'student_posts'
+  | 'student_verifications'
+  | 'appeal_evidence';
 export type UploadStage = 'compressing' | 'uploading' | 'retrying' | 'finalizing';
 
 export interface UploadOptions {

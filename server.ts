@@ -90,6 +90,24 @@ app.use('/api/ecosystem', campusEcosystemRoutes);
 app.use('/api/antiscam', antiScamRouter);
 app.use('/api/network', networkRouter);
 
+// Lightweight genuine website visitor analytics ping
+app.post('/api/analytics/visit', async (req, res) => {
+  const { ceoStore } = await import('./server/ceoStore.js');
+  const { getClientIp } = await import('./server/auth.js');
+  const { visitorId, deviceType } = req.body || {};
+  const safeDevice = ['android', 'iphone', 'ipad', 'desktop', 'other'].includes(deviceType)
+    ? deviceType
+    : 'other';
+  const safeVisitor = typeof visitorId === 'string' && visitorId.trim()
+    ? visitorId.trim().slice(0, 80)
+    : `anon-${getClientIp(req)}-${String(req.headers['user-agent'] || '').slice(0, 40)}`;
+  const recorded = ceoStore.recordSiteVisit({
+    visitorId: safeVisitor,
+    deviceType: safeDevice
+  });
+  res.status(201).json({ recorded: true, ...recorded });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',

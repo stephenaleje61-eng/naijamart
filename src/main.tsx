@@ -1,18 +1,34 @@
-import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
+import { createRoot } from 'react-dom/client';
 import './index.css';
 
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((regs) => {
-      for (const reg of regs) {
-        if (reg.active?.scriptURL.includes('dev-sw.js') || reg.installing?.scriptURL.includes('dev-sw.js')) {
-          reg.unregister().catch(() => {});
+async function prepareServiceWorkers(): Promise<void> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  try {
+    const regs = await Promise.race([
+      navigator.serviceWorker.getRegistrations(),
+      new Promise<readonly ServiceWorkerRegistration[]>((resolve) => setTimeout(() => resolve([]), 350))
+    ]);
+    await Promise.all(
+      regs.map(async (reg) => {
+        const urls = [reg.active?.scriptURL, reg.waiting?.scriptURL, reg.installing?.scriptURL]
+          .filter(Boolean)
+          .join(' ');
+        if (import.meta.env.DEV || urls.includes('dev-sw.js')) {
+          await reg.unregister().catch(() => {});
+        } else {
+          reg.update().catch(() => {});
         }
-      }
-    })
-    .catch(() => {});
+      })
+    );
+  } catch {
+    // Non-blocking cleanup
+  }
 }
 
-createRoot(document.getElementById('root')!).render(<App />);
+async function bootstrap() {
+  await prepareServiceWorkers();
+  const { default: App } = await import('./App.tsx');
+  createRoot(document.getElementById('root')!).render(<App />);
+}
+
+bootstrap();

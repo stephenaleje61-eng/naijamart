@@ -49,7 +49,8 @@ import {
   ServiceReport,
   SportUpdatePost,
   SubscriptionPlan,
-  User
+  User,
+  VisitorAnalyticsSummary
 } from '../types.js';
 import { DEFAULT_INSTITUTION_ID, VERIFIED_NIGERIAN_INSTITUTIONS } from '../constants/institutions.js';
 import {
@@ -931,6 +932,13 @@ export interface CeoDashboardSnapshot {
   moderators: RegionalModerator[];
   subscriptionPlans: SubscriptionPlan[];
   paymentTransactions: PaymentTransaction[];
+  visitorAnalytics: VisitorAnalyticsSummary;
+  accommodationsCount: number;
+  studentPostsCount: number;
+  studentRequestsCount: number;
+  messagesCount: number;
+  activeUsersCount: number;
+  communityMembershipsCount: number;
   adminSdkConfigured: boolean;
 }
 
@@ -963,15 +971,24 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     secLogsSnap,
     houseAgentsSnap,
     institutionsSnap,
+    huxSnap,
+    accSnap,
+    studentPostsSnap,
+    studentReqsSnap,
+    hubMessagesSnap,
+    hubActiveSnap,
+    privateChatsSnap,
+    membershipsSnap,
     backendSecRes,
     appSettingsRes,
     pwaAnalyticsRes,
+    visitorAnalyticsRes,
     moderatorsRes,
     plansRes,
     txRes
   ] = await Promise.all([
-    getDocs(query(collection(db, 'users'), limit(500))),
-    getDocs(query(collection(db, 'sellerProfiles'), limit(500))),
+    getDocs(query(collection(db, 'users'), limit(1000))),
+    getDocs(query(collection(db, 'sellerProfiles'), limit(1000))),
     getAllProductsFromFirestoreForAdmin(),
     getDocs(query(collection(db, 'advertisements'), limit(300))),
     getDocs(query(collection(db, 'adPayments'), limit(300))).catch(() => null),
@@ -990,9 +1007,18 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     getDocs(query(collection(db, 'ceo_security_logs'), orderBy('createdAt', 'desc'), limit(200))).catch(() => null),
     getDocs(query(collection(db, 'houseAgents'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'institutions'), limit(300))).catch(() => null),
+    getDocs(query(collection(db, 'hux'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'accommodation'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'studentPosts'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'studentRequests'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'hubMessages'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'hubActiveUsers'), limit(500))).catch(() => null),
+    getDocs(query(collection(db, 'privateChats'), limit(300))).catch(() => null),
+    getDocs(query(collection(db, 'communityMemberships'), limit(500))).catch(() => null),
     fetch(buildApiUrl('/api/ceo/security-logs'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(buildApiUrl('/api/ceo/app-settings')).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(buildApiUrl('/api/ceo/analytics/installs'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(buildApiUrl('/api/ceo/analytics/visitors?days=30'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(buildApiUrl('/api/ceo/moderators'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(buildApiUrl('/api/payments/plans')).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(buildApiUrl('/api/payments/ceo/transactions'), { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
@@ -1003,9 +1029,15 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     const email = String(data?.email || '').toLowerCase().trim();
     return {
       id: d.id,
-      name: String(data?.name || data?.displayName || 'FUWUKARI User'),
+      name: String(data?.name || data?.displayName || 'Campus User'),
       email,
       role: data?.role === 'admin' && email === CEO_EMAIL ? 'admin' : data?.role === 'seller' ? 'seller' : 'buyer',
+      accountType: data?.accountType || undefined,
+      department: data?.department ? String(data.department) : undefined,
+      levelOfStudy: data?.levelOfStudy ? String(data.levelOfStudy) : undefined,
+      bio: data?.bio ? String(data.bio) : undefined,
+      institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+      campus: data?.campus ? String(data.campus) : undefined,
       phone: data?.phone ? String(data.phone) : '',
       whatsappNumber: data?.whatsappNumber ? String(data.whatsappNumber) : '',
       state: data?.state ? String(data.state) : 'Taraba',
@@ -1018,6 +1050,8 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
       verifiedBadgeText: data?.verifiedBadgeText ? String(data.verifiedBadgeText) : undefined,
       verifiedByCeoAt: data?.verifiedByCeoAt ? toIsoString(data.verifiedByCeoAt) : undefined,
       verifiedByCeoEmail: data?.verifiedByCeoEmail ? String(data.verifiedByCeoEmail) : undefined,
+      lastSeen: data?.lastSeen,
+      lastSeenAt: data?.lastSeenAt ? toIsoString(data.lastSeenAt) : undefined,
       createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
     };
   });
@@ -1258,14 +1292,15 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     lockoutDurationMinutes: 15
   };
 
-  const appSettings: AppSettings = appSettingsRes?.settings || {
+  const resolvedAppSettings = appSettingsRes?.settings || appSettingsRes?.appSettings;
+  const appSettings: AppSettings = resolvedAppSettings || {
     id: 'app_distribution',
     apkUrl: '',
     playStoreUrl: '',
     apkEnabled: false,
     appVersion: '2.0.0',
     releaseNotes: 'NIGERIA CAMPUS MARKET PWA with nationwide campus search, notifications, and NGN subscriptions.',
-    installAnnouncement: 'Install NIGERIA CAMPUS MARKET on your Android, iPhone, or desktop for instant campus access.',
+    installAnnouncement: 'Install NIGERIA CAMPUS MARKET on your Android, iPhone, iPad, or desktop for instant campus access.',
     installInstructions: 'Tap "Install Web App" on Chrome/Android or use Share -> "Add to Home Screen" on Safari iOS.'
   };
 
@@ -1278,6 +1313,47 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     byPlatform: {},
     recentEvents: []
   };
+
+  const emptyVisitors: VisitorAnalyticsSummary = {
+    totalVisits: 0,
+    totalUniqueVisitors: 0,
+    todayVisits: 0,
+    todayUniqueVisitors: 0,
+    byDevice: { android: 0, iphone: 0, ipad: 0, desktop: 0, unknown: 0 },
+    daily: []
+  };
+  const visitorAnalytics: VisitorAnalyticsSummary = visitorAnalyticsRes?.summary || emptyVisitors;
+
+  const accIds = new Set<string>();
+  for (const d of huxSnap?.docs || []) accIds.add(d.id);
+  for (const d of accSnap?.docs || []) accIds.add(d.id);
+
+  const privateMsgsCount = (privateChatsSnap?.docs || []).reduce((acc, d) => {
+    const data = d.data() as any;
+    const count = Number(data?.messagesCount || 0);
+    return acc + (count > 0 ? count : data?.lastMessageText || data?.lastMessageTime ? 1 : 0);
+  }, 0);
+
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const activeUserIds = new Set<string>();
+  for (const d of hubActiveSnap?.docs || []) {
+    const data = d.data() as any;
+    const lastActive = Number(data?.lastActiveAt || 0);
+    if (!lastActive || lastActive >= sevenDaysAgo) activeUserIds.add(String(data?.userId || d.id));
+  }
+  for (const u of users) {
+    if (u.isSuspended) continue;
+    const seenMs = u.lastSeenAt
+      ? new Date(u.lastSeenAt).getTime()
+      : typeof u.lastSeen === 'number'
+      ? u.lastSeen
+      : u.lastSeen
+      ? new Date(u.lastSeen).getTime()
+      : new Date(u.createdAt).getTime();
+    if (!Number.isNaN(seenMs) && seenMs >= sevenDaysAgo) {
+      activeUserIds.add(u.id);
+    }
+  }
 
   return {
     users,
@@ -1310,6 +1386,13 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     moderators: Array.isArray(moderatorsRes?.moderators) ? moderatorsRes.moderators : [],
     subscriptionPlans: Array.isArray(plansRes?.plans) ? plansRes.plans : [],
     paymentTransactions: Array.isArray(txRes?.transactions) ? txRes.transactions : [],
+    visitorAnalytics,
+    accommodationsCount: accIds.size,
+    studentPostsCount: studentPostsSnap?.size || 0,
+    studentRequestsCount: studentReqsSnap?.size || 0,
+    messagesCount: (hubMessagesSnap?.size || 0) + privateMsgsCount,
+    activeUsersCount: activeUserIds.size,
+    communityMembershipsCount: membershipsSnap?.size || 0,
     adminSdkConfigured: Boolean(backendSecRes?.adminSdkConfigured)
   };
 }
@@ -1348,6 +1431,28 @@ export async function ceoUpdateUserSuspension(params: {
     await updateDoc(doc(db, 'sellerProfiles', s.id), {
       isSuspended: params.suspend
     });
+  }
+}
+
+export async function ceoDeleteUserAccount(userId: string): Promise<void> {
+  const headers = await getCeoAuthHeaders(false);
+  const res = await fetch(buildApiUrl(`/api/ceo/users/${encodeURIComponent(userId)}`), {
+    method: 'DELETE',
+    headers
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err: any = new Error(payload?.error || 'Failed to delete user account.');
+    if (payload?.code) err.code = payload.code;
+    throw err;
+  }
+
+  await deleteDoc(doc(db, 'users', userId)).catch(() => {});
+  const sellerSnap = await getDocs(
+    query(collection(db, 'sellerProfiles'), where('userId', '==', userId), limit(5))
+  ).catch(() => null);
+  for (const s of sellerSnap?.docs || []) {
+    await deleteDoc(doc(db, 'sellerProfiles', s.id)).catch(() => {});
   }
 }
 
@@ -1452,7 +1557,8 @@ export async function fetchPublicAppSettings(): Promise<AppSettings> {
     const res = await fetch(buildApiUrl('/api/ceo/app-settings'));
     if (res.ok) {
       const payload = await res.json();
-      if (payload?.settings) return payload.settings as AppSettings;
+      const parsedSettings = payload?.settings || payload?.appSettings;
+      if (parsedSettings) return parsedSettings as AppSettings;
     }
   } catch {
     // Fallback to Firestore

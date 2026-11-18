@@ -1593,9 +1593,13 @@ export const VERIFIED_NIGERIAN_INSTITUTIONS: Institution[] = [
   }
 ];
 
+export const NIGERIAN_INSTITUTIONS: Institution[] = VERIFIED_NIGERIAN_INSTITUTIONS;
+
 export const INSTITUTION_STATES: string[] = Array.from(
   new Set(VERIFIED_NIGERIAN_INSTITUTIONS.map((inst) => inst.state))
 ).sort((a, b) => a.localeCompare(b));
+
+export const NIGERIAN_STATES_AND_FCT: string[] = INSTITUTION_STATES;
 
 export function getInstitutionSlug(institution: Pick<Institution, 'id' | 'name'>): string {
   const slug = String(institution.name || institution.id || '')

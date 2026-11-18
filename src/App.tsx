@@ -32,8 +32,8 @@ import {
   Eye
 } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
-import campusHostelShowcaseImg from './assets/images/nigeria_campus_hostel_1794902752622.jpg';
-import campusFoodShowcaseImg from './assets/images/nigeria_campus_food_1794902752058.jpg';
+import campusHostelShowcaseImg from './assets/images/nigeria_campus_hostel_1794988913033.jpg';
+import campusFoodShowcaseImg from './assets/images/nigeria_campus_food_1794988912277.jpg';
 import campusCommunityShowcaseImg from './assets/images/nigeria_campus_community_1794904561913.jpg';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import {
@@ -62,7 +62,7 @@ import {
   UserSubscription,
   AppNotification
 } from './types.js';
-import { fetchProducts, fetchCategories } from './services/api.js';
+import { fetchProducts, fetchCategories, recordSiteVisit } from './services/api.js';
 import { Header } from './components/Header.js';
 import { NIGERIA_STATES } from './constants/states.js';
 import { ALL_MARKETPLACE_CATEGORIES } from './constants/categories.js';
@@ -128,6 +128,7 @@ import { TrendingCampusesSection } from './components/TrendingCampusesSection.js
 import { NationwideSearchModal } from './components/NationwideSearchModal.js';
 import { SubscriptionPlansModal } from './components/SubscriptionPlansModal.js';
 import { DownloadAppModal } from './components/DownloadAppModal.js';
+import { DownloadAppSection } from './components/DownloadAppSection.js';
 import { NotificationCenterModal } from './components/NotificationCenterModal.js';
 import { UserProfileModal } from './components/UserProfileModal.js';
 import {
@@ -329,7 +330,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
 
 function MainMarketplace() {
   const { user, firebaseUser, favourites, notifications, refreshUser } = useAuth();
-  const { isInstallable, isInstalled, isIOS, platform, install } = usePWAInstall();
+  const { isInstallable, isInstalled, isIOS, platform, deviceType, install } = usePWAInstall();
 
   const initialRoute = useMemo(() => resolveViewFromPath(), []);
 
@@ -518,14 +519,17 @@ function MainMarketplace() {
   }, []);
 
   useEffect(() => {
-    const uid = firebaseUser?.uid || user?.id;
-    if (!uid || firebaseUser?.isAnonymous) {
+    recordSiteVisit(deviceType, selectedInstitutionId).catch(() => {});
+  }, [deviceType]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid || firebaseUser.isAnonymous) {
       setUserSubscriptions([]);
       return;
     }
-    const unsub = subscribeToUserSubscriptions(uid, setUserSubscriptions);
+    const unsub = subscribeToUserSubscriptions(firebaseUser.uid, setUserSubscriptions);
     return () => unsub();
-  }, [firebaseUser?.uid, firebaseUser?.isAnonymous, user?.id]);
+  }, [firebaseUser?.uid, firebaseUser?.isAnonymous]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
@@ -732,11 +736,16 @@ function MainMarketplace() {
       setSavedAnnouncementIds(ids);
     });
     return () => unsubSaved();
-  }, [user?.id]);
+  }, [user?.id, firebaseUser?.uid]);
 
   useEffect(() => {
     const student = getLocalStudentSession();
-    const studentId = student?.id || user?.id;
+    const studentId =
+      firebaseUser?.uid && !firebaseUser.isAnonymous
+        ? firebaseUser.uid
+        : student?.id && auth.currentUser && !auth.currentUser.isAnonymous && student.id === auth.currentUser.uid
+        ? student.id
+        : undefined;
     let unsubReq = () => {};
     if (studentId) {
       unsubReq = subscribeToFriendRequests(studentId, (requests) => {
@@ -1401,6 +1410,7 @@ function MainMarketplace() {
         onOpenAuthModal={handleOpenAuth}
         onOpenSellerDashboard={() => setShowSellerDashboard(true)}
         onOpenAdminDashboard={() => {
+          if (!isAuthorizedCeo(user)) return;
           setAdminInitialTab('overview');
           setShowAdminDashboard(true);
         }}
@@ -2452,6 +2462,7 @@ function MainMarketplace() {
                   }
                   onOpenProviderDashboard={() => setShowServiceProviderDashboard(true)}
                   onOpenAdminServices={() => {
+                    if (!isAuthorizedCeo(user)) return;
                     setAdminInitialTab('services');
                     setShowAdminDashboard(true);
                   }}
@@ -2750,6 +2761,7 @@ function MainMarketplace() {
                   onOpenSafetyInfo={() => setShowCampusSafetyInfoModal(true)}
                   onOpenTrackReport={() => setShowReportTrackingModal(true)}
                   onOpenAdminEmergency={() => {
+                    if (!isAuthorizedCeo(user)) return;
                     setAdminInitialTab('emergency');
                     setShowAdminDashboard(true);
                   }}
@@ -2902,11 +2914,7 @@ function MainMarketplace() {
                     </div>
 
                     {/* Quick Portal & App Install Footer Strip */}
-                    <div
-                      ref={downloadAppRef}
-                      id="download-wukarimart"
-                      className="bg-[#F4F8F5] border-t border-[#D9E5DF] px-5 py-3 flex flex-wrap items-center justify-between gap-2"
-                    >
+                    <div className="bg-[#F4F8F5] border-t border-[#D9E5DF] px-5 py-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#10251D]">
                         <Smartphone className="w-4 h-4 text-[#087443]" />
                         <span>
@@ -2949,6 +2957,22 @@ function MainMarketplace() {
                     </div>
                   </div>
                 </section>
+
+                {/* SECTION 3G: DOWNLOAD NIGERIA UNIVERSITY MARKET (ANDROID, IPHONE & IPAD + PWA) */}
+                <div ref={downloadAppRef}>
+                  <DownloadAppSection
+                    deviceType={deviceType}
+                    isInstalled={isInstalled}
+                    isInstallable={isInstallable}
+                    appSettings={appSettings}
+                    onTriggerInstall={install}
+                    onTrackExternalDownload={(evType) => {
+                      trackPwaInstallEvent(evType, platform, selectedInstitutionId).catch(() => {});
+                    }}
+                    onOpenInstallModal={() => setShowDownloadAppModal(true)}
+                    onShowToast={showToast}
+                  />
+                </div>
               </>
             )}
           </main>
@@ -3189,7 +3213,7 @@ function MainMarketplace() {
         />
       )}
 
-      {showAdminDashboard && (
+      {showAdminDashboard && isAuthorizedCeo(user) && (
         <AdminDashboard
           initialTab={adminInitialTab}
           onClose={() => setShowAdminDashboard(false)}
@@ -3350,6 +3374,7 @@ function MainMarketplace() {
         isInstalled={isInstalled}
         isInstallable={isInstallable}
         isIOS={isIOS}
+        deviceType={deviceType}
         appSettings={appSettings}
         onTriggerInstall={install}
         onTrackExternalDownload={(evType) => {

@@ -1,7 +1,8 @@
 import { Router, Response } from 'express';
 import { db } from '../db.js';
 import { firestoreSync } from '../firestore.js';
-import { requireAdmin, requireCeoAdmin, AuthenticatedRequest } from '../auth.js';
+import { ceoStore } from '../ceoStore.js';
+import { CEO_EMAIL, requireAdmin, requireCeoAdmin, AuthenticatedRequest, getClientIp } from '../auth.js';
 
 const router = Router();
 
@@ -30,7 +31,23 @@ router.get('/metrics', requireAdmin, (_req: AuthenticatedRequest, res: Response)
       lastCleanupRun: db.cleanupStats.lastRun
     },
     cleanupStats: db.cleanupStats,
-    recentAuditLogs: db.auditLogs.slice(0, 20)
+    recentAuditLogs: db.auditLogs.slice(0, 20),
+    visitorAnalytics: ceoStore.getVisitorAnalyticsSummary(14)
+  });
+});
+
+// GET Comprehensive Backend Analytics Summary (Visitors + PWA + Backend Totals)
+router.get('/analytics-summary', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const days = Math.min(90, Math.max(7, Number(req.query.days) || 14));
+  res.json({
+    visitorAnalytics: ceoStore.getVisitorAnalyticsSummary(days),
+    pwaAnalytics: ceoStore.getPwaAnalyticsSummary(),
+    backendTotals: {
+      users: db.users.length,
+      sellers: db.sellerProfiles.length,
+      products: db.products.length,
+      reports: db.reports.length
+    }
   });
 });
 
@@ -123,19 +140,23 @@ router.post('/products/:id/moderate', requireAdmin, async (req: AuthenticatedReq
   });
 });
 
-// GET all users (with suspension status and role details)
+// GET all users (with suspension status, institution, and activity metadata)
 router.get('/users', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
   const users = db.users.map(u => ({
     id: u.id,
     name: u.name,
     email: u.email,
     role: u.role,
+    accountType: u.accountType,
+    institutionId: u.institutionId,
+    campus: u.campus,
     phone: u.phone,
     whatsappNumber: u.whatsappNumber,
     state: u.state,
     city: u.city,
     isSuspended: !!u.isSuspended,
     suspensionReason: u.suspensionReason,
+    lastSeenAt: u.lastSeenAt,
     createdAt: u.createdAt
   }));
 
@@ -143,7 +164,7 @@ router.get('/users', requireAdmin, (_req: AuthenticatedRequest, res: Response) =
 });
 
 // Toggle User/Seller Suspension
-router.post('/users/:id/toggle-suspend', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/users/:id/toggle-suspend', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const admin = req.user!;
   const { reason } = req.body;
   const targetUser = db.users.find(u => u.id === req.params.id);
@@ -152,7 +173,7 @@ router.post('/users/:id/toggle-suspend', requireAdmin, (req: AuthenticatedReques
     return res.status(404).json({ error: 'User account not found.' });
   }
 
-  if (targetUser.role === 'admin') {
+  if (targetUser.role === 'admin' || targetUser.email.toLowerCase().trim() === CEO_EMAIL) {
     return res.status(400).json({ error: 'Administrator accounts cannot be suspended.' });
   }
 
@@ -180,11 +201,58 @@ router.post('/users/:id/toggle-suspend', requireAdmin, (req: AuthenticatedReques
 
   db.save();
 
+  const rawFbToken = typeof req.headers['x-firebase-id-token'] === 'string' ? req.headers['x-firebase-id-token'].trim() : undefined;
+  if (rawFbToken) {
+    await firestoreSync.saveUser(targetUser).catch(() => {});
+  }
+
   res.json({
     success: true,
     isSuspended: targetUser.isSuspended,
     message: `Account "${targetUser.name}" is now ${targetUser.isSuspended ? 'SUSPENDED' : 'ACTIVE'}.`
   });
+});
+
+// Permanently Delete User Account (Strict CEO/Admin Protected)
+router.delete('/users/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const admin = req.user!;
+  const userId = String(req.params.id || '').trim();
+  const targetUser = db.users.find(u => u.id === userId);
+
+  if (targetUser && targetUser.email.toLowerCase().trim() === CEO_EMAIL) {
+    return res.status(400).json({ error: 'The authorized administrator account cannot be deleted.' });
+  }
+  if (userId === admin.id) {
+    return res.status(400).json({ error: 'Cannot delete your own active administrator account.' });
+  }
+
+  const removedEmail = targetUser?.email || userId;
+  db.removeUserData(userId);
+
+  db.auditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    action: 'ADMIN_DELETED_USER',
+    actor: `${admin.name} (${admin.email})`,
+    details: `Administrator permanently deleted user account "${targetUser?.name || userId}" (${removedEmail}).`,
+    timestamp: new Date().toISOString()
+  });
+  db.save();
+
+  const rawFbToken = typeof req.headers['x-firebase-id-token'] === 'string' ? req.headers['x-firebase-id-token'].trim() : undefined;
+  await firestoreSync.deleteUserAndProfiles(userId, rawFbToken).catch(() => {});
+
+  ceoStore.recordSecurityLog({
+    eventType: 'CEO_USER_MODERATION',
+    severity: 'critical',
+    actorEmail: admin.email,
+    actorUid: admin.id,
+    targetType: 'user',
+    targetId: userId,
+    ipAddress: getClientIp(req),
+    summary: `Admin permanently deleted user account ${removedEmail} (ID: ${userId}).`
+  });
+
+  res.json({ success: true, deletedUserId: userId, message: 'User account permanently deleted.' });
 });
 
 // Toggle Seller Verification Badge (EXCLUSIVE CEO-ONLY CONTROL)

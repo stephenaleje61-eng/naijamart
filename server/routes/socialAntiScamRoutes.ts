@@ -15,6 +15,7 @@ import {
   deleteFirestoreDocument,
   formatServerFirestoreError,
   listCollectionDocuments,
+  primaryDbId,
   setFirestoreDocument,
   updateFirestoreDocument
 } from '../firestore.js';
@@ -219,7 +220,7 @@ antiScamRouter.get('/check-identifier', rateLimit(80), async (req: Request, res:
 
   try {
     const fsDocs = await listCollectionDocuments(
-      process.env.FIRESTORE_DATABASE_ID || '(default)',
+      process.env.FIRESTORE_DATABASE_ID || primaryDbId,
       'flaggedIdentifiers',
       200,
       500

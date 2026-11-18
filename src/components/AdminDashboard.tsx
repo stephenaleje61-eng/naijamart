@@ -3,14 +3,12 @@ import {
   X,
   LayoutDashboard,
   ShieldCheck,
-  AlertTriangle,
+  ShieldAlert,
   Trash2,
   Package,
   RotateCcw,
   Search,
-  MessageCircle,
   Home,
-  HelpCircle,
   AlertCircle,
   CheckCircle2,
   Database,
@@ -21,7 +19,6 @@ import {
 } from 'lucide-react';
 import {
   Product,
-  AdminMetrics,
   ReportItem,
   AuditLogItem,
   User,
@@ -41,11 +38,11 @@ import {
   fetchAdminReports,
   adminResolveReport,
   adminModerateProduct,
-  adminToggleUserSuspension,
   fetchLegacyRecoveryStatus,
   triggerLegacyRecovery
 } from '../services/api.js';
 import {
+  auth,
   getAllProductsFromFirestoreForAdmin,
   adminUpdateFirestoreProduct,
   deleteProductFromFirestore,
@@ -64,12 +61,15 @@ import { CeoEventsManager } from './CeoEventsManager.js';
 import { AdminAnnouncementsModerationTab } from './AdminAnnouncementsModerationTab.js';
 import { AdminServicesTab } from './AdminServicesTab.js';
 import { AdminEmergencyTab } from './AdminEmergencyTab.js';
+import { AdminOverviewAnalytics } from './admin/AdminOverviewAnalytics.js';
+import { AdminUsersManagement } from './admin/AdminUsersManagement.js';
 import { PostServiceModal } from './PostServiceModal.js';
 import {
   DEFAULT_SERVICE_CATEGORIES,
   subscribeToServiceCategories
 } from '../services/servicesMarketplace.js';
 import { isAuthorizedCeo } from '../services/events.js';
+import { isAuthorizedCeoEmail, logUnauthorizedCeoAccess } from '../services/ceoAdmin.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
   subscribeToAllInstitutionsForCeo,
@@ -108,9 +108,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onOpenMasterControl
 }) => {
   const { user } = useAuth();
-  const isCeo = isAuthorizedCeo(user);
+  const isCeo =
+    isAuthorizedCeo(user) &&
+    (!auth.currentUser ||
+      (isAuthorizedCeoEmail(auth.currentUser.email) && auth.currentUser.emailVerified));
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
-  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -133,8 +135,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     status: 'resolved' | 'dismissed';
   } | null>(null);
   const [resolveNotes, setResolveNotes] = useState('');
-  const [suspendUserTarget, setSuspendUserTarget] = useState<User | null>(null);
-  const [suspendReason, setSuspendReason] = useState('');
   const [legacyDiag, setLegacyDiag] = useState<LegacyDbDiagnostic>(() => getLegacyDbDiagnostic());
   const [scanningLegacy, setScanningLegacy] = useState(false);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(
@@ -178,7 +178,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ]);
 
       if (metricRes.status === 'fulfilled') {
-        setMetrics(metricRes.value.metrics);
         setAuditLogs(metricRes.value.recentAuditLogs || []);
       }
 
@@ -237,6 +236,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
+    if (!isCeo) {
+      logUnauthorizedCeoAccess(
+        'Blocked non-CEO user from opening AdminDashboard modal.',
+        '/admin-desk',
+        user?.email || auth.currentUser?.email || 'anonymous'
+      );
+      setLoading(false);
+      return;
+    }
+
     loadData();
     const unsubHux = subscribeToHuxReports((list) => setHuxReports(list));
     const unsubReqs = subscribeToStudentRequests((list) => setStudentRequests(list));
@@ -250,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       unsubServiceCats();
       unsubInst();
     };
-  }, []);
+  }, [isCeo]);
 
   const flashStatus = (msg: string) => {
     setStatusMsg(msg);
@@ -322,21 +331,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleSubmitSuspendUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!suspendUserTarget) return;
-    setErrorMsg(null);
-    try {
-      await adminToggleUserSuspension(suspendUserTarget.id, suspendReason.trim() || undefined);
-      setSuspendUserTarget(null);
-      setSuspendReason('');
-      flashStatus('User status updated.');
-      await loadData();
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to update user status.');
-    }
-  };
-
   const handleResolveHuxReport = async (id: string, status: 'resolved' | 'dismissed') => {
     setErrorMsg(null);
     try {
@@ -367,6 +361,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const pendingProductReportsCount = reports.filter((r) => r.status === 'pending').length;
   const pendingHuxReportsCount = huxReports.filter((r) => !r.status || r.status === 'pending').length;
+
+  if (!isCeo) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-red-200 shadow-2xl overflow-hidden text-[#10251D]">
+          <div className="bg-[#10251D] text-white px-5 py-4 border-b-4 border-[#D4A62A] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-[#D4A62A]" />
+              <h2 className="text-sm font-black uppercase tracking-wider">Restricted Admin Access</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-6 space-y-4 text-center">
+            <p className="text-sm font-black text-[#10251D]">
+              Access Denied — Authorized Administrator Only
+            </p>
+            <p className="text-xs text-[#555555] leading-relaxed">
+              This administrative console is strictly protected by backend and database security rules. Ordinary user accounts cannot access admin pages or controls.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black transition cursor-pointer"
+            >
+              Return to Marketplace
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
@@ -573,57 +604,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           ) : (
             <>
-              {/* TAB 1: OVERVIEW */}
+              {/* TAB 1: OVERVIEW & ANALYTICS */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
-                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
-                        Active Products
-                      </span>
-                      <span className="text-2xl font-black text-[#10251D] mt-1 block">
-                        {products.filter((p) => p.status === 'active').length}
-                      </span>
-                      <span className="text-[10px] text-[#555555]">
-                        Total recorded: {products.length}
-                      </span>
-                    </div>
-
-                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
-                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
-                        Student Requests
-                      </span>
-                      <span className="text-2xl font-black text-[#087443] mt-1 block flex items-center gap-1.5">
-                        <HelpCircle className="w-5 h-5" />
-                        {studentRequests.length}
-                      </span>
-                      <span className="text-[10px] text-[#555555]">What Students Need</span>
-                    </div>
-
-                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
-                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
-                        Pending Reports
-                      </span>
-                      <span className="text-2xl font-black text-[#10251D] mt-1 block flex items-center gap-1.5">
-                        <AlertTriangle className="w-5 h-5 text-[#D4A62A]" />
-                        {pendingProductReportsCount + pendingHuxReportsCount}
-                      </span>
-                      <span className="text-[10px] text-[#555555]">
-                        Products ({pendingProductReportsCount}) • Housing ({pendingHuxReportsCount})
-                      </span>
-                    </div>
-
-                    <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E5E7EB] shadow-xs">
-                      <span className="text-[11px] font-bold text-[#555555] uppercase tracking-wider block">
-                        WhatsApp Leads
-                      </span>
-                      <span className="text-2xl font-black text-[#087443] mt-1 block flex items-center gap-1.5">
-                        <MessageCircle className="w-5 h-5" />
-                        {metrics?.totalWhatsAppClicks ?? 0}
-                      </span>
-                      <span className="text-[10px] text-[#555555]">Genuine buyer clicks</span>
-                    </div>
-                  </div>
+                  <AdminOverviewAnalytics
+                    mode="admin"
+                    products={products}
+                    institutions={institutionsList}
+                    pendingReportsCount={pendingProductReportsCount + pendingHuxReportsCount}
+                  />
 
                   {/* Database & Legacy Product Recovery Diagnostic */}
                   <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-xs space-y-3">
@@ -1061,80 +1050,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               )}
 
-              {/* TAB 6: USERS & SELLERS */}
+              {/* TAB 6: REGISTERED USERS MANAGEMENT */}
               {activeTab === 'users' && (
-                <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#F4F8F5] text-[#555555] uppercase text-[10px] tracking-wider border-b border-[#E5E7EB]">
-                        <tr>
-                          <th className="p-3">User / Merchant</th>
-                          <th className="p-3">Role</th>
-                          <th className="p-3">Location</th>
-                          <th className="p-3">WhatsApp / Phone</th>
-                          <th className="p-3">Verification</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#E5E7EB]">
-                        {users.map((u) => (
-                          <tr key={u.id} className="hover:bg-[#F4F8F5]/70">
-                            <td className="p-3">
-                              <span className="font-bold text-[#10251D] block">{u.name}</span>
-                              <span className="text-[10px] text-[#555555]">{u.email}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="capitalize font-semibold text-[#555555]">{u.role}</span>
-                            </td>
-                            <td className="p-3 text-[#555555]">
-                              {u.city || 'Wukari'}, {u.state || 'Taraba'}
-                            </td>
-                            <td className="p-3 font-mono text-[#10251D]">
-                              {u.whatsappNumber || u.phone || 'N/A'}
-                            </td>
-                            <td className="p-3">
-                              <div className="flex flex-col gap-1.5">
-                                {u.isSuspended && (
-                                  <span className="text-[10px] font-black text-[#D4A62A] bg-[#10251D] px-2 py-0.5 rounded-full self-start">
-                                    SUSPENDED
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-2">
-                                  {u.role === 'seller' && (
-                                    <span className="px-2.5 py-1 text-[10px] font-bold bg-[#F4F8F5] border border-[#E5E7EB] text-[#555555] rounded-xl flex items-center gap-1">
-                                      <ShieldCheck className="w-3.5 h-3.5 text-[#087443]" />
-                                      {(u.ceoVerified || u.isVerified) ? 'Verified (CEO)' : 'CEO Verification Only'}
-                                    </span>
-                                  )}
-                                  {u.role !== 'admin' && (
-                                    <button
-                                      onClick={() => {
-                                        if (u.isSuspended) {
-                                          adminToggleUserSuspension(u.id)
-                                            .then(loadData)
-                                            .catch((e) => setErrorMsg(e.message));
-                                        } else {
-                                          setSuspendUserTarget(u);
-                                          setSuspendReason('');
-                                        }
-                                      }}
-                                      className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition ${
-                                        u.isSuspended
-                                          ? 'bg-[#087443] text-white'
-                                          : 'bg-[#10251D] text-[#D4A62A] hover:bg-black'
-                                      }`}
-                                    >
-                                      {u.isSuspended ? 'Lift Suspension' : 'Suspend Account'}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <AdminUsersManagement
+                  mode="admin"
+                  initialUsers={users}
+                  institutions={institutionsList}
+                  onRefreshSnapshot={loadData}
+                  onStatusMessage={flashStatus}
+                  onErrorMessage={setErrorMsg}
+                />
               )}
 
               {/* TAB 7: CEO BIRTHDAY & EVENTS PUBLISHING */}
@@ -1517,40 +1442,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* Inline Suspend User Modal */}
-        {suspendUserTarget && (
-          <div className="absolute inset-0 bg-black/60 z-30 p-4 flex items-center justify-center">
-            <form
-              onSubmit={handleSubmitSuspendUser}
-              className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 space-y-3 shadow-2xl"
-            >
-              <h4 className="font-black text-[#10251D] text-sm">Suspend User: {suspendUserTarget.name}</h4>
-              <textarea
-                required
-                rows={3}
-                value={suspendReason}
-                onChange={(e) => setSuspendReason(e.target.value)}
-                placeholder="Enter reason for account suspension..."
-                className="w-full p-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs text-[#10251D] outline-none focus:border-[#087443]"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSuspendUserTarget(null)}
-                  className="px-3 py-1.5 text-xs text-[#555555] font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-[#10251D] text-[#D4A62A] font-black text-xs rounded-xl"
-                >
-                  Suspend User
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
       </div>
 
       {editingServiceTarget && (

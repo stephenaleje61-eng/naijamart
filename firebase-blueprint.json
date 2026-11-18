@@ -1187,6 +1187,18 @@
         "status": { "type": "string" }
       },
       "required": ["id", "chatId", "reporterId", "reportedUserId", "reason", "status"]
+    },
+    "SiteVisitorStat": {
+      "title": "SiteVisitorStat",
+      "description": "Daily website visitor metrics aggregated for the CEO Admin Analytics dashboard",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "totalVisits": { "type": "number" },
+        "uniqueVisitors": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["date", "totalVisits", "uniqueVisitors"]
     }
   },
   "firestore": {
@@ -1457,6 +1469,10 @@
     "/conversationReports/{reportId}": {
       "schema": "ConversationReportRecord",
       "description": "Reported private conversations for CEO/Moderator review"
+    },
+    "/siteVisitors/{dateKey}": {
+      "schema": "SiteVisitorStat",
+      "description": "Daily website visitor metrics readable and writable by authorized CEO administrator"
     }
   }
 }

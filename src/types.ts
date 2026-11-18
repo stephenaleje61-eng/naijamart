@@ -92,7 +92,27 @@ export interface User {
   verificationMethod?: 'edu_email' | 'student_id' | 'ceo_approved';
   scamStatus?: ScamEntityStatus;
   scamReportsCount?: number;
+  lastSeen?: string | number;
+  lastSeenAt?: string;
   createdAt: string;
+}
+
+export type DevicePlatformType = 'android' | 'iphone' | 'ipad' | 'desktop' | 'unknown';
+
+export interface VisitorDayStat {
+  dateKey: string;
+  visits: number;
+  uniqueVisitors: number;
+  devices: Record<DevicePlatformType, number>;
+}
+
+export interface VisitorAnalyticsSummary {
+  totalVisits: number;
+  totalUniqueVisitors: number;
+  todayVisits: number;
+  todayUniqueVisitors: number;
+  byDevice: Record<DevicePlatformType, number>;
+  daily: VisitorDayStat[];
 }
 
 export interface SellerProfile {

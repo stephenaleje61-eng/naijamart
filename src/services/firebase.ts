@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   getDocFromServer,
@@ -67,12 +68,26 @@ const configuredDbId =
     : undefined;
 
 function initFirestoreClient(dbId?: string) {
-  return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  const settings =
+    typeof window !== 'undefined'
+      ? {
+          experimentalForceLongPolling: true,
+          experimentalLongPollingOptions: { timeoutSeconds: 20 },
+          ignoreUndefinedProperties: true
+        }
+      : { ignoreUndefinedProperties: true };
+  try {
+    return dbId
+      ? initializeFirestore(app, settings, dbId)
+      : initializeFirestore(app, settings);
+  } catch {
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
 }
 export const db = initFirestoreClient(configuredDbId);
 // Optional read-only handle for legacy (default) DB, initialized lazily only on explicit admin scan
 function getLegacyDefaultDb() {
-  return configuredDbId ? getFirestore(app) : null;
+  return configuredDbId ? initFirestoreClient() : null;
 }
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -815,6 +830,8 @@ function sanitizeUserDoc(id: string, data: any): User {
     ...(data?.verificationMethod ? { verificationMethod: data.verificationMethod } : {}),
     ...(data?.scamStatus ? { scamStatus: data.scamStatus } : {}),
     ...(typeof data?.scamReportsCount === 'number' ? { scamReportsCount: data.scamReportsCount } : {}),
+    ...(data?.lastSeen !== undefined ? { lastSeen: data.lastSeen } : {}),
+    ...(data?.lastSeenAt ? { lastSeenAt: toIsoString(data.lastSeenAt) } : {}),
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
   };
 }
@@ -962,6 +979,9 @@ export async function registerAccountInFirebase(payload: {
   city?: string;
   shopName?: string;
   shopDescription?: string;
+  institutionId?: string;
+  campus?: string;
+  accountType?: string;
 }): Promise<{ user: User; token: string; sellerProfile?: SellerProfile }> {
   const cleanName = String(payload.name || '').trim();
   const normalizedEmail = String(payload.email || '').trim().toLowerCase();
@@ -972,6 +992,13 @@ export async function registerAccountInFirebase(payload: {
   const cleanState = String(payload.state || 'Taraba').trim();
   const cleanCity = String(payload.city || 'Wukari').trim();
   const cleanShopName = String(payload.shopName || '').trim();
+  const cleanInstitutionId = String(payload.institutionId || DEFAULT_INSTITUTION_ID).trim();
+  const cleanCampus = payload.campus ? String(payload.campus).trim() : '';
+  const cleanAccountType = payload.accountType
+    ? String(payload.accountType).trim()
+    : accountRole === 'seller'
+    ? 'seller'
+    : 'student';
 
   if (!cleanName) {
     throw new Error('Please enter your full name.');
@@ -1039,12 +1066,16 @@ export async function registerAccountInFirebase(payload: {
       name: cleanName,
       email: normalizedEmail,
       role: accountRole,
+      accountType: cleanAccountType,
+      institutionId: cleanInstitutionId,
+      ...(cleanCampus ? { campus: cleanCampus } : {}),
       phone: cleanPhone,
       whatsappNumber: cleanWhatsapp,
       state: cleanState,
       city: cleanCity,
       isOnline: true,
       lastSeen: Date.now(),
+      lastSeenAt: now,
       favourites: [],
       createdAt: now,
       updatedAt: now
@@ -1134,14 +1165,22 @@ export async function loginAccountInFirebase(
           );
         }
         cleanUser = sanitizeUserDoc(userDoc.id, raw);
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          lastSeen: Date.now(),
+          lastSeenAt: new Date().toISOString(),
+          isOnline: true
+        }).catch(() => {});
       } else {
         cleanUser = {
           id: fbUser.uid,
           name: fbUser.displayName || 'FUWUKARI Student',
           email: normalizedEmail,
           role: 'buyer',
+          accountType: 'student',
+          institutionId: DEFAULT_INSTITUTION_ID,
           state: 'Taraba',
           city: 'Wukari',
+          lastSeenAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         };
         await setDoc(doc(db, 'users', fbUser.uid), stripUndefined(cleanUser), { merge: true });
