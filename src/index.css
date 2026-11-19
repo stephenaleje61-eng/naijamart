@@ -3,39 +3,40 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  --color-ncm-emerald: #087443;
-  --color-ncm-emerald-dark: #065D36;
-  --color-ncm-navy: #10251D;
-  --color-ncm-navy-dark: #0A1913;
-  --color-ncm-gold: #D4A62A;
-  --color-ncm-gold-bright: #E0B43B;
-  --color-ncm-bg: #F4F8F5;
+  --color-ncm-forest: #075B3B;
+  --color-ncm-emerald: #0B8050;
+  --color-ncm-emerald-dark: #075B3B;
+  --color-ncm-navy: #202B26;
+  --color-ncm-navy-dark: #202B26;
+  --color-ncm-gold: #F2C94C;
+  --color-ncm-gold-bright: #F2C94C;
+  --color-ncm-bg: #F4F7F5;
   --color-ncm-white: #FFFFFF;
 
   /* Backwards-compatible CSS token aliases */
-  --color-nuh-emerald: #087443;
-  --color-nuh-emerald-dark: #065D36;
-  --color-nuh-navy: #10251D;
-  --color-nuh-navy-dark: #0A1913;
-  --color-nuh-gold: #D4A62A;
-  --color-nuh-gold-bright: #E0B43B;
-  --color-nuh-charcoal: #10251D;
-  --color-nuh-bg: #F4F8F5;
+  --color-nuh-emerald: #0B8050;
+  --color-nuh-emerald-dark: #075B3B;
+  --color-nuh-navy: #202B26;
+  --color-nuh-navy-dark: #202B26;
+  --color-nuh-gold: #F2C94C;
+  --color-nuh-gold-bright: #F2C94C;
+  --color-nuh-charcoal: #202B26;
+  --color-nuh-bg: #F4F7F5;
   --color-nuh-white: #FFFFFF;
 
-  --color-fu-green: #087443;
-  --color-fu-green-dark: #065D36;
-  --color-fu-gold: #D4A62A;
-  --color-fu-gold-bright: #E0B43B;
-  --color-fu-charcoal: #10251D;
-  --color-fu-bg: #F4F8F5;
+  --color-fu-green: #075B3B;
+  --color-fu-green-dark: #075B3B;
+  --color-fu-gold: #F2C94C;
+  --color-fu-gold-bright: #F2C94C;
+  --color-fu-charcoal: #202B26;
+  --color-fu-bg: #F4F7F5;
 }
 
 @layer base {
   html,
   body {
-    background-color: #F4F8F5;
-    color: #10251D;
+    background-color: #F4F7F5;
+    color: #202B26;
     color-scheme: light;
     font-family: var(--font-sans);
   }
@@ -44,20 +45,20 @@
     font-family: var(--font-display);
   }
 
-  /* Clean Emerald Green, Dark Navy & Premium Gold scrollbars */
+  /* Forest Green, Emerald & Gold scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #F4F8F5;
+    background: #F4F7F5;
   }
   ::-webkit-scrollbar-thumb {
-    background: #087443;
+    background: #075B3B;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #10251D;
+    background: #0B8050;
   }
 }
 

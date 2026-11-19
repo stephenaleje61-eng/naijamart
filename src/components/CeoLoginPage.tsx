@@ -22,7 +22,7 @@ import {
   loginCeoWithGoogle,
   sendCeoPasswordReset
 } from '../services/ceoAdmin.js';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, signOut } from 'firebase/auth';
 import { CeoSessionState } from '../types.js';
 import { auth } from '../services/firebase.js';
 
@@ -192,14 +192,27 @@ export const CeoLoginPage: React.FC<CeoLoginPageProps> = ({
 
           <div className="p-6 space-y-5">
             {nonCeoSignedIn && (
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-                <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-black">Currently signed in as non-CEO account</p>
-                  <p className="mt-0.5 text-[11px]">
-                    Active account ({currentFbUser.email}) does not have CEO Super Administrator authorization. Sign in with the authorized CEO account below.
-                  </p>
+              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black">Access Denied — Ordinary Account Active</p>
+                    <p className="mt-0.5 text-[11px]">
+                      Active account ({currentFbUser.email}) does not have Super Administrator authorization. Sign out below or sign in strictly with the authorized Super Administrator account.
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut(auth).catch(() => {});
+                    setStatusMsg('Signed out previous account. You may now sign in as Super Administrator.');
+                    setErrorMsg(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#10251D] hover:bg-black text-[#D4A62A] text-[11px] font-black transition cursor-pointer"
+                >
+                  Sign Out Ordinary Account
+                </button>
               </div>
             )}
 

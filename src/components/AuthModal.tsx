@@ -100,7 +100,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const normalized = normalizeApiBaseUrl(backendUrlInput);
     setApiBaseUrl(normalized || null);
     setBackendUrlInput(normalized);
-    setSuccessMsg(`Backend API URL updated to: ${normalized || '(Default FU MARKET Server)'}`);
+    setSuccessMsg(`Backend API URL updated to: ${normalized || '(Default NIGERIA CAMPUS MARKET Server)'}`);
     setShowBackendConfig(false);
   };
 
@@ -195,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         city: cleanCity,
         shopName: role === 'seller' ? cleanShopName : undefined
       });
-      setSuccessMsg('Your FU MARKET account has been created successfully.');
+      setSuccessMsg('Your NIGERIA CAMPUS MARKET account has been created successfully.');
       onSuccess({ user: createdUser, isRegistration: true });
       onClose();
     } catch (err: any) {
@@ -257,25 +257,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Green Header */}
         <div className="bg-[#087443] border-b-4 border-[#D4A62A] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#D4A62A] flex items-center justify-center font-black text-[#10251D] text-sm shadow-sm">
-              FU
-            </div>
-            <div>
-              <h3 className="font-black text-base leading-tight text-white">
-                {mode === 'login'
-                  ? 'Login to FU MARKET'
-                  : mode === 'register'
-                  ? 'Join FU MARKET'
-                  : 'Password Recovery'}
-              </h3>
-              <p className="text-[11px] text-white/90">
-                {mode === 'login'
-                  ? 'Sign in with your FUWUKARI marketplace account'
-                  : mode === 'register'
-                  ? 'Create a free student buyer or seller account'
-                  : 'Recover your account access'}
-              </p>
-            </div>
+                <div className="w-9 h-9 rounded-xl bg-[#D4A62A] flex items-center justify-center font-black text-[#10251D] text-xs shadow-sm">
+                  NCM
+                </div>
+                <div>
+                  <h3 className="font-black text-base leading-tight text-white">
+                    {mode === 'login'
+                      ? 'Login to NIGERIA CAMPUS MARKET'
+                      : mode === 'register'
+                      ? 'Join NIGERIA CAMPUS MARKET'
+                      : 'Password Recovery'}
+                  </h3>
+                  <p className="text-[11px] text-white/90">
+                    {mode === 'login'
+                      ? 'Sign in with your campus marketplace account'
+                      : mode === 'register'
+                      ? 'Create a free student buyer or seller account'
+                      : 'Recover your account access'}
+                  </p>
+                </div>
           </div>
           <button
             type="button"
@@ -444,7 +444,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
-                    Buy on FU MARKET
+                    Buy on NIGERIA CAMPUS MARKET
                   </button>
                   <button
                     type="button"
@@ -458,7 +458,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-[#F4F8F5] border-[#E5E7EB] text-[#444444]'
                     }`}
                   >
-                    Sell on FU MARKET
+                    Sell on NIGERIA CAMPUS MARKET
                   </button>
                 </div>
               </div>

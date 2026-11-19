@@ -83,13 +83,13 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
   const renderBadgeIcon = (type: TrendingCampusItem['entityType']) => {
     switch (type) {
       case 'product':
-        return <ShoppingBag className="w-3.5 h-3.5 text-[#087443]" />;
+        return <ShoppingBag className="w-3.5 h-3.5 text-[#075B3B]" />;
       case 'service':
-        return <Wrench className="w-3.5 h-3.5 text-[#087443]" />;
+        return <Wrench className="w-3.5 h-3.5 text-[#075B3B]" />;
       case 'sport':
-        return <Trophy className="w-3.5 h-3.5 text-[#D4A62A]" />;
+        return <Trophy className="w-3.5 h-3.5 text-[#F2C94C]" />;
       default:
-        return <Sparkles className="w-3.5 h-3.5 text-[#10251D]" />;
+        return <Sparkles className="w-3.5 h-3.5 text-[#202B26]" />;
     }
   };
 
@@ -101,11 +101,11 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-[#087443] uppercase tracking-wider">
-              <Flame className="w-4 h-4 text-[#D4A62A]" />
+            <div className="flex items-center gap-2 text-xs font-bold text-[#075B3B] uppercase tracking-wider">
+              <Flame className="w-4 h-4 text-[#F2C94C]" />
               <span>Real Campus Activity</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#10251D] tracking-tight mt-1">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#202B26] tracking-tight mt-1">
               TRENDING ACROSS NIGERIAN CAMPUSES
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
@@ -114,14 +114,14 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center p-1 bg-[#F4F8F5] rounded-lg border border-[#D9E5DF]">
+            <div className="inline-flex items-center p-1 bg-[#F4F7F5] rounded-lg border border-[#D9E5DF]">
               <button
                 type="button"
                 onClick={() => setScope('nationwide')}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition whitespace-nowrap shrink-0 ${
                   scope === 'nationwide'
-                    ? 'bg-[#10251D] text-white'
-                    : 'text-[#10251D] hover:bg-white'
+                    ? 'bg-[#202B26] text-white'
+                    : 'text-[#202B26] hover:bg-white'
                 }`}
               >
                 Nationwide
@@ -131,8 +131,8 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
                 onClick={() => setScope('state')}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition whitespace-nowrap shrink-0 ${
                   scope === 'state'
-                    ? 'bg-[#10251D] text-white'
-                    : 'text-[#10251D] hover:bg-white'
+                    ? 'bg-[#202B26] text-white'
+                    : 'text-[#202B26] hover:bg-white'
                 }`}
               >
                 {activeInstitution.state} State
@@ -142,8 +142,8 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
                 onClick={() => setScope('institution')}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition whitespace-nowrap shrink-0 ${
                   scope === 'institution'
-                    ? 'bg-[#087443] text-white'
-                    : 'text-[#10251D] hover:bg-white'
+                    ? 'bg-[#075B3B] text-white'
+                    : 'text-[#202B26] hover:bg-white'
                 }`}
               >
                 {activeInstitution.shortName}
@@ -153,18 +153,18 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
             <button
               type="button"
               onClick={onOpenNationwideSearch}
-              className="px-3.5 py-2 rounded-lg border border-[#D9E5DF] hover:border-[#087443] text-xs font-bold text-[#10251D] flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+              className="px-3.5 py-2 rounded-lg border border-[#D9E5DF] hover:border-[#075B3B] text-xs font-bold text-[#202B26] flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             >
               <span>Explore All</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#087443]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#075B3B]" />
             </button>
           </div>
         </div>
 
         {trendingItems.length === 0 ? (
-          <div className="rounded-xl border border-[#D9E5DF] bg-[#F4F8F5] p-6 text-center">
-            <Globe2 className="w-8 h-8 text-[#10251D]/40 mx-auto mb-2" />
-            <p className="text-sm font-bold text-[#10251D]">
+          <div className="rounded-xl border border-[#D9E5DF] bg-[#F4F7F5] p-6 text-center">
+            <Globe2 className="w-8 h-8 text-[#202B26]/40 mx-auto mb-2" />
+            <p className="text-sm font-bold text-[#202B26]">
               No trending engagement recorded in this filter yet
             </p>
             <p className="text-xs text-slate-600 mt-1">
@@ -178,10 +178,10 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
                 key={item.id}
                 type="button"
                 onClick={() => onSelectItem(item)}
-                className="text-left bg-white border border-[#D9E5DF] hover:border-[#087443] rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col"
+                className="text-left bg-white border border-[#D9E5DF] hover:border-[#075B3B] rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col"
               >
                 {item.imageUrl ? (
-                  <div className="h-32 w-full bg-[#F4F8F5] overflow-hidden">
+                  <div className="h-32 w-full bg-[#F4F7F5] overflow-hidden">
                     <img
                       src={item.imageUrl}
                       alt={item.title}
@@ -190,7 +190,7 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
                     />
                   </div>
                 ) : (
-                  <div className="h-24 w-full bg-gradient-to-br from-[#10251D]/10 to-[#087443]/15 flex items-center justify-center">
+                  <div className="h-24 w-full bg-gradient-to-br from-[#202B26]/10 to-[#075B3B]/15 flex items-center justify-center">
                     {renderBadgeIcon(item.entityType)}
                   </div>
                 )}
@@ -198,13 +198,13 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
                 <div className="p-3.5 flex-1 flex flex-col justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-                      <span className="font-extrabold text-[#10251D] tabular-nums">#{idx + 1}</span>
+                      <span className="font-extrabold text-[#202B26] tabular-nums">#{idx + 1}</span>
                       <span aria-hidden="true">·</span>
-                      <span className="text-[#087443] truncate">{item.institutionShortName}</span>
+                      <span className="text-[#075B3B] truncate">{item.institutionShortName}</span>
                       <span aria-hidden="true">·</span>
                       <span className="capitalize truncate">{item.entityType}</span>
                     </div>
-                    <h3 className="text-sm font-bold text-[#10251D] mt-1 line-clamp-2">
+                    <h3 className="text-sm font-bold text-[#202B26] mt-1 line-clamp-2">
                       {item.title}
                     </h3>
                     <p className="text-xs text-slate-600 mt-0.5 line-clamp-1">{item.subtitle}</p>
@@ -212,7 +212,7 @@ export const TrendingCampusesSection: React.FC<TrendingCampusesSectionProps> = (
 
                   <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-100 tabular-nums">
                     <span>{item.metricsLabel}</span>
-                    <span className="flex items-center gap-0.5 text-[#10251D] font-semibold shrink-0">
+                    <span className="flex items-center gap-0.5 text-[#202B26] font-semibold shrink-0">
                       <MapPin className="w-3 h-3" />
                       <span>{item.state}</span>
                     </span>

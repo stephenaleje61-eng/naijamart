@@ -25,6 +25,7 @@ import {
 import {
   AdPaymentRecord,
   Advertisement,
+  AdvertisingRequest,
   AnnouncementReport,
   AppSettings,
   CampusEvent,
@@ -65,7 +66,7 @@ import {
 } from './firebase.js';
 import { getApiBaseUrl } from './api.js';
 import { uploadCeoVerificationLogo } from './imageStorage.js';
-import { sanitizeAdDoc } from './ads.js';
+import { sanitizeAdDoc, sanitizeAdvertisingRequestDoc } from './ads.js';
 import { sanitizeServiceDoc } from './servicesMarketplace.js';
 
 export const CEO_EMAIL = 'stephenaleje61@gmail.com';
@@ -906,6 +907,7 @@ export interface CeoDashboardSnapshot {
   sellers: SellerProfile[];
   products: Product[];
   advertisements: Advertisement[];
+  advertisingRequests: AdvertisingRequest[];
   adPayments: AdPaymentRecord[];
   services: ServiceListing[];
   houseAgents: HouseAgentProfile[];
@@ -955,6 +957,7 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     sellersSnap,
     products,
     adsSnap,
+    adRequestsSnap,
     paymentsSnap,
     servicesSnap,
     prodReportsSnap,
@@ -991,6 +994,7 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     getDocs(query(collection(db, 'sellerProfiles'), limit(1000))),
     getAllProductsFromFirestoreForAdmin(),
     getDocs(query(collection(db, 'advertisements'), limit(300))),
+    getDocs(query(collection(db, 'advertisingRequests'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'adPayments'), limit(300))).catch(() => null),
     getDocs(query(collection(db, 'services'), limit(300))),
     getDocs(query(collection(db, 'reports'), limit(300))).catch(() => null),
@@ -1081,6 +1085,9 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
   });
 
   const advertisements = adsSnap.docs.map((d) => sanitizeAdDoc(d.id, d.data()));
+  const advertisingRequests: AdvertisingRequest[] = (adRequestsSnap?.docs || [])
+    .map((d) => sanitizeAdvertisingRequestDoc(d.id, d.data()))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const adPayments: AdPaymentRecord[] = (paymentsSnap?.docs || []).map((d) => {
     const data = d.data() as any;
     return {
@@ -1360,6 +1367,7 @@ export async function fetchCeoDashboardSnapshot(): Promise<CeoDashboardSnapshot>
     sellers,
     products,
     advertisements,
+    advertisingRequests,
     adPayments,
     services,
     houseAgents,

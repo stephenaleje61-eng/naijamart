@@ -237,7 +237,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
   useEffect(() => {
     document.title = `${
       selectedInstitutionId === 'all' ? 'Campus Housing & Agents' : activeInst.shortName + ' Housing & Agents'
-    } | FU MARKET`;
+    } | NIGERIA CAMPUS MARKET`;
   }, [activeInst.shortName, selectedInstitutionId]);
 
   useEffect(() => {
@@ -577,7 +577,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           isAgent: formIsAgent,
           agentName: formIsAgent ? (formAgentName.trim() || student.name) : undefined
         });
-        showToast('Accommodation listing updated on FU MARKET!');
+        showToast('Accommodation listing updated on NIGERIA CAMPUS MARKET!');
       } else {
         await createAccommodationProperty({
           category: formCategory,
@@ -603,7 +603,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           userName: student.name,
           matricNumber: student.matricNumber
         });
-        showToast('Your accommodation listing has been published on FU MARKET!');
+        showToast('Your accommodation listing has been published on NIGERIA CAMPUS MARKET!');
       }
 
       setShowPostModal(false);
@@ -713,7 +713,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello, I saw "${title}" (${location}) on FU MARKET Campus Housing. Is it still available for inspection?`
+      `Hello, I saw "${title}" (${location}) on NIGERIA CAMPUS MARKET Campus Housing. Is it still available for inspection?`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -1130,7 +1130,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                     Registered Campus House Agents &amp; Landlords
                   </h2>
                   <p className="text-[11px] text-[#F4F8F5]/85">
-                    Official FU MARKET Verified Badges are awarded strictly by the CEO Administrator after review.
+                    Official NIGERIA CAMPUS MARKET Verified Badges are awarded strictly by the CEO Administrator after review.
                   </p>
                 </div>
                 <button
@@ -1969,7 +1969,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
                   Register as House Agent / Landlord
                 </h3>
                 <p className="text-[11px] text-[#F4F8F5]/80">
-                  List your campus housing agency profile on FU MARKET
+                  List your campus housing agency profile on NIGERIA CAMPUS MARKET
                 </p>
               </div>
               <button
@@ -2436,7 +2436,7 @@ export const HuxPage: React.FC<HuxPageProps> = ({
           setFormWhatsapp(loggedStudent.whatsappNumber || loggedStudent.phone || '');
         }}
         initialData={student}
-        title="Campus Housing Profile — FU MARKET"
+        title="Campus Housing Profile — NIGERIA CAMPUS MARKET"
         subtitle="Enter your name and ID to post accommodation or register as a House Agent."
       />
     </div>

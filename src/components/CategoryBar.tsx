@@ -63,21 +63,21 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onOpenBikeRiders
 }) => {
   return (
-    <div className="bg-[#FFFFFF] border-b border-[#E5E7EB]">
+    <div className="bg-[#FFFFFF] border-b border-[#D9E5DF]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none scroll-smooth">
           <button
             type="button"
             onClick={() => onSelectCategory('all')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 cursor-pointer ${
               selectedCategory === 'all'
-                ? 'bg-[#087443] text-[#FFFFFF] font-black shadow-sm'
-                : 'bg-[#F4F8F5] text-[#10251D] border border-[#E5E7EB] hover:border-[#087443]'
+                ? 'bg-[#075B3B] text-[#FFFFFF] font-black shadow-sm'
+                : 'bg-[#F4F7F5] text-[#202B26] border border-[#D9E5DF] hover:border-[#075B3B]'
             }`}
           >
             <Grid
               className={`w-3.5 h-3.5 ${
-                selectedCategory === 'all' ? 'text-[#D4A62A]' : 'text-[#087443]'
+                selectedCategory === 'all' ? 'text-[#F2C94C]' : 'text-[#075B3B]'
               }`}
             />
             <span>All Items</span>
@@ -90,13 +90,13 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => onSelectCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#087443] text-[#FFFFFF] font-black shadow-sm'
-                    : 'bg-[#F4F8F5] text-[#10251D] hover:border-[#087443] border border-[#E5E7EB]'
+                    ? 'bg-[#075B3B] text-[#FFFFFF] font-black shadow-sm'
+                    : 'bg-[#F4F7F5] text-[#202B26] hover:border-[#075B3B] border border-[#D9E5DF]'
                 }`}
               >
-                <span className={isSelected ? 'text-[#D4A62A]' : 'text-[#087443]'}>
+                <span className={isSelected ? 'text-[#F2C94C]' : 'text-[#075B3B]'}>
                   {getCategoryIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
@@ -104,8 +104,8 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                   <span
                     className={`text-[10px] px-1.5 rounded-full font-mono font-black ${
                       isSelected
-                        ? 'bg-[#D4A62A] text-[#10251D]'
-                        : 'bg-[#FFFFFF] text-[#087443] border border-[#E5E7EB]'
+                        ? 'bg-[#F2C94C] text-[#202B26]'
+                        : 'bg-[#FFFFFF] text-[#075B3B] border border-[#D9E5DF]'
                     }`}
                   >
                     {cat.productCount}
@@ -119,7 +119,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             <button
               type="button"
               onClick={onOpenBikeRiders}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D]"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 bg-[#F2C94C] hover:bg-[#F2C94C]/90 text-[#202B26] cursor-pointer"
               title="Campus Dispatch & Okada Riders Directory"
             >
               <Bike className="w-3.5 h-3.5" />

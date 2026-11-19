@@ -78,19 +78,20 @@ export function subscribeToProductReviews(
   const q = query(
     collection(db, 'productReviews'),
     where('productId', '==', productId),
-    orderBy('createdAt', 'desc'),
-    limit(50)
+    limit(80)
   );
   return onSnapshot(
     q,
     (snap) => {
-      onData(
-        snap.docs.map((d) => ({
+      const items = snap.docs
+        .map((d) => ({
           ...(d.data() as ProductReview),
           id: d.id,
           createdAt: toIsoString((d.data() as any).createdAt)
         }))
-      );
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 50);
+      onData(items);
     },
     () => onData([])
   );
@@ -255,12 +256,21 @@ export function subscribeToStudentInspectionRequests(
   const q = query(
     collection(db, 'inspectionRequests'),
     where('studentUid', '==', studentUid),
-    orderBy('createdAt', 'desc'),
-    limit(60)
+    limit(80)
   );
   return onSnapshot(
     q,
-    (snap) => onData(snap.docs.map((d) => ({ ...(d.data() as AccommodationInspectionRequest), id: d.id }))),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({
+          ...(d.data() as AccommodationInspectionRequest),
+          id: d.id,
+          createdAt: toIsoString((d.data() as any).createdAt)
+        }))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 60);
+      onData(items);
+    },
     () => onData([])
   );
 }
@@ -276,12 +286,21 @@ export function subscribeToAgentInspectionRequests(
   const q = query(
     collection(db, 'inspectionRequests'),
     where('agentUserId', '==', agentUserId),
-    orderBy('createdAt', 'desc'),
-    limit(80)
+    limit(100)
   );
   return onSnapshot(
     q,
-    (snap) => onData(snap.docs.map((d) => ({ ...(d.data() as AccommodationInspectionRequest), id: d.id }))),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({
+          ...(d.data() as AccommodationInspectionRequest),
+          id: d.id,
+          createdAt: toIsoString((d.data() as any).createdAt)
+        }))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 80);
+      onData(items);
+    },
     () => onData([])
   );
 }
@@ -471,12 +490,21 @@ export function subscribeToBuyerFoodOrders(
   const q = query(
     collection(db, 'foodOrders'),
     where('buyerUid', '==', buyerUid),
-    orderBy('createdAt', 'desc'),
-    limit(60)
+    limit(80)
   );
   return onSnapshot(
     q,
-    (snap) => onData(snap.docs.map((d) => ({ ...(d.data() as FoodOrder), id: d.id }))),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({
+          ...(d.data() as FoodOrder),
+          id: d.id,
+          createdAt: toIsoString((d.data() as any).createdAt)
+        }))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 60);
+      onData(items);
+    },
     () => onData([])
   );
 }
@@ -492,12 +520,21 @@ export function subscribeToVendorFoodOrders(
   const q = query(
     collection(db, 'foodOrders'),
     where('vendorOwnerUid', '==', vendorOwnerUid),
-    orderBy('createdAt', 'desc'),
-    limit(80)
+    limit(100)
   );
   return onSnapshot(
     q,
-    (snap) => onData(snap.docs.map((d) => ({ ...(d.data() as FoodOrder), id: d.id }))),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({
+          ...(d.data() as FoodOrder),
+          id: d.id,
+          createdAt: toIsoString((d.data() as any).createdAt)
+        }))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 80);
+      onData(items);
+    },
     () => onData([])
   );
 }
@@ -764,12 +801,21 @@ export function subscribeToUserReferrals(
   const q = query(
     collection(db, 'referrals'),
     where('referrerUid', '==', referrerUid),
-    orderBy('createdAt', 'desc'),
-    limit(100)
+    limit(120)
   );
   return onSnapshot(
     q,
-    (snap) => onData(snap.docs.map((d) => ({ ...(d.data() as ReferralRecord), id: d.id }))),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({
+          ...(d.data() as ReferralRecord),
+          id: d.id,
+          createdAt: toIsoString((d.data() as any).createdAt)
+        }))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 100);
+      onData(items);
+    },
     () => onData([])
   );
 }
@@ -824,11 +870,17 @@ export async function getAllProductOrdersForUser(userId: string): Promise<any[]>
     const q = query(
       collection(db, 'orders'),
       where('buyerId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(60)
+      limit(80)
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ ...(d.data() as any), id: d.id }));
+    return snap.docs
+      .map((d) => ({
+        ...(d.data() as any),
+        id: d.id,
+        createdAt: toIsoString((d.data() as any)?.createdAt)
+      }))
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, 60);
   } catch {
     return [];
   }

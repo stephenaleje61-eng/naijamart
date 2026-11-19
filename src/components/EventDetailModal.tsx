@@ -64,8 +64,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${event.celebrantName} — ${event.eventType} | FU MARKET`,
-          text: `${event.celebrantName}'s ${event.eventType} on ${formattedDate} at ${event.venue}. Celebrate on FU MARKET!`,
+          title: `${event.celebrantName} — ${event.eventType} | NIGERIA CAMPUS MARKET`,
+          text: `${event.celebrantName}'s ${event.eventType} on ${formattedDate} at ${event.venue}. Celebrate on NIGERIA CAMPUS MARKET!`,
           url
         });
         return;
@@ -99,14 +99,14 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             <div className="w-8 h-8 rounded-xl bg-white p-0.5 flex items-center justify-center shrink-0 border border-[#D4A62A]">
               <img
                 src="/fuwukari-crest.png"
-                alt="FU MARKET Crest"
+                alt="NIGERIA CAMPUS MARKET Crest"
                 className="w-full h-full object-contain"
               />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-display font-black text-xs sm:text-sm text-[#D4A62A] tracking-wide uppercase truncate">
-                  FU MARKET BIRTHDAY &amp; EVENTS CENTRE
+                  NIGERIA CAMPUS MARKET BIRTHDAY &amp; EVENTS CENTRE
                 </span>
                 {isPreview && (
                   <span className="px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
@@ -115,7 +115,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-white/80 truncate">
-                Celebrate Your Special Moments With FU MARKET.
+                Celebrate Your Special Moments With NIGERIA CAMPUS MARKET.
               </p>
             </div>
           </div>
@@ -255,13 +255,13 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           <div className="bg-[#087443] text-white rounded-3xl p-5 sm:p-6 border-2 border-[#D4A62A] shadow-lg space-y-4">
             <div className="space-y-1.5">
               <span className="inline-block px-2.5 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase tracking-wider">
-                Official FU MARKET Promotion
+                Official NIGERIA CAMPUS MARKET Promotion
               </span>
               <h3 className="font-display text-base sm:text-xl font-black text-white leading-snug">
-                WANT YOUR BIRTHDAY OR EVENT FEATURED ON FU MARKET?
+                WANT YOUR BIRTHDAY OR EVENT FEATURED ON NIGERIA CAMPUS MARKET?
               </h3>
               <p className="text-xs sm:text-sm font-extrabold text-[#D4A62A] tracking-wide uppercase">
-                CONTACT THE FU MARKET CEO
+                CONTACT THE NIGERIA CAMPUS MARKET CEO
               </p>
             </div>
 
@@ -271,7 +271,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                   Direct WhatsApp / Call Line
                 </span>
                 <span className="text-base sm:text-lg font-black text-white tracking-wide">
-                  FU MARKET CEO: {CEO_DISPLAY_PHONE}
+                  NIGERIA CAMPUS MARKET CEO: {CEO_DISPLAY_PHONE}
                 </span>
               </div>
               <button
@@ -300,7 +300,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               className="w-full py-3.5 px-5 rounded-2xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg transition min-h-[48px]"
             >
               <MessageCircle className="w-5 h-5 shrink-0" />
-              <span>Chat FU MARKET CEO on WhatsApp</span>
+              <span>Chat NIGERIA CAMPUS MARKET CEO on WhatsApp</span>
             </a>
           </div>
         </div>

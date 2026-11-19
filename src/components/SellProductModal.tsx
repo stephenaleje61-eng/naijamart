@@ -568,7 +568,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
     try {
       const effectiveSellerId = user?.id || auth.currentUser?.uid || getOrCreateGuestId();
-      const effectiveSellerName = user?.name || guestSellerName.trim() || 'FU MARKET Guest';
+      const effectiveSellerName = user?.name || guestSellerName.trim() || 'Campus Market Guest';
       const effectiveShopName =
         sellerProfile?.shopName ||
         (guestSellerName.trim()
@@ -629,7 +629,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
         <div className="bg-[#087443] border-b-4 border-[#D4A62A] text-[#FFFFFF] px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="font-display text-lg sm:text-xl font-black text-[#FFFFFF]">
-              Post Item for FREE on <span className="text-[#D4A62A]">FU MARKET</span>
+              Post Item for FREE on <span className="text-[#D4A62A]">NIGERIA CAMPUS MARKET</span>
             </h2>
             <p className="text-xs text-[#FFFFFF]/90">
               {currentSellInst.shortName} Campus Marketplace • Genuine photos &amp; direct WhatsApp chat
@@ -687,7 +687,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
 
             <div>
               <span className="text-[11px] font-black tracking-widest uppercase text-[#087443] bg-[#F4F8F5] border border-[#087443]/30 px-3 py-1 rounded-full">
-                Saved Permanently on FU MARKET
+                Saved Permanently on NIGERIA CAMPUS MARKET
               </span>
               <h3 className="text-2xl font-black text-[#10251D] mt-3">Product posted successfully!</h3>
               <p className="text-xs sm:text-sm text-[#555555] max-w-md mx-auto mt-1">
@@ -733,9 +733,9 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               <div className="p-4 bg-[#F4F8F5] border border-[#087443]/40 rounded-2xl text-left max-w-lg mx-auto text-xs text-[#065D36] space-y-1">
                 <div className="font-black flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-[#087443]" />
-                  <span>Live on FU MARKET</span>
+                  <span>Live on NIGERIA CAMPUS MARKET</span>
                 </div>
-                <p>Your product is active and visible across the FUWUKARI student marketplace.</p>
+                <p>Your product is active and visible across the Nigerian student marketplace.</p>
               </div>
             )}
 

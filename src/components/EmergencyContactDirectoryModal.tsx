@@ -255,7 +255,7 @@ export const EmergencyContactDirectoryModal: React.FC<EmergencyContactDirectoryM
                 No Emergency Contacts Published Yet
               </h3>
               <p className="text-xs text-[#475569] leading-relaxed">
-                FU MARKET strictly displays verified, real emergency numbers configured by the platform administrator rather than unverified or placeholder numbers. Once university security, health centre, fire service, or student affairs lines are verified, they will appear here with direct call buttons.
+                NIGERIA CAMPUS MARKET strictly displays verified, real emergency numbers configured by the platform administrator rather than unverified or placeholder numbers. Once university security, health centre, fire service, or student affairs lines are verified, they will appear here with direct call buttons.
               </p>
               {onReportEmergency && (
                 <button

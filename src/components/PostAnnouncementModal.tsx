@@ -283,7 +283,7 @@ export const PostAnnouncementModal: React.FC<PostAnnouncementModalProps> = ({
         const msg =
           created.status === 'pending'
             ? 'Submitted for quick admin safety review.'
-            : 'Sport update published live on FU MARKET!';
+            : 'Sport update published live on NIGERIA CAMPUS MARKET!';
         onSuccess(created, msg);
       } else {
         const created = await createGeneralAnnouncementPost(
@@ -303,7 +303,7 @@ export const PostAnnouncementModal: React.FC<PostAnnouncementModalProps> = ({
         const msg =
           created.status === 'pending'
             ? 'Submitted for quick admin safety review.'
-            : 'General announcement published live on FU MARKET!';
+            : 'General announcement published live on NIGERIA CAMPUS MARKET!';
         onSuccess(created, msg);
       }
       onClose();
@@ -369,7 +369,7 @@ export const PostAnnouncementModal: React.FC<PostAnnouncementModalProps> = ({
                   Verify Your Account to Publish
                 </h3>
                 <p className="text-xs text-[#4B5563] leading-relaxed">
-                  Anyone can browse and share announcements without logging in. To post, edit, like, or comment and protect FU MARKET from spam, please sign in first.
+                  Anyone can browse and share announcements without logging in. To post, edit, like, or comment and protect NIGERIA CAMPUS MARKET from spam, please sign in first.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">

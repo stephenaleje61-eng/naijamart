@@ -31,7 +31,11 @@ import {
   UserCheck,
   Download,
   Plus,
-  Edit3
+  Edit3,
+  Inbox,
+  LayoutDashboard,
+  Sparkles,
+  TrendingUp
 } from 'lucide-react';
 import {
   CeoDashboardSnapshot,
@@ -104,11 +108,13 @@ import {
   SafetyAnnouncement,
   StudentDeal,
   StudentGiveaway,
-  SubscriptionPlan
+  SubscriptionPlan,
+  AdvertisingRequest
 } from '../types.js';
 import { formatNaira } from './ProductCard.js';
 import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
 import { CeoOfficialAdsPanel } from './CeoOfficialAdsPanel.js';
+import { AdRequestsInboxPanel } from './AdRequestsInboxPanel.js';
 import { CeoContentManagementPanel } from './CeoContentManagementPanel.js';
 import { AdminOverviewAnalytics } from './admin/AdminOverviewAnalytics.js';
 import { AdminUsersManagement } from './admin/AdminUsersManagement.js';
@@ -120,6 +126,11 @@ import {
 import { adminFeatureService } from '../services/servicesMarketplace.js';
 
 export type CeoSectionId =
+  | 'overview'
+  | 'ad_requests'
+  | 'create_ad'
+  | 'ads'
+  | 'sponsored_analytics'
   | 'verification'
   | 'institutions'
   | 'moderators'
@@ -127,7 +138,6 @@ export type CeoSectionId =
   | 'users'
   | 'sellers'
   | 'businesses'
-  | 'ads'
   | 'content'
   | 'subscriptions'
   | 'products'
@@ -144,24 +154,28 @@ const CEO_SECTIONS: Array<{
   label: string;
   icon: React.FC<{ className?: string }>;
 }> = [
-  { id: 'verification', label: '1. CEO Verification Centre', icon: BadgeCheck },
-  { id: 'institutions', label: '2. Institutions & Campuses', icon: GraduationCap },
-  { id: 'moderators', label: '3. Regional Moderators', icon: UserCheck },
-  { id: 'app_distribution', label: '4. App & PWA Management', icon: Smartphone },
-  { id: 'users', label: '5. User Management', icon: Users },
-  { id: 'sellers', label: '6. Seller Management', icon: Store },
-  { id: 'businesses', label: '7. Business & Agents', icon: Building2 },
-  { id: 'ads', label: '8. Official Ad Manager', icon: Megaphone },
-  { id: 'content', label: '9. Content Management', icon: Layers },
-  { id: 'subscriptions', label: '10. Subscriptions & Pricing', icon: CreditCard },
-  { id: 'products', label: '11. Product Moderation', icon: Package },
-  { id: 'reports', label: '12. Reports & Complaints', icon: FileWarning },
-  { id: 'announcements', label: '13. Website Announcements', icon: AlertTriangle },
-  { id: 'events', label: '14. Event Promotions', icon: Calendar },
-  { id: 'revenue', label: '15. Revenue & Payments', icon: CreditCard },
-  { id: 'analytics', label: '16. Website Analytics', icon: BarChart3 },
-  { id: 'security_logs', label: '17. Security Activity Logs', icon: Activity },
-  { id: 'settings', label: '18. CEO Settings', icon: Settings }
+  { id: 'overview', label: 'Overview & Platform Pulse', icon: LayoutDashboard },
+  { id: 'ad_requests', label: 'Advertising Requests Inbox', icon: Inbox },
+  { id: 'create_ad', label: 'Create Advertisement', icon: Sparkles },
+  { id: 'ads', label: 'Published Ads Manager', icon: Megaphone },
+  { id: 'sponsored_analytics', label: 'Sponsored Ad Analytics', icon: TrendingUp },
+  { id: 'users', label: 'Registered Users', icon: Users },
+  { id: 'sellers', label: 'Sellers Management', icon: Store },
+  { id: 'businesses', label: 'Businesses & Agents', icon: Building2 },
+  { id: 'products', label: 'Products & Listings', icon: Package },
+  { id: 'institutions', label: 'Universities & Campuses', icon: GraduationCap },
+  { id: 'content', label: 'Ecosystem Content Manager', icon: Layers },
+  { id: 'verification', label: 'CEO Verification Centre', icon: BadgeCheck },
+  { id: 'reports', label: 'Reports & Complaints', icon: FileWarning },
+  { id: 'announcements', label: 'Campus Announcements', icon: AlertTriangle },
+  { id: 'events', label: 'Campus Events', icon: Calendar },
+  { id: 'moderators', label: 'Regional Moderators', icon: UserCheck },
+  { id: 'subscriptions', label: 'Subscriptions & Pricing', icon: CreditCard },
+  { id: 'revenue', label: 'Revenue & Payments', icon: CreditCard },
+  { id: 'app_distribution', label: 'App & PWA Distribution', icon: Smartphone },
+  { id: 'analytics', label: 'Deep Website Analytics', icon: BarChart3 },
+  { id: 'security_logs', label: 'Security Activity Logs', icon: Activity },
+  { id: 'settings', label: 'Platform & CEO Settings', icon: Settings }
 ];
 
 interface CeoSuperAdminDashboardProps {
@@ -183,9 +197,10 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
   onBackToMarketplace,
   onOpenEventsManager,
   onOpenAdsMasterModal,
-  initialSection = 'verification'
+  initialSection = 'overview'
 }) => {
   const [activeSection, setActiveSection] = useState<CeoSectionId>(initialSection);
+  const [prefillRequestForAd, setPrefillRequestForAd] = useState<AdvertisingRequest | null>(null);
   const [snapshot, setSnapshot] = useState<CeoDashboardSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -633,27 +648,27 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F8F5] text-[#10251D] flex flex-col">
-      {/* Executive Header (Royal Navy + Emerald + Gold) */}
-      <header className="sticky top-0 z-30 bg-[#10251D] text-white border-b-4 border-[#D4A62A] shadow-md">
+    <div className="min-h-screen bg-[#F4F7F5] text-[#202B26] flex flex-col">
+      {/* Executive Header (Forest Green + Emerald + Gold) */}
+      <header className="sticky top-0 z-30 bg-[#075B3B] text-[#FFFFFF] border-b-4 border-[#F2C94C] shadow-md">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#087443] border border-[#D4A62A]/60 text-[#D4A62A] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0B8050] border border-[#F2C94C]/70 text-[#F2C94C] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-sm sm:text-lg font-black tracking-tight truncate">
-                  NIGERIA CAMPUS MARKET – NATIONAL CONTROL CENTRE
+                  NIGERIA CAMPUS MARKET – ADMIN &amp; ADVERTISING CONTROL CENTRE
                 </h1>
-                <span className="px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded bg-[#F2C94C] text-[#202B26] text-[10px] font-black uppercase tracking-wider">
                   {CEO_ROLE_LABEL}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-100 truncate">
+              <p className="text-[11px] text-[#FFFFFF]/85 truncate">
                 Authenticated: <strong>{auth.currentUser?.email || session.email}</strong>
                 {session.phoneVerified ? ' • Phone Verified (08167258121)' : ''} • Session expires in{' '}
-                <strong className="font-mono text-[#D4A62A]">{formatTimer(remainingSeconds)}</strong>
+                <strong className="font-mono text-[#F2C94C]">{formatTimer(remainingSeconds)}</strong>
               </p>
             </div>
           </div>
@@ -663,9 +678,9 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
               type="button"
               onClick={loadSnapshot}
               disabled={loading}
-              className="px-3 py-2 rounded-xl bg-[#087443] hover:bg-[#065D36] border border-white/20 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition"
+              className="px-3 py-2 rounded-xl bg-[#0B8050] hover:bg-[#0B8050]/90 border border-white/20 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#D4A62A] ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-[#F2C94C] ${loading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
@@ -674,23 +689,23 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
                 pendingSensitiveActionRef.current = null;
                 setReauthOpen(true);
               }}
-              className="px-3 py-2 rounded-xl bg-[#091812] hover:bg-black/40 border border-white/20 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition"
+              className="px-3 py-2 rounded-xl bg-[#202B26]/60 hover:bg-[#202B26] border border-white/20 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
             >
-              <Lock className="w-3.5 h-3.5 text-[#D4A62A]" />
+              <Lock className="w-3.5 h-3.5 text-[#F2C94C]" />
               <span>Reauthenticate</span>
             </button>
             <button
               type="button"
               onClick={onBackToMarketplace}
-              className="px-3 py-2 rounded-xl bg-white hover:bg-[#F4F8F5] text-[#10251D] text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition"
+              className="px-3 py-2 rounded-xl bg-[#FFFFFF] hover:bg-[#F4F7F5] text-[#202B26] text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-3.5 h-3.5 text-[#075B3B]" />
               <span>Marketplace</span>
             </button>
             <button
               type="button"
               onClick={handleSecureLogout}
-              className="px-3 py-2 rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition"
+              className="px-3 py-2 rounded-xl bg-[#F2C94C] hover:bg-[#F2C94C]/90 text-[#202B26] text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Secure Logout</span>
@@ -703,34 +718,48 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
       <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-5 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Navigation Sidebar */}
         <aside className="lg:col-span-3 space-y-3">
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-3 shadow-xs">
+          <div className="bg-[#FFFFFF] rounded-2xl border border-[#D9E5DF] p-3 shadow-xs">
             <div className="relative mb-2">
-              <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#075B3B] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search records..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] text-xs font-medium outline-none focus:border-[#087443]"
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#D9E5DF] bg-[#F4F7F5] text-xs font-medium outline-none focus:border-[#075B3B]"
               />
             </div>
             <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
               {CEO_SECTIONS.map((sec) => {
                 const Icon = sec.icon;
                 const active = activeSection === sec.id;
+                const pendingAdReqCount =
+                  sec.id === 'ad_requests'
+                    ? (snapshot?.advertisingRequests || []).filter((r) => r.status === 'pending')
+                        .length
+                    : 0;
                 return (
                   <button
                     key={sec.id}
                     type="button"
                     onClick={() => setActiveSection(sec.id)}
-                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left whitespace-nowrap transition shrink-0 ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-left whitespace-nowrap transition shrink-0 cursor-pointer ${
                       active
-                        ? 'bg-[#087443] text-white shadow-xs'
-                        : 'text-[#333333] hover:bg-[#F4F8F5]'
+                        ? 'bg-[#075B3B] text-[#FFFFFF] shadow-xs'
+                        : 'text-[#202B26] hover:bg-[#F4F7F5]'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-[#D4A62A]' : 'text-[#087443]'}`} />
-                    <span className="truncate">{sec.label}</span>
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${active ? 'text-[#F2C94C]' : 'text-[#075B3B]'}`}
+                      />
+                      <span className="truncate">{sec.label}</span>
+                    </span>
+                    {pendingAdReqCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-[#F2C94C] text-[#202B26] text-[10px] font-black tabular-nums shrink-0">
+                        {pendingAdReqCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -806,6 +835,96 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
             </div>
           ) : snapshot ? (
             <>
+              {/* OVERVIEW LANDING DASHBOARD */}
+              {activeSection === 'overview' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection('ad_requests')}
+                      className="text-left bg-[#FFFFFF] hover:border-[#075B3B] rounded-2xl border border-[#D9E5DF] p-4 shadow-xs transition cursor-pointer"
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#202B26]/65 block">
+                        Pending Ad Requests
+                      </span>
+                      <div className="flex items-center justify-between mt-1">
+                        <strong className="text-2xl font-black text-[#075B3B] tabular-nums">
+                          {(snapshot.advertisingRequests || []).filter((r) => r.status === 'pending').length}
+                        </strong>
+                        <span className="px-2.5 py-1 rounded-lg bg-[#F2C94C] text-[#202B26] text-[11px] font-black">
+                          Open Inbox →
+                        </span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection('create_ad')}
+                      className="text-left bg-[#075B3B] hover:bg-[#0B8050] text-[#FFFFFF] rounded-2xl border border-[#075B3B] p-4 shadow-xs transition cursor-pointer"
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#FFFFFF]/80 block">
+                        Nationwide Ad Studio
+                      </span>
+                      <div className="flex items-center justify-between mt-1">
+                        <strong className="text-base font-black text-[#F2C94C]">
+                          Create Sponsored Ad
+                        </strong>
+                        <Sparkles className="w-5 h-5 text-[#F2C94C]" />
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection('ads')}
+                      className="text-left bg-[#FFFFFF] hover:border-[#075B3B] rounded-2xl border border-[#D9E5DF] p-4 shadow-xs transition cursor-pointer"
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#202B26]/65 block">
+                        Live Official Ads
+                      </span>
+                      <div className="flex items-center justify-between mt-1">
+                        <strong className="text-2xl font-black text-[#0B8050] tabular-nums">
+                          {snapshot.advertisements.filter((a) => !a.isDeleted && a.status === 'active').length}
+                        </strong>
+                        <span className="text-xs font-bold text-[#075B3B]">Manage Ads →</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <AdminOverviewAnalytics
+                    mode="ceo"
+                    users={snapshot.users}
+                    products={snapshot.products}
+                    sellers={snapshot.sellers}
+                    houseAgents={snapshot.houseAgents}
+                    institutions={snapshot.institutions}
+                    services={snapshot.services}
+                    advertisements={snapshot.advertisements}
+                    visitorAnalytics={snapshot.visitorAnalytics}
+                    accommodationsCount={snapshot.accommodationsCount}
+                    studentPostsCount={snapshot.studentPostsCount}
+                    studentRequestsCount={snapshot.studentRequestsCount}
+                    messagesCount={snapshot.messagesCount}
+                    activeUsersCount={snapshot.activeUsersCount}
+                    communityMembershipsCount={snapshot.communityMembershipsCount}
+                    pendingReportsCount={analytics.pendingReports}
+                  />
+                </div>
+              )}
+
+              {/* ADVERTISING REQUESTS INBOX */}
+              {activeSection === 'ad_requests' && (
+                <AdRequestsInboxPanel
+                  requests={snapshot.advertisingRequests || []}
+                  onRefresh={loadSnapshot}
+                  onFlash={flash}
+                  onError={(msg) => setErrorMsg(msg)}
+                  onConvertToAd={(req) => {
+                    setPrefillRequestForAd(req);
+                    setActiveSection('create_ad');
+                  }}
+                />
+              )}
+
               {/* 1. CEO VERIFICATION CENTRE */}
               {activeSection === 'verification' && (
                 <div className="space-y-4">
@@ -2435,10 +2554,22 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
                 </div>
               )}
 
-              {/* 5. OFFICIAL ADVERTISEMENT MANAGEMENT (CEO ONLY) */}
-              {activeSection === 'ads' && (
+              {/* OFFICIAL ADVERTISEMENT STUDIO / MANAGER / ANALYTICS */}
+              {(activeSection === 'ads' ||
+                activeSection === 'create_ad' ||
+                activeSection === 'sponsored_analytics') && (
                 <CeoOfficialAdsPanel
                   ads={snapshot.advertisements}
+                  requests={snapshot.advertisingRequests || []}
+                  initialMode={
+                    activeSection === 'create_ad'
+                      ? 'create'
+                      : activeSection === 'sponsored_analytics'
+                      ? 'analytics'
+                      : 'manage'
+                  }
+                  prefillRequest={prefillRequestForAd}
+                  onClearPrefill={() => setPrefillRequestForAd(null)}
                   onRefresh={loadSnapshot}
                   onFlash={flash}
                   onError={(msg) => setErrorMsg(msg)}
@@ -2687,6 +2818,15 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
                     Reports & Complaints ({analytics.pendingReports} Pending)
                   </h2>
                   <div className="space-y-2.5">
+                    {snapshot.reports.productReports.length === 0 &&
+                      snapshot.reports.serviceReports.length === 0 &&
+                      snapshot.reports.announcementReports.length === 0 &&
+                      snapshot.reports.huxReports.length === 0 &&
+                      (snapshot.reports.conversationReports || []).length === 0 && (
+                        <p className="text-xs text-[#555555] py-6 text-center bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
+                          No user complaints or content reports submitted yet.
+                        </p>
+                      )}
                     {snapshot.reports.productReports.map((r) => (
                       <div key={r.id} className="p-3.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                         <div>
@@ -2724,6 +2864,25 @@ export const CeoSuperAdminDashboard: React.FC<CeoSuperAdminDashboardProps> = ({
                           className="px-3 py-1.5 rounded-lg bg-[#087443] text-white font-bold shrink-0"
                         >
                           Resolve ({r.status})
+                        </button>
+                      </div>
+                    ))}
+                    {snapshot.reports.huxReports.map((r: any) => (
+                      <div key={r.id} className="p-3.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div>
+                          <span className="font-black text-[#087443]">Accommodation Report • {r.reason || 'Flagged Listing'}</span>
+                          <p className="font-bold text-[#10251D]">{r.huxTitle || r.title || r.listingId || r.id}</p>
+                          <p className="text-[#555555]">{r.details || r.description || ''}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await ceoResolveReport('huxReports', r.id, 'resolved');
+                            await loadSnapshot();
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#087443] text-white font-bold shrink-0"
+                        >
+                          Resolve ({r.status || 'pending'})
                         </button>
                       </div>
                     ))}

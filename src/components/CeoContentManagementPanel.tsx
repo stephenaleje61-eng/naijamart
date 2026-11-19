@@ -38,8 +38,10 @@ interface CeoContentManagementPanelProps {
 const FILTER_OPTIONS: { key: WebsiteContentFilterKey; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'products', label: 'Products' },
+  { key: 'accommodation', label: 'Accommodation Listings' },
   { key: 'services', label: 'Services' },
   { key: 'advertisements', label: 'Advertisements' },
+  { key: 'groups_messages', label: 'Groups & Messages' },
   { key: 'events', label: 'Events' },
   { key: 'announcements', label: 'Announcements' },
   { key: 'sports', label: 'Sports' },
@@ -47,7 +49,7 @@ const FILTER_OPTIONS: { key: WebsiteContentFilterKey; label: string }[] = [
   { key: 'business_listings', label: 'Businesses & Agents' },
   { key: 'student_posts', label: 'Student Posts' },
   { key: 'comments', label: 'Comments' },
-  { key: 'other', label: 'Accommodation & Other' }
+  { key: 'other', label: 'Other' }
 ];
 
 export const CeoContentManagementPanel: React.FC<CeoContentManagementPanelProps> = ({

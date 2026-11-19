@@ -195,19 +195,19 @@ export const Header: React.FC<HeaderProps> = ({
   const navBtnClass = (active: boolean) =>
     `px-2.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 inline-flex items-center gap-1 cursor-pointer ${
       active
-        ? 'bg-[#D4A62A] text-[#10251D] font-black shadow-xs'
-        : 'text-white/95 hover:bg-white/12 hover:text-[#D4A62A]'
+        ? 'bg-[#F2C94C] text-[#202B26] font-black shadow-xs'
+        : 'text-white/95 hover:bg-white/12 hover:text-[#F2C94C]'
     }`;
 
   return (
-    <header ref={headerContainerRef} className="sticky top-0 z-40 bg-[#087443] text-white shadow-md">
+    <header ref={headerContainerRef} className="sticky top-0 z-40 bg-[#075B3B] text-white shadow-md">
       <SafetyTickerBanner />
 
       {/* Active Campus Context Utility Bar */}
-      <div className="bg-[#10251D] border-b border-white/15 text-white text-xs py-1.5 px-4">
+      <div className="bg-[#202B26] border-b border-white/15 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-semibold min-w-0">
-            <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-2 py-0.5 rounded shrink-0 whitespace-nowrap">
+            <span className="bg-[#F2C94C] text-[#202B26] text-[10px] font-black px-2 py-0.5 rounded shrink-0 whitespace-nowrap">
               {instShort}
             </span>
             <span className="text-white/95 truncate max-w-[200px] sm:max-w-md" title={instName}>
@@ -217,7 +217,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenInstitutionSwitcher}
-                className="ml-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-white/10 hover:bg-[#D4A62A] text-[#D4A62A] hover:text-[#10251D] text-[10px] font-black transition shrink-0 whitespace-nowrap cursor-pointer"
+                className="ml-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-white/10 hover:bg-[#F2C94C] text-[#F2C94C] hover:text-[#202B26] text-[10px] font-black transition shrink-0 whitespace-nowrap cursor-pointer"
               >
                 <GraduationCap className="w-3 h-3 shrink-0" />
                 <span>Switch Campus</span>
@@ -230,9 +230,9 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenNationwideSearch}
-                className="hover:text-[#D4A62A] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="hover:text-[#F2C94C] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Globe className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <Globe className="w-3.5 h-3.5 text-[#F2C94C]" />
                 <span className="hidden sm:inline">Nationwide Search</span>
               </button>
             )}
@@ -240,9 +240,9 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenSubscriptions}
-                className="hover:text-[#D4A62A] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="hover:text-[#F2C94C] flex items-center gap-1 font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Crown className="w-3.5 h-3.5 text-[#D4A62A]" />
+                <Crown className="w-3.5 h-3.5 text-[#F2C94C]" />
                 <span>Plans</span>
               </button>
             )}
@@ -260,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => (onOpenDownloadApp ? onOpenDownloadApp() : handleInstallClick())}
-                className="text-[#D4A62A] hover:text-[#E0B43B] font-bold hidden sm:flex items-center gap-1 transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="text-[#F2C94C] hover:text-[#E0B43B] font-bold hidden sm:flex items-center gap-1 transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>{isIOS ? 'iPhone App' : 'Install App'}</span>
@@ -284,7 +284,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             className="flex items-center gap-2 shrink-0 group"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-sm border-2 border-[#D4A62A] group-hover:scale-105 transition overflow-hidden shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-sm border-2 border-[#F2C94C] group-hover:scale-105 transition overflow-hidden shrink-0">
               <img
                 src="/pwa-192x192.png"
                 alt="NIGERIA CAMPUS MARKET Logo"
@@ -296,7 +296,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="flex flex-col">
               <span className="font-display font-black text-sm sm:text-base tracking-tight text-white leading-none whitespace-nowrap">
-                NIGERIA <span className="text-[#D4A62A]">CAMPUS MARKET</span>
+                NIGERIA <span className="text-[#F2C94C]">CAMPUS MARKET</span>
               </span>
               <span className="text-[9px] font-bold tracking-wider text-white/85 hidden 2xl:block mt-0.5 whitespace-nowrap">
                 Buy. Sell. Connect. Grow Across Nigerian Campuses.
@@ -330,7 +330,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {openDropdown === 'marketplace' && (
-                <div className="absolute left-0 mt-2 w-60 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                <div className="absolute left-0 mt-2 w-60 bg-white text-[#202B26] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
                   <button
                     type="button"
                     onClick={() => {
@@ -338,12 +338,12 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectCategory('all');
                       onNavigateView('marketplace');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2"
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>Browse All Campus Items</span>
                   </button>
-                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#10251D]/55 border-t border-[#F4F8F5] mt-1">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#202B26]/55 border-t border-[#F4F7F5] mt-1">
                     Popular Categories
                   </div>
                   {categories.slice(0, 6).map((cat) => (
@@ -355,24 +355,24 @@ export const Header: React.FC<HeaderProps> = ({
                         onSelectCategory(cat.id);
                         onNavigateView('marketplace');
                       }}
-                      className="w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F8F5] flex items-center justify-between"
+                      className="w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F7F5] flex items-center justify-between"
                     >
                       <span className="truncate">{cat.name}</span>
-                      <span className="text-[10px] text-[#087443] font-black tabular-nums">
+                      <span className="text-[10px] text-[#075B3B] font-black tabular-nums">
                         {cat.productCount || 0}
                       </span>
                     </button>
                   ))}
-                  <div className="border-t border-[#F4F8F5] mt-1 pt-1">
+                  <div className="border-t border-[#F4F7F5] mt-1 pt-1">
                     <button
                       type="button"
                       onClick={() => {
                         setOpenDropdown(null);
                         onOpenSellModal();
                       }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 text-xs font-black text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2"
                     >
-                      <PlusCircle className="w-4 h-4 text-[#D4A62A]" />
+                      <PlusCircle className="w-4 h-4 text-[#F2C94C]" />
                       <span>Sell an Item for Free</span>
                     </button>
                     <button
@@ -381,9 +381,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onNavigateView('orders');
                       }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2"
                     >
-                      <ClipboardList className="w-4 h-4 text-[#087443]" />
+                      <ClipboardList className="w-4 h-4 text-[#075B3B]" />
                       <span>My Orders &amp; Tracking</span>
                     </button>
                   </div>
@@ -404,16 +404,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {openDropdown === 'universities' && (
-                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#202B26] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
                   <button
                     type="button"
                     onClick={() => {
                       setOpenDropdown(null);
                       onOpenInstitutionSwitcher?.();
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2"
+                    className="w-full text-left px-3.5 py-2 text-xs font-black text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2"
                   >
-                    <GraduationCap className="w-4 h-4 text-[#D4A62A]" />
+                    <GraduationCap className="w-4 h-4 text-[#F2C94C]" />
                     <span>Explore All Nigerian Institutions</span>
                   </button>
                   {onOpenNationwideSearch && (
@@ -423,13 +423,13 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onOpenNationwideSearch();
                       }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2"
                     >
-                      <Globe className="w-4 h-4 text-[#087443]" />
+                      <Globe className="w-4 h-4 text-[#075B3B]" />
                       <span>Nationwide Cross-Campus Search</span>
                     </button>
                   )}
-                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#10251D]/55 border-t border-[#F4F8F5] mt-1">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#202B26]/55 border-t border-[#F4F7F5] mt-1">
                     Popular Campuses
                   </div>
                   {QUICK_UNIVERSITIES.map((uni) => (
@@ -444,13 +444,13 @@ export const Header: React.FC<HeaderProps> = ({
                           onOpenInstitutionSwitcher?.();
                         }
                       }}
-                      className={`w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F8F5] flex items-center justify-between ${
-                        activeInstitution?.id === uni.id ? 'bg-[#F4F8F5] text-[#087443] font-black' : ''
+                      className={`w-full text-left px-3.5 py-1.5 text-xs font-bold hover:bg-[#F4F7F5] flex items-center justify-between ${
+                        activeInstitution?.id === uni.id ? 'bg-[#F4F7F5] text-[#075B3B] font-black' : ''
                       }`}
                     >
                       <span>{uni.label}</span>
                       {activeInstitution?.id === uni.id && (
-                        <span className="text-[10px] font-black text-[#D4A62A]">ACTIVE</span>
+                        <span className="text-[10px] font-black text-[#F2C94C]">ACTIVE</span>
                       )}
                     </button>
                   ))}
@@ -474,8 +474,8 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {openDropdown === 'services' && (
-                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
-                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#087443] border-b border-[#F4F8F5]">
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#202B26] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075B3B] border-b border-[#F4F7F5]">
                     Student Services Hub
                   </div>
                   <button
@@ -484,9 +484,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('hux');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Home className="w-4 h-4 text-[#087443]" />
+                    <Home className="w-4 h-4 text-[#075B3B]" />
                     <span>Accommodation &amp; Hostels</span>
                   </button>
                   <button
@@ -495,9 +495,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('jobs');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Briefcase className="w-4 h-4 text-[#087443]" />
+                    <Briefcase className="w-4 h-4 text-[#075B3B]" />
                     <span>Jobs &amp; Internships</span>
                   </button>
                   <button
@@ -506,9 +506,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('food');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Utensils className="w-4 h-4 text-[#087443]" />
+                    <Utensils className="w-4 h-4 text-[#075B3B]" />
                     <span>Campus Food Ordering</span>
                   </button>
                   <button
@@ -517,9 +517,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('books');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <BookOpen className="w-4 h-4 text-[#087443]" />
+                    <BookOpen className="w-4 h-4 text-[#075B3B]" />
                     <span>Books &amp; Study Materials</span>
                   </button>
                   <button
@@ -528,9 +528,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('gpa');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Calculator className="w-4 h-4 text-[#087443]" />
+                    <Calculator className="w-4 h-4 text-[#075B3B]" />
                     <span>GPA &amp; CGPA Calculator</span>
                   </button>
                   <button
@@ -539,9 +539,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('deals');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Crown className="w-4 h-4 text-[#D4A62A]" />
+                    <Crown className="w-4 h-4 text-[#F2C94C]" />
                     <span>Student Deals &amp; Discounts</span>
                   </button>
                   <button
@@ -550,9 +550,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('bike-riders');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Bike className="w-4 h-4 text-[#087443]" />
+                    <Bike className="w-4 h-4 text-[#075B3B]" />
                     <span>Campus Bike &amp; Dispatch Riders</span>
                   </button>
                   {onOpenServicesSection && (
@@ -562,21 +562,21 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onOpenServicesSection();
                       }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                     >
-                      <Store className="w-4 h-4 text-[#087443]" />
+                      <Store className="w-4 h-4 text-[#075B3B]" />
                       <span>Browse Services Directory</span>
                     </button>
                   )}
                   {onOpenPostServiceModal && (
-                    <div className="border-t border-[#F4F8F5] mt-1 pt-1 px-3.5">
+                    <div className="border-t border-[#F4F7F5] mt-1 pt-1 px-3.5">
                       <button
                         type="button"
                         onClick={() => {
                           setOpenDropdown(null);
                           onOpenPostServiceModal();
                         }}
-                        className="w-full py-1.5 rounded-lg bg-[#D4A62A] text-[#10251D] text-xs font-black text-center"
+                        className="w-full py-1.5 rounded-lg bg-[#F2C94C] text-[#202B26] text-xs font-black text-center"
                       >
                         Post Your Student Service
                       </button>
@@ -602,8 +602,8 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {openDropdown === 'more' && (
-                <div className="absolute left-0 mt-2 w-64 bg-white text-[#10251D] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
-                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#087443] border-b border-[#F4F8F5]">
+                <div className="absolute left-0 mt-2 w-64 bg-white text-[#202B26] rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50">
+                  <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075B3B] border-b border-[#F4F7F5]">
                     Community &amp; Rewards
                   </div>
                   <button
@@ -612,9 +612,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('hub');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <MessageSquare className="w-4 h-4 text-[#087443]" />
+                    <MessageSquare className="w-4 h-4 text-[#075B3B]" />
                     <span>Community Hub &amp; Chat</span>
                   </button>
                   <button
@@ -623,9 +623,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('requests');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Briefcase className="w-4 h-4 text-[#087443]" />
+                    <Briefcase className="w-4 h-4 text-[#075B3B]" />
                     <span>What Students Need</span>
                   </button>
                   <button
@@ -634,9 +634,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('giveaways');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Gift className="w-4 h-4 text-[#087443]" />
+                    <Gift className="w-4 h-4 text-[#075B3B]" />
                     <span>Student Giveaways</span>
                   </button>
                   <button
@@ -645,9 +645,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('referrals');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <GraduationCap className="w-4 h-4 text-[#087443]" />
+                    <GraduationCap className="w-4 h-4 text-[#075B3B]" />
                     <span>Referral Rewards &amp; Ambassadors</span>
                   </button>
                   <button
@@ -656,9 +656,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setOpenDropdown(null);
                       onNavigateView('leaderboards');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                   >
-                    <Trophy className="w-4 h-4 text-[#D4A62A]" />
+                    <Trophy className="w-4 h-4 text-[#F2C94C]" />
                     <span>Campus Leaderboards</span>
                   </button>
                   {onOpenEventsSection && (
@@ -668,9 +668,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onOpenEventsSection();
                       }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F8F5] flex items-center gap-2.5"
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-[#F4F7F5] flex items-center gap-2.5"
                     >
-                      <PartyPopper className="w-4 h-4 text-[#D4A62A]" />
+                      <PartyPopper className="w-4 h-4 text-[#F2C94C]" />
                       <span>Campus Events &amp; Birthdays</span>
                     </button>
                   )}
@@ -687,29 +687,42 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Campus Safety &amp; Help Centre</span>
                     </button>
                   )}
-                  <div className="border-t border-[#F4F8F5] mt-1 pt-1 px-3.5 py-1.5">
-                    {isCeo && onOpenAdvertiseModal ? (
+                  <div className="border-t border-[#F4F7F5] mt-1 pt-1 px-3.5 py-1.5 space-y-1.5">
+                    {onOpenAdvertiseModal ? (
                       <button
                         type="button"
                         onClick={() => {
                           setOpenDropdown(null);
                           onOpenAdvertiseModal();
                         }}
-                        className="w-full py-1.5 rounded-lg bg-[#D4A62A] text-[#10251D] text-xs font-black text-center flex items-center justify-center gap-1.5"
+                        className="w-full py-1.5 rounded-lg bg-[#F2C94C] hover:opacity-95 text-[#202B26] text-xs font-black text-center flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Megaphone className="w-3.5 h-3.5" />
-                        <span>Manage Official Ads (CEO)</span>
+                        <span>Advertise Your Business</span>
                       </button>
                     ) : (
                       <a
                         href={getCeoAdsWhatsAppUrl()}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-1.5 rounded-lg bg-[#10251D] text-[#D4A62A] text-xs font-black text-center flex items-center justify-center gap-1.5"
+                        className="w-full py-1.5 rounded-lg bg-[#202B26] text-[#F2C94C] text-xs font-black text-center flex items-center justify-center gap-1.5"
                       >
                         <Megaphone className="w-3.5 h-3.5" />
                         <span>Advertise on Platform</span>
                       </a>
+                    )}
+                    {isCeo && onOpenCeoSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          onOpenCeoSuperAdmin();
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-[#075B3B] text-[#FFFFFF] text-xs font-black text-center flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#F2C94C]" />
+                        <span>Manage Ads Studio (Admin)</span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -728,12 +741,12 @@ export const Header: React.FC<HeaderProps> = ({
                   setLocalSearch(e.target.value);
                   onSearchChange(e.target.value);
                 }}
-                className="w-full pl-8 pr-12 py-2 bg-white border border-transparent focus:border-[#D4A62A] rounded-xl text-xs text-[#10251D] placeholder-[#10251D]/55 shadow-sm transition outline-none"
+                className="w-full pl-8 pr-12 py-2 bg-white border border-transparent focus:border-[#F2C94C] rounded-xl text-xs text-[#202B26] placeholder-[#202B26]/55 shadow-sm transition outline-none"
               />
-              <Search className="w-3.5 h-3.5 text-[#087443] absolute left-2.5" />
+              <Search className="w-3.5 h-3.5 text-[#075B3B] absolute left-2.5" />
               <button
                 type="submit"
-                className="absolute right-1 px-2 py-1 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-[10px] font-black rounded-lg transition cursor-pointer"
+                className="absolute right-1 px-2 py-1 bg-[#F2C94C] hover:bg-[#E0B43B] text-[#202B26] text-[10px] font-black rounded-lg transition cursor-pointer"
               >
                 Go
               </button>
@@ -746,13 +759,13 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenNotifications}
-                className="p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative shrink-0 cursor-pointer"
+                className="p-2 bg-[#202B26] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative shrink-0 cursor-pointer"
                 title="Notifications"
                 aria-label="Notifications"
               >
-                <Bell className="w-4 h-4 text-[#D4A62A]" />
+                <Bell className="w-4 h-4 text-[#F2C94C]" />
                 {unreadNotificationsCount > 0 && (
-                  <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
+                  <span className="bg-[#F2C94C] text-[#202B26] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
                     {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
                   </span>
                 )}
@@ -762,13 +775,13 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCart}
-              className="p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative whitespace-nowrap shrink-0 cursor-pointer"
+              className="p-2 bg-[#202B26] hover:bg-black/40 border border-white/20 text-white rounded-xl flex items-center gap-1 transition relative whitespace-nowrap shrink-0 cursor-pointer"
               title="Shopping Cart"
               aria-label="Shopping Cart"
             >
-              <ShoppingCart className="w-4 h-4 text-[#D4A62A]" />
+              <ShoppingCart className="w-4 h-4 text-[#F2C94C]" />
               {cartCount > 0 && (
-                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
+                <span className="bg-[#F2C94C] text-[#202B26] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
                   {cartCount}
                 </span>
               )}
@@ -777,13 +790,13 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenFavourites}
-              className="hidden xl:flex p-2 bg-[#10251D] hover:bg-black/40 border border-white/20 text-white rounded-xl items-center gap-1 transition relative shrink-0 cursor-pointer"
+              className="hidden xl:flex p-2 bg-[#202B26] hover:bg-black/40 border border-white/20 text-white rounded-xl items-center gap-1 transition relative shrink-0 cursor-pointer"
               title="Saved Items"
               aria-label="Saved Items"
             >
-              <Heart className="w-4 h-4 text-[#D4A62A]" />
+              <Heart className="w-4 h-4 text-[#F2C94C]" />
               {favourites.length > 0 && (
-                <span className="bg-[#D4A62A] text-[#10251D] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
+                <span className="bg-[#F2C94C] text-[#202B26] text-[10px] font-black px-1.5 rounded-full min-w-4 text-center tabular-nums">
                   {favourites.length}
                 </span>
               )}
@@ -795,30 +808,30 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleDropdown('user')}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white text-[#10251D] font-bold shadow-sm hover:bg-[#F4F8F5] transition cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white text-[#202B26] font-bold shadow-sm hover:bg-[#F4F7F5] transition cursor-pointer whitespace-nowrap"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-[#087443] text-[#D4A62A] font-black text-xs flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-[#075B3B] text-[#F2C94C] font-black text-xs flex items-center justify-center">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-bold text-[#10251D] max-w-[75px] truncate hidden sm:inline">
+                  <span className="text-xs font-bold text-[#202B26] max-w-[75px] truncate hidden sm:inline">
                     {user.name.split(' ')[0]}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#10251D]/65" />
+                  <ChevronDown className="w-3.5 h-3.5 text-[#202B26]/65" />
                 </button>
               ) : (
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => onOpenAuthModal('login')}
-                    className="flex items-center gap-1 px-2.5 py-2 bg-white hover:bg-[#F4F8F5] text-[#087443] text-xs font-black rounded-xl shadow-sm transition whitespace-nowrap cursor-pointer"
+                    className="flex items-center gap-1 px-2.5 py-2 bg-white hover:bg-[#F4F7F5] text-[#075B3B] text-xs font-black rounded-xl shadow-sm transition whitespace-nowrap cursor-pointer"
                   >
-                    <UserIcon className="w-3.5 h-3.5 text-[#087443]" />
+                    <UserIcon className="w-3.5 h-3.5 text-[#075B3B]" />
                     <span>Login</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onOpenAuthModal('register')}
-                    className="hidden sm:inline-flex items-center px-3 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition whitespace-nowrap cursor-pointer shadow-sm"
+                    className="hidden sm:inline-flex items-center px-3 py-2 bg-[#F2C94C] hover:bg-[#E0B43B] text-[#202B26] text-xs font-black rounded-xl transition whitespace-nowrap cursor-pointer shadow-sm"
                   >
                     Sign Up
                   </button>
@@ -826,16 +839,16 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {openDropdown === 'user' && user && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50 text-[#10251D]">
-                  <div className="px-4 py-3 border-b border-[#F4F8F5]">
-                    <p className="text-xs font-black text-[#10251D] truncate">{user.name}</p>
-                    <p className="text-[11px] text-[#10251D]/70 truncate">{user.email}</p>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-[#D9E5DF] py-2 z-50 text-[#202B26]">
+                  <div className="px-4 py-3 border-b border-[#F4F7F5]">
+                    <p className="text-xs font-black text-[#202B26] truncate">{user.name}</p>
+                    <p className="text-[11px] text-[#202B26]/70 truncate">{user.email}</p>
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-[#087443] text-[#D4A62A]">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-[#075B3B] text-[#F2C94C]">
                         {user.role}
                       </span>
                       {(sellerProfile?.isVerified || user.ceoVerified || user.isVerified) && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F8F5] text-[#087443] border border-[#087443]/30 flex items-center gap-0.5">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F7F5] text-[#075B3B] border border-[#075B3B]/30 flex items-center gap-0.5">
                           <ShieldCheck className="w-3 h-3" /> Verified
                         </span>
                       )}
@@ -849,9 +862,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onNavigateView('orders');
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                     >
-                      <ClipboardList className="w-4 h-4 text-[#087443]" />
+                      <ClipboardList className="w-4 h-4 text-[#075B3B]" />
                       My Orders &amp; Food Tracking
                     </button>
 
@@ -861,9 +874,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onNavigateView('account');
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                     >
-                      <UserIcon className="w-4 h-4 text-[#087443]" />
+                      <UserIcon className="w-4 h-4 text-[#075B3B]" />
                       Student Account Hub
                     </button>
 
@@ -874,9 +887,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenUserProfile();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                       >
-                        <UserCog className="w-4 h-4 text-[#087443]" />
+                        <UserCog className="w-4 h-4 text-[#075B3B]" />
                         Campus Profile Settings
                       </button>
                     )}
@@ -888,9 +901,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenSellerDashboard();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                       >
-                        <Store className="w-4 h-4 text-[#087443]" />
+                        <Store className="w-4 h-4 text-[#075B3B]" />
                         Seller Dashboard &amp; Listings
                       </button>
                     ) : (
@@ -900,9 +913,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenAuthModal('register', 'seller');
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2 font-black transition"
                       >
-                        <Store className="w-4 h-4 text-[#087443]" />
+                        <Store className="w-4 h-4 text-[#075B3B]" />
                         Become a Campus Seller
                       </button>
                     )}
@@ -914,9 +927,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenCeoSuperAdmin();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-white bg-[#087443] hover:bg-[#065D36] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-white bg-[#075B3B] hover:bg-[#065D36] flex items-center gap-2 font-black transition"
                       >
-                        <ShieldCheck className="w-4 h-4 text-[#D4A62A]" />
+                        <ShieldCheck className="w-4 h-4 text-[#F2C94C]" />
                         CEO Super Admin Dashboard
                       </button>
                     )}
@@ -928,9 +941,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenCeoMasterControl();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#10251D] bg-[#D4A62A]/20 hover:bg-[#D4A62A]/35 flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#202B26] bg-[#F2C94C]/20 hover:bg-[#F2C94C]/35 flex items-center gap-2 font-black transition"
                       >
-                        <Sliders className="w-4 h-4 text-[#087443]" />
+                        <Sliders className="w-4 h-4 text-[#075B3B]" />
                         Platform Master Control
                       </button>
                     )}
@@ -942,9 +955,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenCeoEventsDashboard();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2 font-black transition"
                       >
-                        <PartyPopper className="w-4 h-4 text-[#D4A62A]" />
+                        <PartyPopper className="w-4 h-4 text-[#F2C94C]" />
                         CEO Events Publisher
                       </button>
                     )}
@@ -956,7 +969,7 @@ export const Header: React.FC<HeaderProps> = ({
                           setOpenDropdown(null);
                           onOpenAdminDashboard();
                         }}
-                        className="w-full text-left px-4 py-2 text-xs text-[#087443] hover:bg-[#F4F8F5] flex items-center gap-2 font-black transition"
+                        className="w-full text-left px-4 py-2 text-xs text-[#075B3B] hover:bg-[#F4F7F5] flex items-center gap-2 font-black transition"
                       >
                         <LayoutDashboard className="w-4 h-4" />
                         Admin &amp; Institutions Desk
@@ -969,21 +982,21 @@ export const Header: React.FC<HeaderProps> = ({
                         setOpenDropdown(null);
                         onOpenSafetyModal();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#10251D]/80 hover:text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#202B26]/80 hover:text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 transition"
                     >
-                      <ShieldCheck className="w-4 h-4 text-[#087443]" />
+                      <ShieldCheck className="w-4 h-4 text-[#075B3B]" />
                       Safety &amp; Scam Prevention
                     </button>
                   </div>
 
-                  <div className="border-t border-[#F4F8F5] pt-1 mt-1">
+                  <div className="border-t border-[#F4F7F5] pt-1 mt-1">
                     <button
                       type="button"
                       onClick={() => {
                         setOpenDropdown(null);
                         logout();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs text-[#10251D] hover:bg-[#F4F8F5] flex items-center gap-2 font-bold transition"
+                      className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                     >
                       <LogOut className="w-4 h-4 text-[#065D36]" />
                       Sign Out
@@ -997,7 +1010,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden p-2 rounded-xl bg-[#10251D] border border-white/20 text-white hover:text-[#D4A62A] cursor-pointer"
+              className="lg:hidden p-2 rounded-xl bg-[#202B26] border border-white/20 text-white hover:text-[#F2C94C] cursor-pointer"
               aria-label="Open Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -1030,7 +1043,7 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   item.action();
                 }}
-                className="px-3 py-2 rounded-xl bg-[#10251D] hover:bg-[#D4A62A] hover:text-[#10251D] text-white font-bold text-left flex items-center justify-between transition"
+                className="px-3 py-2 rounded-xl bg-[#202B26] hover:bg-[#F2C94C] hover:text-[#202B26] text-white font-bold text-left flex items-center justify-between transition"
               >
                 <span className="truncate">{item.label}</span>
               </button>
@@ -1041,7 +1054,7 @@ export const Header: React.FC<HeaderProps> = ({
                 setMobileMenuOpen(false);
                 onOpenSellModal();
               }}
-              className="px-3 py-2 rounded-xl bg-[#D4A62A] text-[#10251D] font-black text-left col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
+              className="px-3 py-2 rounded-xl bg-[#F2C94C] text-[#202B26] font-black text-left col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Post Item / Start Selling</span>
@@ -1053,7 +1066,7 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   onOpenAuthModal('register');
                 }}
-                className="px-3 py-2 rounded-xl bg-white text-[#087443] font-black text-center col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
+                className="px-3 py-2 rounded-xl bg-white text-[#075B3B] font-black text-center col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5"
               >
                 <UserIcon className="w-3.5 h-3.5" />
                 <span>Create Free Student Account</span>

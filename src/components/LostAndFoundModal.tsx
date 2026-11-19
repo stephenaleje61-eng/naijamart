@@ -358,7 +358,7 @@ export const LostAndFoundModal: React.FC<LostAndFoundModalProps> = ({
                 <div>
                   <p className="font-black">Student Privacy Protection</p>
                   <p className="mt-0.5 leading-relaxed">
-                    Do NOT publish raw matric numbers, full ID card numbers, NIN, or BVN in public descriptions or photos. FU MARKET automatically redacts ID/matric patterns publicly, and any private claim hint you provide below is stored strictly for Help Centre verification.
+                    Do NOT publish raw matric numbers, full ID card numbers, NIN, or BVN in public descriptions or photos. NIGERIA CAMPUS MARKET automatically redacts ID/matric patterns publicly, and any private claim hint you provide below is stored strictly for Help Centre verification.
                   </p>
                 </div>
               </div>

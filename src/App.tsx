@@ -29,9 +29,16 @@ import {
   ShoppingCart,
   AlertTriangle,
   Flame,
-  Eye
+  Eye,
+  ShieldAlert,
+  LogOut,
+  ArrowLeft,
+  Megaphone,
+  Calendar,
+  Clock,
+  Sparkles
 } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import campusHostelShowcaseImg from './assets/images/nigeria_campus_hostel_1794988913033.jpg';
 import campusFoodShowcaseImg from './assets/images/nigeria_campus_food_1794988912277.jpg';
 import campusCommunityShowcaseImg from './assets/images/nigeria_campus_community_1794904561913.jpg';
@@ -49,6 +56,7 @@ import {
   CommunityAnnouncementPost,
   PostCollectionName,
   Advertisement,
+  AdPackageId,
   ServiceCategory,
   ServiceListing,
   EmergencyContact,
@@ -58,6 +66,8 @@ import {
   Institution,
   EmergencyReportKind,
   FoodVendor,
+  CampusJobListing,
+  CampusBookListing,
   AppSettings,
   UserSubscription,
   AppNotification
@@ -148,10 +158,12 @@ import {
 } from './services/announcements.js';
 import { FuMarketAdsSection } from './components/FuMarketAdsSection.js';
 import { AdDetailModal } from './components/AdDetailModal.js';
+import { AdvertiseBusinessModal } from './components/AdvertiseBusinessModal.js';
+import { SponsoredAdCard } from './components/SponsoredAdCard.js';
 import { CeoMasterControlModal } from './components/CeoMasterControlModal.js';
 import { CeoVerifiedBadge } from './components/CeoVerifiedBadge.js';
 import {
-  filterAdsForInstitution,
+  filterAdsForAudience,
   getCachedActivePublicAds,
   subscribeToActivePublicAds
 } from './services/ads.js';
@@ -180,7 +192,11 @@ import {
   subscribeToLostFoundItems,
   subscribeToSafetyAnnouncements
 } from './services/emergencyCentre.js';
-import { subscribeToFoodVendors } from './services/campusEcosystem.js';
+import {
+  subscribeToCampusBooks,
+  subscribeToCampusJobs,
+  subscribeToFoodVendors
+} from './services/campusEcosystem.js';
 import { subscribeToUserSubscriptions } from './services/monetization.js';
 import { usePWAInstall } from './hooks/usePWAInstall.js';
 import {
@@ -259,7 +275,14 @@ function resolveCeoRouteFromPath(): CeoRouteMode {
   if (typeof window === 'undefined') return 'marketplace';
   const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
   if (path === '/ceo-login' || path.startsWith('/ceo-login/')) return 'ceo-login';
-  if (path === '/ceo-admin' || path.startsWith('/ceo-admin/')) return 'ceo-admin';
+  if (
+    path === '/admin' ||
+    path.startsWith('/admin/') ||
+    path === '/ceo-admin' ||
+    path.startsWith('/ceo-admin/')
+  ) {
+    return 'ceo-admin';
+  }
   return 'marketplace';
 }
 
@@ -329,7 +352,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 function MainMarketplace() {
-  const { user, firebaseUser, favourites, notifications, refreshUser } = useAuth();
+  const { user, firebaseUser, favourites, notifications, refreshUser, logout } = useAuth();
   const { isInstallable, isInstalled, isIOS, platform, deviceType, install } = usePWAInstall();
 
   const initialRoute = useMemo(() => resolveViewFromPath(), []);
@@ -361,7 +384,7 @@ function MainMarketplace() {
 
   // Private CEO Route & Session State
   const [ceoRouteMode, setCeoRouteMode] = useState<CeoRouteMode>(() => resolveCeoRouteFromPath());
-  const [ceoInitialSection, setCeoInitialSection] = useState<CeoSectionId>('verification');
+  const [ceoInitialSection, setCeoInitialSection] = useState<CeoSectionId>('overview');
   const [ceoSession, setCeoSession] = useState<CeoSessionState | null>(() => getStoredCeoSession());
   const [ceoLoginNotice, setCeoLoginNotice] = useState<string | null>(null);
   const [firebaseAuthChecked, setFirebaseAuthChecked] = useState<boolean>(() =>
@@ -388,6 +411,8 @@ function MainMarketplace() {
   const [allStudentRequests, setAllStudentRequests] = useState<StudentRequest[]>([]);
   const [allAccommodation, setAllAccommodation] = useState<AccommodationProperty[]>([]);
   const [foodVendors, setFoodVendors] = useState<FoodVendor[]>([]);
+  const [campusJobs, setCampusJobs] = useState<CampusJobListing[]>([]);
+  const [campusBooks, setCampusBooks] = useState<CampusBookListing[]>([]);
 
   // Events, Sports & General Announcements
   const [campusEvents, setCampusEvents] = useState<CampusEvent[]>(() => getCachedPublishedEvents());
@@ -418,7 +443,7 @@ function MainMarketplace() {
     authorAvatar?: string;
   } | null>(null);
 
-  // Official Ads & CEO Master Control
+  // Official Ads, Advertising Requests & CEO Master Control
   const [activePublicAds, setActivePublicAds] = useState<Advertisement[]>(() =>
     getCachedActivePublicAds()
   );
@@ -426,6 +451,10 @@ function MainMarketplace() {
     () => getCachedActivePublicAds().length === 0
   );
   const [selectedAd, setSelectedAd] = useState<Advertisement | null>(null);
+  const [advertiseModalState, setAdvertiseModalState] = useState<{
+    open: boolean;
+    packageId?: AdPackageId;
+  }>({ open: false, packageId: 'featured' });
   const [showCeoMasterControl, setShowCeoMasterControl] = useState<boolean>(false);
 
   // Student Services Marketplace
@@ -468,20 +497,6 @@ function MainMarketplace() {
 
   const [showPWAInstructions, setShowPWAInstructions] = useState(false);
   const [platformInfoTopic, setPlatformInfoTopic] = useState<PlatformInfoTopic | null>(null);
-  const [uniSearchQuery, setUniSearchQuery] = useState<string>('');
-  const [pickerInstitutionId, setPickerInstitutionId] = useState<string>(() =>
-    selectedInstitutionId !== 'all' ? selectedInstitutionId : DEFAULT_INSTITUTION_ID
-  );
-  const [pickerCampus, setPickerCampus] = useState<string>(
-    () => selectedCampus || DEFAULT_INSTITUTION_CAMPUS
-  );
-
-  useEffect(() => {
-    if (selectedInstitutionId !== 'all') {
-      setPickerInstitutionId(selectedInstitutionId);
-      setPickerCampus(selectedCampus || DEFAULT_INSTITUTION_CAMPUS);
-    }
-  }, [selectedInstitutionId, selectedCampus]);
 
   useEffect(() => {
     try {
@@ -559,12 +574,14 @@ function MainMarketplace() {
       return;
     }
     if (!isCeoRouteAuthorized) {
-      const actorKey = `${auth.currentUser?.uid || 'anon'}:${user?.email || 'anon'}`;
+      const currentPath =
+        (typeof window !== 'undefined' && window.location.pathname) || '/admin';
+      const actorKey = `${auth.currentUser?.uid || 'anon'}:${user?.email || 'anon'}:${currentPath}`;
       if (unauthorizedCeoLogRef.current !== actorKey) {
         unauthorizedCeoLogRef.current = actorKey;
         logUnauthorizedCeoAccess(
-          'Blocked unauthorized or unauthenticated direct access to /ceo-admin route.',
-          '/ceo-admin',
+          `Blocked unauthorized or unauthenticated direct access to ${currentPath} route.`,
+          currentPath,
           auth.currentUser?.email || user?.email || 'anonymous'
         );
       }
@@ -572,7 +589,7 @@ function MainMarketplace() {
         setCeoSession(null);
         saveCeoSession(null);
       }
-      setCeoLoginNotice('Access denied. Authorized NIGERIA CAMPUS MARKET CEO login is required.');
+      setCeoLoginNotice('Access Denied: Only the authorized NIGERIA CAMPUS MARKET Super Administrator may access this route.');
     }
   }, [firebaseAuthChecked, ceoRouteMode, isCeoRouteAuthorized, ceoSession, user?.email]);
 
@@ -758,6 +775,8 @@ function MainMarketplace() {
     let unsubHux = () => {};
     let unsubInsts = () => {};
     let unsubFood = () => {};
+    let unsubJobs = () => {};
+    let unsubBooks = () => {};
     const previewTimer = setTimeout(() => {
       unsubInsts = subscribeToInstitutions((list) => {
         if (list.length > 0) setInstitutions(list);
@@ -774,6 +793,14 @@ function MainMarketplace() {
       unsubFood = subscribeToFoodVendors((list) => {
         setFoodVendors(list);
       });
+
+      unsubJobs = subscribeToCampusJobs((list) => {
+        setCampusJobs(list.filter((j) => j.status === 'active'));
+      });
+
+      unsubBooks = subscribeToCampusBooks((list) => {
+        setCampusBooks(list.filter((b) => b.status === 'active'));
+      });
     }, 600);
 
     return () => {
@@ -783,6 +810,8 @@ function MainMarketplace() {
       unsubStudentReqs();
       unsubHux();
       unsubFood();
+      unsubJobs();
+      unsubBooks();
     };
   }, [user?.id]);
 
@@ -821,8 +850,12 @@ function MainMarketplace() {
       setCeoLoginNotice(notice);
     }
     setCeoRouteMode(mode);
+    const currentPath =
+      typeof window !== 'undefined' ? window.location.pathname.toLowerCase().replace(/\/+$/, '') : '';
+    const adminRoutePath =
+      currentPath === '/admin' || currentPath.startsWith('/admin/') ? '/admin' : '/ceo-admin';
     const targetPath =
-      mode === 'ceo-login' ? '/ceo-login' : mode === 'ceo-admin' ? '/ceo-admin' : '/';
+      mode === 'ceo-login' ? '/ceo-login' : mode === 'ceo-admin' ? adminRoutePath : '/';
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
     }
@@ -856,13 +889,16 @@ function MainMarketplace() {
   const scrollToEventsSection = () => scrollToSectionId('campus-events-section');
   const scrollToEmergencySection = () => scrollToSectionId('fu-market-campus-emergency');
 
+  const handleOpenAdvertiseModal = (packageId: AdPackageId = 'featured') => {
+    setAdvertiseModalState({ open: true, packageId });
+  };
+
   const scrollToAdsSectionOrCeo = () => {
     if (isAuthorizedCeo(user)) {
       navigateCeoRoute(isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login', null, 'ads');
       return;
     }
-    scrollToSectionId('fu-market-ads');
-    showToast('Official ads are published by NIGERIA CAMPUS MARKET CEO (08167258121).');
+    handleOpenAdvertiseModal('featured');
   };
 
   const hasActiveIdentityForActions = () =>
@@ -1210,12 +1246,59 @@ function MainMarketplace() {
   const totalCartItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
-  const heroAds = useMemo(
+  const heroAds = useMemo(() => {
+    const featured = filterAdsForAudience(activePublicAds, {
+      institutionId: selectedInstitutionId,
+      campus: selectedCampus,
+      institutions,
+      placement: 'homepage_featured'
+    });
+    if (featured.length > 0) return featured;
+    return filterAdsForAudience(activePublicAds, {
+      institutionId: selectedInstitutionId,
+      campus: selectedCampus,
+      institutions,
+      placement: 'homepage_hero'
+    });
+  }, [activePublicAds, selectedInstitutionId, selectedCampus, institutions]);
+
+  const marketplaceAds = useMemo(
     () =>
-      filterAdsForInstitution(activePublicAds, selectedInstitutionId).filter(
-        (ad) => ad.placement === 'homepage_hero' || ad.placement === 'institution_spotlight'
-      ),
-    [activePublicAds, selectedInstitutionId]
+      filterAdsForAudience(activePublicAds, {
+        institutionId: selectedInstitutionId,
+        campus: selectedCampus,
+        institutions,
+        placement: 'marketplace_sponsored',
+        categoryId: selectedCategory !== 'all' ? selectedCategory : undefined
+      }),
+    [activePublicAds, selectedInstitutionId, selectedCampus, institutions, selectedCategory]
+  );
+
+  const universitySpotlightAds = useMemo(
+    () =>
+      selectedInstitutionId !== 'all'
+        ? filterAdsForAudience(activePublicAds, {
+            institutionId: selectedInstitutionId,
+            campus: selectedCampus,
+            institutions,
+            placement: 'university_homepage'
+          })
+        : [],
+    [activePublicAds, selectedInstitutionId, selectedCampus, institutions]
+  );
+
+  const categoryFeedAds = useMemo(
+    () =>
+      selectedCategory !== 'all'
+        ? filterAdsForAudience(activePublicAds, {
+            institutionId: selectedInstitutionId,
+            campus: selectedCampus,
+            institutions,
+            placement: 'category_feed',
+            categoryId: selectedCategory
+          })
+        : [],
+    [activePublicAds, selectedInstitutionId, selectedCampus, institutions, selectedCategory]
   );
 
   const latestRequests = useMemo(
@@ -1242,60 +1325,41 @@ function MainMarketplace() {
     [foodVendors, selectedInstitutionId]
   );
 
-  const effectiveActiveInstitution = activeInstitution || VERIFIED_NIGERIAN_INSTITUTIONS[0];
-
-  const filteredPickerInstitutions = useMemo(() => {
-    const q = uniSearchQuery.trim().toLowerCase();
-    if (!q) return institutions;
-    return institutions.filter(
-      (i) =>
-        i.name.toLowerCase().includes(q) ||
-        i.shortName.toLowerCase().includes(q) ||
-        i.state.toLowerCase().includes(q) ||
-        (i.campus || '').toLowerCase().includes(q)
-    );
-  }, [institutions, uniSearchQuery]);
-
-  const pickerInstObj = useMemo(
-    () => getInstitutionById(pickerInstitutionId, institutions),
-    [pickerInstitutionId, institutions]
+  const latestJobs = useMemo(
+    () =>
+      campusJobs
+        .filter(
+          (j) =>
+            j.status === 'active' &&
+            (j.isNationwide ||
+              selectedInstitutionId === 'all' ||
+              belongsToInstitution(j.institutionId, selectedInstitutionId))
+        )
+        .slice(0, 3),
+    [campusJobs, selectedInstitutionId]
   );
 
-  const popularUniversities = useMemo(() => {
-    const preferredIds = ['fuwukari', 'unilag', 'ui', 'abu', 'unn', 'oau', 'uniben', 'uniport'];
-    const matched = preferredIds
-      .map((id) => institutions.find((i) => i.id === id))
-      .filter((i): i is Institution => Boolean(i));
-    return matched.length >= 4 ? matched : institutions.slice(0, 8);
-  }, [institutions]);
+  const latestBooks = useMemo(
+    () =>
+      campusBooks
+        .filter(
+          (b) =>
+            b.status === 'active' &&
+            (selectedInstitutionId === 'all' ||
+              belongsToInstitution(b.institutionId, selectedInstitutionId))
+        )
+        .slice(0, 3),
+    [campusBooks, selectedInstitutionId]
+  );
 
-  const trendingCrossCampusProducts = useMemo(() => {
-    const sorted = [...products].sort((a, b) => {
-      const scoreB = (b.views || 0) + (b.whatsappClicks || 0) * 5;
-      const scoreA = (a.views || 0) + (a.whatsappClicks || 0) * 5;
-      return scoreB - scoreA;
-    });
-    const diverse: Product[] = [];
-    const seenInstCount = new Map<string, number>();
-    for (const prod of sorted) {
-      const instKey = prod.institutionId || 'general';
-      const cnt = seenInstCount.get(instKey) || 0;
-      if (cnt < 2) {
-        diverse.push(prod);
-        seenInstCount.set(instKey, cnt + 1);
-      }
-      if (diverse.length >= 6) break;
-    }
-    if (diverse.length < 6) {
-      for (const prod of sorted) {
-        if (!diverse.some((d) => d.id === prod.id)) {
-          diverse.push(prod);
-          if (diverse.length >= 6) break;
-        }
-      }
-    }
-    return diverse;
-  }, [products]);
+  const recentlyAddedProducts = useMemo(() => {
+    const sorted = [...displayedProducts].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return sorted.slice(0, 4);
+  }, [displayedProducts]);
+
+  const effectiveActiveInstitution = activeInstitution || VERIFIED_NIGERIAN_INSTITUTIONS[0];
 
   const handleNotificationNavigation = (notif: AppNotification) => {
     setShowNotificationModal(false);
@@ -1308,10 +1372,10 @@ function MainMarketplace() {
   if (ceoRouteMode === 'ceo-admin') {
     if (!firebaseAuthChecked) {
       return (
-        <div className="min-h-screen bg-[#087443] text-white flex items-center justify-center p-6">
-          <div className="bg-[#065D36] border border-[#D4A62A]/50 rounded-2xl px-6 py-5 text-center space-y-2 shadow-2xl">
-            <div className="w-8 h-8 border-2 border-[#D4A62A] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-black uppercase tracking-wider text-[#D4A62A]">
+        <div className="min-h-screen bg-[#075B3B] text-white flex items-center justify-center p-6">
+          <div className="bg-[#0B8050] border border-[#F2C94C]/60 rounded-2xl px-6 py-5 text-center space-y-2 shadow-2xl">
+            <div className="w-8 h-8 border-2 border-[#F2C94C] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-black uppercase tracking-wider text-[#F2C94C]">
               Verifying NIGERIA CAMPUS MARKET CEO Session...
             </p>
           </div>
@@ -1347,6 +1411,66 @@ function MainMarketplace() {
             setShowCeoMasterControl(true);
           }}
         />
+      );
+    }
+    if (
+      auth.currentUser &&
+      !auth.currentUser.isAnonymous &&
+      !isAuthorizedCeoEmail(auth.currentUser.email)
+    ) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#202B26] via-[#075B3B] to-[#0B8050] flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-red-200 overflow-hidden text-[#202B26]">
+            <div className="bg-[#7F1D1D] text-white px-6 py-5 border-b-4 border-[#F2C94C] flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-6 h-6 text-[#F2C94C]" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#FDE68A] block">
+                  Restricted Super Admin Route (403)
+                </span>
+                <h1 className="font-display text-xl font-black text-white">
+                  Access Denied
+                </h1>
+              </div>
+            </div>
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-1">
+                <p className="font-black">Administrator Authorization Required</p>
+                <p className="leading-relaxed">
+                  You are currently signed in as <strong>{auth.currentUser.email}</strong>. Ordinary users, buyers, sellers, and accommodation agents cannot access the Super Administrator dashboard or admin database controls.
+                </p>
+              </div>
+              <p className="text-[#202B26]/75 leading-relaxed">
+                This unauthorized route attempt has been logged. Only the verified Super Administrator account may access this portal.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigateCeoRoute('marketplace', null)}
+                  className="flex-1 py-3 px-4 rounded-xl bg-[#075B3B] hover:bg-[#0B8050] text-white font-black inline-flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#F2C94C]" />
+                  <span>Return to Marketplace</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut(auth).catch(() => {});
+                    logout();
+                    setCeoSession(null);
+                    saveCeoSession(null);
+                    setCeoLoginNotice(null);
+                  }}
+                  className="py-3 px-4 rounded-xl bg-[#202B26] hover:bg-black text-[#F2C94C] font-black inline-flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       );
     }
     return (
@@ -1386,18 +1510,18 @@ function MainMarketplace() {
     currentView === 'leaderboards';
 
   return (
-    <div className="min-h-screen bg-[#F4F8F5] text-[#10251D] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F4F7F5] text-[#202B26] flex flex-col font-sans">
       <OfflineIndicator />
 
       {/* Toast Notification */}
       {notificationToast && (
-        <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50 bg-[#065D36] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border-2 border-[#D4A62A]">
-          <CheckCircle2 className="w-4 h-4 text-[#D4A62A]" />
+        <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50 bg-[#075B3B] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border-2 border-[#F2C94C]">
+          <CheckCircle2 className="w-4 h-4 text-[#F2C94C]" />
           <span>{notificationToast}</span>
         </div>
       )}
 
-      {/* Main Emerald Header */}
+      {/* Step 1 & 2: Announcement Bar & Main Navigation */}
       <Header
         categories={categories}
         selectedCategory={selectedCategory}
@@ -1425,7 +1549,7 @@ function MainMarketplace() {
             navigateCeoRoute(isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login', null);
           }
         }}
-        onOpenAdvertiseModal={scrollToAdsSectionOrCeo}
+        onOpenAdvertiseModal={() => handleOpenAdvertiseModal('featured')}
         onOpenServicesSection={scrollToServicesSection}
         onOpenEventsSection={scrollToEventsSection}
         onOpenEmergencySection={scrollToEmergencySection}
@@ -1538,6 +1662,7 @@ function MainMarketplace() {
         />
       ) : (
         <>
+          {/* Step 3: Compact Category Navigation */}
           <CategoryBar
             categories={categories}
             selectedCategory={selectedCategory}
@@ -1549,7 +1674,7 @@ function MainMarketplace() {
             onOpenBikeRiders={() => navigateToView('bike-riders')}
           />
 
-          {/* HERO SECTION + COMPACT 11-ITEM QUICK ACCESS MENU */}
+          {/* Step 4, 5 & 6: Hero Section with Welcome, Search, Explore Nigerian Universities & Start Selling Free */}
           {currentView === 'home' && !viewingFavouritesOnly && !searchQuery && (
             <HeroBanner
               searchQuery={searchQuery}
@@ -1570,13 +1695,13 @@ function MainMarketplace() {
               onSelectAd={(ad) => setSelectedAd(ad)}
               onOpenNationwideSearch={() => setShowNationwideSearch(true)}
               onOpenEventsSection={scrollToEventsSection}
-              onOpenAdsSection={scrollToAdsSectionOrCeo}
+              onOpenAdsSection={() => scrollToSectionId('fu-market-ads')}
               onOpenEmergencySection={scrollToEmergencySection}
             />
           )}
 
-          {/* Active Campus Banner when an institution is selected */}
-          {activeInstitution && (
+          {/* Active Campus Context Banner on non-home / filtered marketplace views */}
+          {activeInstitution && (currentView !== 'home' || viewingFavouritesOnly || Boolean(searchQuery)) && (
             <InstitutionProfileBanner
               institution={activeInstitution}
               activeCampus={selectedCampus}
@@ -1588,905 +1713,282 @@ function MainMarketplace() {
 
           <main className="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-8">
             {currentView === 'home' && !viewingFavouritesOnly && !searchQuery ? (
-              /* SECTION 3D: HOMEPAGE 3-COLUMN MARKETPLACE, SELECT UNIVERSITY, TRENDING ACROSS CAMPUSES */
-              <section
-                ref={productCatalogRef}
-                className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch"
-              >
-                {/* LEFT COLUMN: Nigeria Campus Marketplace */}
-                <div className="lg:col-span-4 bg-white rounded-3xl border border-[#D9E5DF] shadow-xs p-5 flex flex-col justify-between gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2 border-b border-[#F4F8F5] pb-3">
-                      <div>
-                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
-                          Live Listings
-                        </span>
-                        <h2 className="font-display text-lg font-black text-[#10251D] mt-1">
-                          Nigeria Campus Marketplace
-                        </h2>
-                      </div>
-                      <span className="text-[11px] font-bold text-[#087443] bg-[#F4F8F5] px-2.5 py-1 rounded-lg tabular-nums">
-                        {displayedProducts.length} items
+              <>
+                {/* STEP 7: UNIVERSITY AND CAMPUS SELECTION SECTION (Single Unified Selector) */}
+                <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4">
+                  <InstitutionDirectorySection
+                    institutions={institutions}
+                    selectedInstitutionId={selectedInstitutionId}
+                    selectedCampus={selectedCampus}
+                    onSelectInstitution={(id, campus) => handleSelectInstitution(id, campus, true)}
+                    onOpenFullModal={() => setShowInstitutionSwitcher(true)}
+                  />
+                </div>
+
+                {/* STEP 8: FEATURED SPONSORED ADVERTISEMENTS SECTION */}
+                <FuMarketAdsSection
+                  ads={activePublicAds}
+                  loading={adsLoading}
+                  selectedInstitutionId={selectedInstitutionId}
+                  selectedCampus={selectedCampus}
+                  activeInstitutionName={activeInstitution?.shortName || 'All Nigerian Campuses'}
+                  onOpenSubmitModal={(pkgId) => handleOpenAdvertiseModal(pkgId || 'featured')}
+                  onSelectAd={(ad) => setSelectedAd(ad)}
+                  onOpenMasterControl={() => {
+                    if (isAuthorizedCeo(user)) {
+                      navigateCeoRoute(
+                        isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login',
+                        null,
+                        'ads'
+                      );
+                    }
+                  }}
+                />
+
+                {/* STEP 9: LATEST MARKETPLACE PRODUCTS */}
+                <section
+                  ref={productCatalogRef}
+                  className="scroll-mt-24 bg-[#FFFFFF] rounded-2xl border border-[#D9E5DF] shadow-xs p-5 sm:p-6 space-y-5"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6EFEA] pb-4">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                        <ShoppingBag className="w-3 h-3" />
+                        Live Marketplace
                       </span>
-                    </div>
-
-                    {loading ? (
-                      <div className="py-10 text-center space-y-2">
-                        <div className="w-8 h-8 border-3 border-[#087443] border-t-[#D4A62A] rounded-full animate-spin mx-auto" />
-                        <p className="text-xs font-semibold text-[#555555]">Loading campus products...</p>
-                      </div>
-                    ) : fetchError ? (
-                      <div className="p-4 bg-[#F4F8F5] rounded-2xl border border-[#D9E5DF] text-center space-y-2">
-                        <p className="text-xs font-bold text-[#10251D]">{fetchError}</p>
-                        <button
-                          type="button"
-                          onClick={() => loadCatalogProducts(1, true)}
-                          className="px-4 py-1.5 bg-[#087443] text-white text-xs font-black rounded-xl cursor-pointer"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    ) : displayedProducts.length === 0 ? (
-                      <div className="p-5 bg-[#F4F8F5] rounded-2xl border border-[#D9E5DF] text-center space-y-2.5">
-                        <ShoppingBag className="w-8 h-8 text-[#087443] mx-auto" />
-                        <p className="text-xs font-bold text-[#10251D]">
-                          No products listed on this campus yet.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleRequestSellModal}
-                          className="px-4 py-2 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl cursor-pointer"
-                        >
-                          Post First Item
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        {displayedProducts.slice(0, 4).map((prod) => {
-                          const img = getProductDisplayImage(prod.images, prod.imageUrl);
-                          return (
-                            <div
-                              key={prod.id}
-                              onClick={() => setSelectedProduct(prod)}
-                              className="group bg-[#F4F8F5] hover:bg-white border border-[#D9E5DF] hover:border-[#087443] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col justify-between shadow-2xs hover:shadow-md"
-                            >
-                              <div className="aspect-[4/3] bg-white overflow-hidden relative">
-                                {img ? (
-                                  <img
-                                    src={img}
-                                    alt={prod.title}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[#087443]/30">
-                                    <ShoppingBag className="w-7 h-7" />
-                                  </div>
-                                )}
-                                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-[#10251D]/85 text-[#D4A62A] text-[9px] font-black uppercase">
-                                  {prod.condition}
-                                </span>
-                              </div>
-                              <div className="p-2.5 space-y-1">
-                                <h3 className="text-xs font-bold text-[#10251D] line-clamp-1">
-                                  {prod.title}
-                                </h3>
-                                <p className="text-xs font-black text-[#087443] tabular-nums">
-                                  {formatNaira(prod.price)}
-                                </p>
-                                <div className="flex items-center justify-between gap-1 text-[10px] text-[#555555]">
-                                  <span className="truncate flex items-center gap-1">
-                                    <span className="truncate">{prod.shopName || prod.sellerName}</span>
-                                    <CeoVerifiedBadge
-                                      verified={Boolean(prod.sellerProfile?.ceoVerified || prod.sellerProfile?.isVerified)}
-                                      entityIds={[prod.sellerId]}
-                                      variant="compact"
-                                    />
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-[#F4F8F5]">
-                    <button
-                      type="button"
-                      onClick={() => navigateToView('marketplace')}
-                      className="flex-1 py-2.5 px-4 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
-                    >
-                      <span>View More Products</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#D4A62A]" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRequestSellModal}
-                      className="py-2.5 px-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl transition cursor-pointer"
-                    >
-                      Sell
-                    </button>
-                  </div>
-                </div>
-
-                {/* MIDDLE COLUMN: Select Your University */}
-                <div className="lg:col-span-4 bg-[#10251D] text-white rounded-3xl border-b-4 border-[#D4A62A] shadow-md p-5 flex flex-col justify-between gap-4">
-                  <div className="space-y-3.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#D4A62A] text-[#10251D]">
-                          National Campus Switcher
-                        </span>
-                        <h2 className="font-display text-lg font-black text-white mt-1 flex items-center gap-1.5">
-                          <GraduationCap className="w-5 h-5 text-[#D4A62A]" />
-                          <span>Select Your University</span>
-                        </h2>
-                      </div>
-                      <span className="text-[11px] font-bold text-[#D4A62A] tabular-nums">
-                        {institutions.length} Schools
-                      </span>
-                    </div>
-
-                    {/* Search University Input */}
-                    <div className="relative">
-                      <Search className="w-4 h-4 text-[#D4A62A] absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={uniSearchQuery}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setUniSearchQuery(val);
-                          const q = val.trim().toLowerCase();
-                          if (q) {
-                            const firstMatch = institutions.find(
-                              (i) =>
-                                i.name.toLowerCase().includes(q) ||
-                                i.shortName.toLowerCase().includes(q) ||
-                                i.state.toLowerCase().includes(q)
-                            );
-                            if (firstMatch) {
-                              setPickerInstitutionId(firstMatch.id);
-                              setPickerCampus(firstMatch.campus);
-                            }
-                          }
-                        }}
-                        placeholder="Search university, polytechnic or state..."
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-white/60 focus:border-[#D4A62A] outline-none"
-                      />
-                    </div>
-
-                    {/* Dropdown + Explore Now */}
-                    <div className="space-y-2">
-                      <select
-                        value={pickerInstitutionId}
-                        onChange={(e) => {
-                          const nextId = e.target.value;
-                          setPickerInstitutionId(nextId);
-                          const inst = getInstitutionById(nextId, institutions);
-                          setPickerCampus(inst.campus);
-                        }}
-                        className="w-full px-3 py-2.5 rounded-xl bg-white text-[#10251D] text-xs font-bold border border-[#D9E5DF] outline-none cursor-pointer"
-                      >
-                        <option value="all">All Nigerian Universities &amp; Polytechnics</option>
-                        {filteredPickerInstitutions.map((inst) => (
-                          <option key={inst.id} value={inst.id}>
-                            {inst.shortName} — {inst.name} ({inst.state})
-                          </option>
-                        ))}
-                      </select>
-
-                      {pickerInstitutionId !== 'all' &&
-                        pickerInstObj.campuses &&
-                        pickerInstObj.campuses.length > 1 && (
-                          <select
-                            value={pickerCampus}
-                            onChange={(e) => setPickerCampus(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-white/95 text-[#10251D] text-xs font-semibold outline-none cursor-pointer"
-                          >
-                            {pickerInstObj.campuses.map((camp) => (
-                              <option key={camp} value={camp}>
-                                {camp}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleSelectInstitution(pickerInstitutionId, pickerCampus, true);
-                          navigateToView('marketplace');
-                        }}
-                        className="w-full py-2.5 px-4 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
-                      >
-                        <span>Explore Now</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Popular Universities Shortcuts */}
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-white/75">
-                        Popular Universities
-                      </p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {popularUniversities.slice(0, 8).map((inst) => {
-                          const isCurrent = selectedInstitutionId === inst.id;
-                          return (
-                            <button
-                              key={inst.id}
-                              type="button"
-                              onClick={() => handleSelectInstitution(inst.id, inst.campus, true)}
-                              className={`px-2.5 py-2 rounded-xl text-left text-[11px] font-bold transition flex items-center justify-between gap-1 cursor-pointer ${
-                                isCurrent
-                                  ? 'bg-[#087443] text-[#D4A62A] border border-[#D4A62A]'
-                                  : 'bg-white/10 hover:bg-[#087443] text-white border border-white/10'
-                              }`}
-                            >
-                              <span className="truncate">{inst.shortName}</span>
-                              <ChevronRight className="w-3 h-3 shrink-0 opacity-75" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowInstitutionSwitcher(true)}
-                    className="w-full py-2 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/15 flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-[#D4A62A]" />
-                    <span>Browse Full Institution Directory ({institutions.length})</span>
-                  </button>
-                </div>
-
-                {/* RIGHT COLUMN: Trending Across Campuses */}
-                <div className="lg:col-span-4 bg-white rounded-3xl border border-[#D9E5DF] shadow-xs p-5 flex flex-col justify-between gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2 border-b border-[#F4F8F5] pb-3">
-                      <div>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#D4A62A]/20 text-[#087443]">
-                          <Flame className="w-3 h-3 text-[#D4A62A]" />
-                          Hot Nationwide
-                        </span>
-                        <h2 className="font-display text-lg font-black text-[#10251D] mt-1">
-                          Trending Across Campuses
-                        </h2>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowNationwideSearch(true)}
-                        className="text-[11px] font-black text-[#087443] hover:underline cursor-pointer"
-                      >
-                        Search All
-                      </button>
-                    </div>
-
-                    {loading ? (
-                      <div className="py-10 text-center space-y-2">
-                        <div className="w-8 h-8 border-3 border-[#087443] border-t-[#D4A62A] rounded-full animate-spin mx-auto" />
-                        <p className="text-xs font-semibold text-[#555555]">Scanning trending campus listings...</p>
-                      </div>
-                    ) : trendingCrossCampusProducts.length === 0 ? (
-                      <div className="p-5 bg-[#F4F8F5] rounded-2xl border border-[#D9E5DF] text-center space-y-2">
-                        <Flame className="w-8 h-8 text-[#D4A62A] mx-auto" />
-                        <p className="text-xs font-bold text-[#10251D]">
-                          No trending campus products yet.
-                        </p>
-                        <p className="text-[11px] text-[#555555]">
-                          Popular student items across Nigerian universities will appear here automatically.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {trendingCrossCampusProducts.slice(0, 4).map((prod) => {
-                          const img = getProductDisplayImage(prod.images, prod.imageUrl);
-                          const inst = getInstitutionById(
-                            prod.institutionId || DEFAULT_INSTITUTION_ID,
-                            institutions
-                          );
-                          return (
-                            <div
-                              key={prod.id}
-                              className="p-2.5 rounded-2xl bg-[#F4F8F5] border border-[#D9E5DF] hover:border-[#087443] transition flex items-center gap-3"
-                            >
-                              <div
-                                onClick={() => setSelectedProduct(prod)}
-                                className="w-16 h-16 rounded-xl bg-white overflow-hidden shrink-0 cursor-pointer border border-[#D9E5DF]"
-                              >
-                                {img ? (
-                                  <img
-                                    src={img}
-                                    alt={prod.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[#087443]/30">
-                                    <ShoppingBag className="w-5 h-5" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div
-                                onClick={() => setSelectedProduct(prod)}
-                                className="min-w-0 flex-1 cursor-pointer space-y-0.5"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <span className="px-1.5 py-0.5 rounded bg-[#087443] text-white text-[9px] font-black uppercase truncate max-w-[90px]">
-                                    {inst.shortName}
-                                  </span>
-                                  <span className="text-[10px] text-[#555555] flex items-center gap-0.5 tabular-nums">
-                                    <Eye className="w-3 h-3 text-[#087443]" />
-                                    {prod.views || 0} views
-                                  </span>
-                                </div>
-                                <h3 className="text-xs font-bold text-[#10251D] truncate">
-                                  {prod.title}
-                                </h3>
-                                <p className="text-xs font-black text-[#087443] tabular-nums">
-                                  {formatNaira(prod.price)}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => addToCart(prod)}
-                                className="px-2.5 py-2 rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-[11px] font-black flex items-center gap-1 shrink-0 transition cursor-pointer"
-                                title="Add to Cart"
-                              >
-                                <ShoppingCart className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Add</span>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSortOption('popular');
-                      navigateToView('marketplace');
-                    }}
-                    className="w-full py-2.5 px-4 bg-[#10251D] hover:bg-[#087443] text-white text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  >
-                    <span>See All Trending Products</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#D4A62A]" />
-                  </button>
-                </div>
-              </section>
-            ) : (
-              /* FULL FILTERABLE MARKETPLACE CATALOG VIEW */
-              <section
-                ref={productCatalogRef}
-                className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
-              >
-                {/* Left Column: Campus Categories & Quick Portals */}
-                <aside className="hidden lg:block lg:col-span-3 space-y-4">
-                  <div className="bg-white rounded-3xl border border-[#D9E5DF] p-4 shadow-xs space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-[#F4F8F5] pb-2">
-                      <h2 className="font-display text-sm font-black text-[#10251D]">
-                        Campus Categories
+                      <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] mt-1">
+                        Latest Marketplace Products
+                        {activeInstitution ? ` — ${activeInstitution.shortName}` : ''}
                       </h2>
-                      <span className="text-[11px] font-bold text-[#087443] tabular-nums">
-                        {categories.length}
-                      </span>
+                      <p className="text-xs text-[#202B26]/70 mt-0.5 tabular-nums">
+                        {displayedProducts.length} verified listings available from campus sellers.
+                      </p>
                     </div>
-                    <div className="space-y-1 max-h-[420px] overflow-y-auto pr-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedCategory('all');
-                          setViewingFavouritesOnly(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
-                          selectedCategory === 'all' && !viewingFavouritesOnly
-                            ? 'bg-[#087443] text-white'
-                            : 'hover:bg-[#F4F8F5] text-[#10251D]'
-                        }`}
+                        onClick={handleRequestSellModal}
+                        className="px-3.5 py-2 rounded-xl bg-[#F2C94C] hover:opacity-90 text-[#202B26] font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
                       >
-                        <span>All Marketplace Items</span>
-                        <ChevronRight className="w-3.5 h-3.5 opacity-75" />
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        <span>Sell Item Free</span>
                       </button>
-                      {categories.slice(0, 14).map((cat) => {
-                        const active = selectedCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCategory(active ? 'all' : cat.id);
-                              setViewingFavouritesOnly(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between gap-2 transition cursor-pointer ${
-                              active
-                                ? 'bg-[#087443] text-white'
-                                : 'hover:bg-[#F4F8F5] text-[#10251D]'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2 min-w-0">
-                              <span className={active ? 'text-[#D4A62A]' : 'text-[#087443]'}>
-                                {getCategoryIcon(cat.icon)}
-                              </span>
-                              <span className="truncate">{cat.name}</span>
-                            </span>
-                            <span className="text-[10px] opacity-75 tabular-nums shrink-0">
-                              {cat.productCount || 0}
-                            </span>
-                          </button>
-                        );
-                      })}
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('marketplace')}
+                        className="px-4 py-2 rounded-xl bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <span>View All Products</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Quick Academic & Student Portals Card */}
-                  <div className="bg-[#10251D] text-white rounded-3xl p-4 border-b-4 border-[#D4A62A] space-y-2.5">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-[#D4A62A]">
-                      Student Toolkit
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => navigateToView('gpa')}
-                      className="w-full py-2.5 px-3 rounded-xl bg-[#087443] hover:bg-[#065D36] text-xs font-black flex items-center justify-between cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Calculator className="w-4 h-4 text-[#D4A62A]" />
-                        <span>GPA &amp; CGPA Calculator</span>
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-[#D4A62A]" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigateToView('books')}
-                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold flex items-center justify-between cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-[#D4A62A]" />
-                        <span>Textbooks &amp; Past Qs</span>
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigateToView('deals')}
-                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold flex items-center justify-between cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Gift className="w-4 h-4 text-[#D4A62A]" />
-                        <span>Student Deals &amp; Giveaways</span>
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </aside>
-
-                {/* Center Column: Filter Header + Product Catalog */}
-                <div className="lg:col-span-6 space-y-4">
-                  <div className="bg-white p-4 rounded-2xl border border-[#D9E5DF] shadow-xs space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
-                          Marketplace Feed
+                  {/* University Spotlight or Marketplace Sponsored Placement */}
+                  {(universitySpotlightAds.length > 0 || marketplaceAds.length > 0) && (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#075B3B]">
+                          <Megaphone className="w-3.5 h-3.5 text-[#0B8050]" />
+                          {universitySpotlightAds.length > 0 && activeInstitution
+                            ? `${activeInstitution.shortName} Campus Spotlight`
+                            : 'Sponsored Marketplace Spotlight'}
                         </span>
-                        <h2 className="font-display text-lg font-black text-[#10251D] mt-1">
-                          {viewingFavouritesOnly
-                            ? 'Saved Favourites'
-                            : selectedCategory !== 'all'
-                            ? categories.find((c) => c.id === selectedCategory)?.name || 'Category Items'
-                            : searchQuery
-                            ? `Results for "${searchQuery}"`
-                            : activeInstitution
-                            ? `${activeInstitution.shortName} Marketplace`
-                            : 'National Campus Marketplace'}
-                        </h2>
-                        <p className="text-[11px] text-[#555555] flex items-center gap-2 tabular-nums">
-                          <span>
-                            Showing {visibleProducts.length} of {displayedProducts.length} listings
-                          </span>
-                          {isRefreshing && (
-                            <span className="text-[10px] font-bold text-[#087443] animate-pulse">
-                              Syncing...
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <select
-                          value={selectedState}
-                          onChange={(e) => setSelectedState(e.target.value)}
-                          className="bg-[#F4F8F5] border border-[#D9E5DF] px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#10251D] outline-none"
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAdvertiseModal('featured')}
+                          className="text-[11px] font-bold text-[#075B3B] hover:underline cursor-pointer"
                         >
-                          <option value="all">All States</option>
-                          {NIGERIA_STATES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
+                          Promote Your Store →
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {(universitySpotlightAds.length > 0
+                          ? universitySpotlightAds
+                          : marketplaceAds
+                        )
+                          .slice(0, 2)
+                          .map((ad) => (
+                            <SponsoredAdCard
+                              key={ad.id}
+                              ad={ad}
+                              variant="banner"
+                              onSelectAd={(picked) => setSelectedAd(picked)}
+                            />
                           ))}
-                        </select>
-
-                        <select
-                          value={sortOption}
-                          onChange={(e) => setSortOption(e.target.value as any)}
-                          className="bg-[#F4F8F5] border border-[#D9E5DF] text-xs font-bold text-[#10251D] py-1.5 px-2.5 rounded-xl outline-none"
-                        >
-                          <option value="newest">Newest</option>
-                          <option value="price-asc">Price Low</option>
-                          <option value="price-desc">Price High</option>
-                          <option value="popular">Popular</option>
-                        </select>
-
-                        {hasActiveFilters && (
-                          <button
-                            type="button"
-                            onClick={resetAllFilters}
-                            className="px-2.5 py-1.5 text-xs bg-[#10251D] text-white rounded-xl font-bold flex items-center gap-1 cursor-pointer"
-                          >
-                            <X className="w-3 h-3 text-[#D4A62A]" />
-                            Clear
-                          </button>
-                        )}
                       </div>
                     </div>
+                  )}
 
-                    {/* Condition & Price Presets */}
-                    <div className="pt-2.5 border-t border-[#F4F8F5] flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1 bg-[#F4F8F5] p-0.5 rounded-xl border border-[#D9E5DF]">
-                        {(['all', 'new', 'used'] as const).map((cond) => (
-                          <button
-                            key={cond}
-                            type="button"
-                            onClick={() => setConditionFilter(cond)}
-                            className={`px-2.5 py-1 rounded-lg font-bold capitalize transition cursor-pointer ${
-                              conditionFilter === cond
-                                ? 'bg-[#087443] text-[#D4A62A]'
-                                : 'text-[#555555] hover:text-[#10251D]'
-                            }`}
-                          >
-                            {cond}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-[#087443]" />
-                        {PRICE_PRESETS.map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => handleSelectPricePreset(preset)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
-                              activePricePreset === preset.id
-                                ? 'bg-[#D4A62A] border-[#D4A62A] text-[#10251D] font-black'
-                                : 'bg-[#F4F8F5] border-[#D9E5DF] text-[#333333] hover:border-[#087443]'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product Grid */}
                   {loading ? (
-                    <div className="py-14 text-center bg-white rounded-3xl border border-[#D9E5DF]">
-                      <div className="w-10 h-10 border-4 border-[#087443] border-t-[#D4A62A] rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-xs font-bold text-[#555555]">
-                        Loading genuine NIGERIA CAMPUS MARKET listings...
+                    <div className="py-12 text-center space-y-2">
+                      <div className="w-8 h-8 border-3 border-[#075B3B] border-t-[#F2C94C] rounded-full animate-spin mx-auto" />
+                      <p className="text-xs font-semibold text-[#202B26]/70">
+                        Loading campus marketplace products...
                       </p>
                     </div>
                   ) : fetchError ? (
-                    <div className="bg-white rounded-3xl p-8 text-center border border-[#D9E5DF] shadow-xs">
-                      <ShoppingBag className="w-10 h-10 text-[#087443] mx-auto mb-3" />
-                      <h3 className="text-base font-black text-[#10251D]">
-                        Unable to load listings right now
-                      </h3>
-                      <p className="text-xs text-[#555555] mt-1 mb-4 break-words">{fetchError}</p>
-                      <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => loadCatalogProducts(1, true)}
-                          className="px-4 py-2 bg-[#087443] text-white text-xs font-black rounded-xl"
-                        >
-                          Retry
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRequestSellModal}
-                          className="px-4 py-2 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl"
-                        >
-                          Post Item
-                        </button>
-                      </div>
-                    </div>
-                  ) : displayedProducts.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-8 text-center border border-[#D9E5DF] shadow-xs">
-                      <ShoppingBag className="w-10 h-10 text-[#087443] mx-auto mb-3" />
-                      <h3 className="text-base font-black text-[#10251D]">
-                        {viewingFavouritesOnly
-                          ? 'No saved favourites yet'
-                          : 'No listings yet for this filter'}
-                      </h3>
-                      <p className="text-xs text-[#555555] mt-1 mb-4">
-                        {hasActiveFilters
-                          ? 'Try clearing your search, category, or switching to All Institutions.'
-                          : 'Be the first to list textbooks, phones, fashion, or hostel items.'}
-                      </p>
-                      <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleRequestSellModal}
-                          className="px-4 py-2 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl"
-                        >
-                          Start Selling
-                        </button>
-                        {hasActiveFilters && (
-                          <button
-                            type="button"
-                            onClick={resetAllFilters}
-                            className="px-4 py-2 bg-[#F4F8F5] border border-[#D9E5DF] text-[#10251D] text-xs font-bold rounded-xl"
-                          >
-                            Reset Filters
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                        {visibleProducts.map((prod) => (
-                          <ProductCard
-                            key={prod.id}
-                            product={prod}
-                            onOpenDetail={setSelectedProduct}
-                            onOpenStorefront={setSelectedSellerStorefrontId}
-                            onAddToCart={addToCart}
-                            onStartDirectChat={handleStartDirectChat}
-                          />
-                        ))}
-                      </div>
-                      {hasMoreProducts && (
-                        <div ref={loadMoreRef} className="flex justify-center pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setVisibleCount((prev) => prev + 12)}
-                            className="px-5 py-2.5 bg-white border border-[#D9E5DF] hover:border-[#087443] text-[#087443] text-xs font-black rounded-xl shadow-xs transition cursor-pointer"
-                          >
-                            Load More Products ({displayedProducts.length - visibleProducts.length} left)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Column: EXPLORE UNIVERSITIES + Student Requests Preview */}
-                <aside className="lg:col-span-3 space-y-4">
-                  <div className="bg-white rounded-3xl border border-[#D9E5DF] p-4 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h2 className="font-display text-sm font-black text-[#10251D] flex items-center gap-1.5">
-                        <GraduationCap className="w-4 h-4 text-[#087443]" />
-                        <span>EXPLORE UNIVERSITIES</span>
-                      </h2>
-                    </div>
-                    <p className="text-[11px] text-[#555555]">
-                      Pick any Nigerian university, polytechnic, or college to explore its local campus market.
-                    </p>
-                    <div className="space-y-1.5">
-                      {institutions.slice(0, 6).map((inst) => {
-                        const active = selectedInstitutionId === inst.id;
-                        return (
-                          <button
-                            key={inst.id}
-                            type="button"
-                            onClick={() => handleSelectInstitution(inst.id, inst.campus)}
-                            className={`w-full text-left px-3 py-2 rounded-xl border text-xs transition flex items-center justify-between cursor-pointer ${
-                              active
-                                ? 'bg-[#087443] border-[#087443] text-white font-black'
-                                : 'bg-[#F4F8F5] border-[#D9E5DF] hover:border-[#087443] text-[#10251D] font-bold'
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate">{inst.shortName}</p>
-                              <p className={`text-[10px] truncate ${active ? 'text-[#D4A62A]' : 'text-[#555555]'}`}>
-                                {inst.state} State
-                              </p>
-                            </div>
-                            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowInstitutionSwitcher(true)}
-                      className="w-full py-2 rounded-xl bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black transition cursor-pointer"
-                    >
-                      Browse All Institutions ({institutions.length})
-                    </button>
-                  </div>
-
-                  {/* Live What Students Need Mini Feed */}
-                  <div className="bg-white rounded-3xl border border-[#D9E5DF] p-4 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-display text-sm font-black text-[#10251D] flex items-center gap-1.5">
-                        <HelpCircle className="w-4 h-4 text-[#087443]" />
-                        <span>What Students Need</span>
-                      </h3>
+                    <div className="p-5 bg-[#F4F7F5] rounded-2xl border border-[#D9E5DF] text-center space-y-2">
+                      <p className="text-xs font-bold text-[#202B26]">{fetchError}</p>
                       <button
                         type="button"
-                        onClick={() => navigateToView('requests')}
-                        className="text-[11px] font-black text-[#087443] hover:underline cursor-pointer"
+                        onClick={() => loadCatalogProducts(1, true)}
+                        className="px-4 py-2 bg-[#075B3B] text-white text-xs font-black rounded-xl cursor-pointer"
                       >
-                        View All
+                        Retry
                       </button>
                     </div>
-                    {latestRequests.length === 0 ? (
-                      <p className="text-[11px] text-[#555555]">
-                        No open student requests on this campus yet.
+                  ) : displayedProducts.length === 0 ? (
+                    <div className="p-6 bg-[#F4F7F5] rounded-2xl border border-[#D9E5DF] text-center space-y-3">
+                      <ShoppingBag className="w-8 h-8 text-[#075B3B] mx-auto" />
+                      <p className="text-xs font-bold text-[#202B26]">
+                        No products listed on this campus filter yet.
                       </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {latestRequests.map((req) => (
-                          <button
-                            key={req.id}
-                            type="button"
-                            onClick={() => navigateToView('requests')}
-                            className="w-full text-left p-2.5 rounded-xl bg-[#F4F8F5] border border-[#D9E5DF] hover:border-[#087443] transition space-y-1 cursor-pointer"
-                          >
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-black text-[#087443] tabular-nums">
-                                Budget: {formatNaira(req.budget)}
-                              </span>
-                              <span className="uppercase font-bold text-[#555555]">{req.status}</span>
-                            </div>
-                            <p className="text-xs font-bold text-[#10251D] line-clamp-1">{req.title}</p>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => navigateToView('requests')}
-                      className="w-full py-2 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black transition cursor-pointer"
-                    >
-                      Post Request for Sellers
-                    </button>
-                  </div>
-                </aside>
-              </section>
-            )}
+                      <button
+                        type="button"
+                        onClick={handleRequestSellModal}
+                        className="px-4 py-2 bg-[#F2C94C] text-[#202B26] text-xs font-black rounded-xl cursor-pointer"
+                      >
+                        Post First Item Free
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {displayedProducts.slice(0, 8).map((prod) => (
+                        <ProductCard
+                          key={prod.id}
+                          product={prod}
+                          onOpenDetail={setSelectedProduct}
+                          onOpenStorefront={setSelectedSellerStorefrontId}
+                          onAddToCart={addToCart}
+                          onStartDirectChat={handleStartDirectChat}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
 
-            {/* LOWER HOMEPAGE SECTIONS (Shown on Home View) */}
-            {currentView === 'home' && !viewingFavouritesOnly && (
-              <>
-                {/* SECTION 3E: STUDENT SERVICES — 8 COMPACT CARDS IN HORIZONTAL ROW */}
-                <section className="bg-white border border-[#D9E5DF] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+                {/* STEP 10: POPULAR CATEGORIES */}
+                <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
-                        Student Services
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                        Browse By Interest
                       </span>
-                      <h2 className="font-display text-lg sm:text-xl font-black text-[#10251D] mt-1">
-                        Everything Campus Life Requires
+                      <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] mt-1">
+                        Popular Categories
                       </h2>
                     </div>
                     <button
                       type="button"
-                      onClick={scrollToServicesSection}
-                      className="text-xs font-black text-[#087443] hover:underline inline-flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                      onClick={() => navigateToView('marketplace')}
+                      className="text-xs font-black text-[#075B3B] hover:underline inline-flex items-center gap-1 self-start sm:self-auto cursor-pointer"
                     >
-                      <span>Browse Service Providers</span>
+                      <span>Explore All Categories</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-                    {[
-                      {
-                        label: 'Accommodation and Hostels',
-                        icon: Home,
-                        onClick: () => navigateToView('hux')
-                      },
-                      {
-                        label: 'Jobs and Internships',
-                        icon: Briefcase,
-                        onClick: () => navigateToView('jobs')
-                      },
-                      {
-                        label: 'Events and Announcements',
-                        icon: Info,
-                        onClick: scrollToEventsSection
-                      },
-                      {
-                        label: 'Books and Study Materials',
-                        icon: BookOpen,
-                        onClick: () => navigateToView('books')
-                      },
-                      {
-                        label: 'Campus Food Ordering',
-                        icon: Utensils,
-                        onClick: () => navigateToView('food')
-                      },
-                      {
-                        label: 'Lost and Found',
-                        icon: HelpCircle,
-                        onClick: () => setShowLostAndFoundModal(true)
-                      },
-                      {
-                        label: 'Student Deals',
-                        icon: Gift,
-                        onClick: () => navigateToView('deals')
-                      },
-                      {
-                        label: 'Referral Rewards',
-                        icon: Trophy,
-                        onClick: () => navigateToView('referrals')
-                      }
-                    ].map((svcCard) => {
-                      const IconComp = svcCard.icon;
-                      return (
-                        <button
-                          key={svcCard.label}
-                          type="button"
-                          onClick={svcCard.onClick}
-                          className="group p-3 rounded-2xl bg-[#F4F8F5] hover:bg-[#087443] border border-[#D9E5DF] hover:border-[#087443] text-left transition flex flex-col items-start justify-between gap-2.5 cursor-pointer"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-white group-hover:bg-[#D4A62A] text-[#087443] group-hover:text-[#10251D] flex items-center justify-center shadow-2xs transition">
-                            <IconComp className="w-4 h-4" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                    {categories.slice(0, 12).map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat.id);
+                          setViewingFavouritesOnly(false);
+                          navigateToView('marketplace');
+                        }}
+                        className="group p-3.5 rounded-2xl bg-[#F4F7F5] hover:bg-[#075B3B] border border-[#D9E5DF] hover:border-[#075B3B] text-left transition flex flex-col justify-between gap-2.5 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="w-9 h-9 rounded-xl bg-white group-hover:bg-[#F2C94C] text-[#075B3B] group-hover:text-[#202B26] flex items-center justify-center shadow-2xs transition">
+                            {getCategoryIcon(cat.icon)}
                           </div>
-                          <span className="text-[11px] font-bold text-[#10251D] group-hover:text-white leading-snug">
-                            {svcCard.label}
+                          <span className="text-[10px] font-bold text-[#075B3B] group-hover:text-[#F2C94C] tabular-nums">
+                            {cat.productCount || 0}
                           </span>
-                        </button>
-                      );
-                    })}
+                        </div>
+                        <span className="text-xs font-bold text-[#202B26] group-hover:text-white leading-snug line-clamp-1">
+                          {cat.name}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </section>
 
-                {/* LOWER SECTION 1: Student Services Directory */}
-                <FuMarketServicesSection
-                  services={publicServices}
-                  categories={serviceCategories}
-                  loading={servicesLoading}
-                  selectedInstitutionId={selectedInstitutionId}
-                  activeInstitution={activeInstitution}
-                  onPostService={() =>
-                    setPostServiceModalState({ open: true, editingService: null })
-                  }
-                  onOpenProviderDashboard={() => setShowServiceProviderDashboard(true)}
-                  onOpenAdminServices={() => {
-                    if (!isAuthorizedCeo(user)) return;
-                    setAdminInitialTab('services');
-                    setShowAdminDashboard(true);
-                  }}
-                  onViewDetails={(service) =>
-                    setSelectedServiceState({ service, showContact: false })
-                  }
-                  onContactProvider={(service) =>
-                    setSelectedServiceState({ service, showContact: true })
-                  }
-                  onOpenPromoteService={(service) => setPromoteServiceTarget(service)}
-                />
+                {/* STEP 11: STUDENT BUSINESSES AND SERVICES */}
+                <div className="space-y-4">
+                  <FuMarketServicesSection
+                    services={publicServices}
+                    categories={serviceCategories}
+                    loading={servicesLoading}
+                    selectedInstitutionId={selectedInstitutionId}
+                    activeInstitution={activeInstitution}
+                    onPostService={() =>
+                      setPostServiceModalState({ open: true, editingService: null })
+                    }
+                    onOpenProviderDashboard={() => setShowServiceProviderDashboard(true)}
+                    onOpenAdminServices={() => {
+                      if (!isAuthorizedCeo(user)) return;
+                      setAdminInitialTab('services');
+                      setShowAdminDashboard(true);
+                    }}
+                    onViewDetails={(service) =>
+                      setSelectedServiceState({ service, showContact: false })
+                    }
+                    onContactProvider={(service) =>
+                      setSelectedServiceState({ service, showContact: true })
+                    }
+                    onOpenPromoteService={(service) => setPromoteServiceTarget(service)}
+                  />
 
-                {/* LOWER SECTION 2: Popular Accommodation */}
-                <section className="bg-white border border-[#D9E5DF] rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
+                  {/* Campus Quick Portals Strip */}
+                  <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-4 sm:p-5 shadow-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+                      {[
+                        { label: 'Hostels & Lodges', icon: Home, onClick: () => navigateToView('hux') },
+                        { label: 'Jobs & SIWES', icon: Briefcase, onClick: () => navigateToView('jobs') },
+                        { label: 'Events & Sports', icon: Info, onClick: scrollToEventsSection },
+                        { label: 'Study Materials', icon: BookOpen, onClick: () => navigateToView('books') },
+                        { label: 'Campus Food', icon: Utensils, onClick: () => navigateToView('food') },
+                        { label: 'Lost & Found', icon: HelpCircle, onClick: () => setShowLostAndFoundModal(true) },
+                        { label: 'Student Deals', icon: Gift, onClick: () => navigateToView('deals') },
+                        { label: 'Referral Rewards', icon: Trophy, onClick: () => navigateToView('referrals') }
+                      ].map((svcCard) => {
+                        const IconComp = svcCard.icon;
+                        return (
+                          <button
+                            key={svcCard.label}
+                            type="button"
+                            onClick={svcCard.onClick}
+                            className="group p-3 rounded-xl bg-[#F4F7F5] hover:bg-[#075B3B] border border-[#D9E5DF] hover:border-[#075B3B] text-left transition flex flex-col items-start justify-between gap-2 cursor-pointer"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-white group-hover:bg-[#F2C94C] text-[#075B3B] group-hover:text-[#202B26] flex items-center justify-center shadow-2xs transition">
+                              <IconComp className="w-4 h-4" />
+                            </div>
+                            <span className="text-[11px] font-bold text-[#202B26] group-hover:text-white leading-snug">
+                              {svcCard.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+
+                {/* STEP 12: HOSTEL AND ACCOMMODATION LISTINGS */}
+                <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
-                        Popular Accommodation
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                        Verified Housing
                       </span>
-                      <h2 className="font-display text-lg sm:text-xl font-black text-[#10251D] flex items-center gap-2 mt-1">
-                        <Home className="w-5 h-5 text-[#087443]" />
-                        <span>Campus Hostels, Lodges &amp; House Agents</span>
+                      <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] flex items-center gap-2 mt-1">
+                        <Home className="w-5 h-5 text-[#075B3B]" />
+                        <span>Hostel &amp; Accommodation Listings</span>
                       </h2>
-                      <p className="text-xs text-[#555555] mt-0.5">
+                      <p className="text-xs text-[#202B26]/70 mt-0.5">
                         Inspect hostels physically with verified agents before paying around{' '}
                         {activeInstitution?.shortName || 'Nigerian campuses'}.
                       </p>
@@ -2495,32 +1997,32 @@ function MainMarketplace() {
                     <button
                       type="button"
                       onClick={() => navigateToView('hux')}
-                      className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
+                      className="px-4 py-2.5 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
                     >
                       <span>View All Hostels</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#D4A62A]" />
+                      <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
                     </button>
                   </div>
 
                   {latestAccommodation.length === 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#F4F8F5] border border-[#D9E5DF] rounded-2xl overflow-hidden">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#F4F7F5] border border-[#D9E5DF] rounded-2xl overflow-hidden">
                       <img
                         src={campusHostelShowcaseImg}
                         alt="Nigerian campus student lodge"
                         className="md:col-span-4 w-full h-44 md:h-full object-cover"
                       />
                       <div className="md:col-span-8 p-5 flex flex-col justify-center space-y-2">
-                        <h3 className="text-sm sm:text-base font-black text-[#10251D]">
+                        <h3 className="text-sm sm:text-base font-black text-[#202B26]">
                           List or Inspect Student Lodges &amp; Self-Contains
                         </h3>
-                        <p className="text-xs text-[#555555]">
+                        <p className="text-xs text-[#202B26]/70">
                           No vacant lodges listed on this campus filter yet. Verified house agents and students seeking roommates can list properties for free and schedule physical inspections.
                         </p>
                         <div className="pt-1">
                           <button
                             type="button"
                             onClick={() => navigateToView('hux')}
-                            className="px-4 py-2 bg-[#D4A62A] text-[#10251D] font-black text-xs rounded-xl cursor-pointer"
+                            className="px-4 py-2 bg-[#F2C94C] text-[#202B26] font-black text-xs rounded-xl cursor-pointer"
                           >
                             Open Accommodation &amp; Inspection Portal
                           </button>
@@ -2533,7 +2035,7 @@ function MainMarketplace() {
                         <div
                           key={hux.id}
                           onClick={() => navigateToView('hux')}
-                          className="bg-[#F4F8F5] border border-[#D9E5DF] hover:border-[#087443] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col"
+                          className="bg-[#F4F7F5] border border-[#D9E5DF] hover:border-[#075B3B] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col"
                         >
                           <div className="h-40 bg-white overflow-hidden">
                             <img
@@ -2545,19 +2047,19 @@ function MainMarketplace() {
                           <div className="p-4 space-y-1.5 flex-1 flex flex-col justify-between">
                             <div>
                               <div className="flex items-center justify-between gap-2 text-[11px]">
-                                <span className="font-black text-[#087443]">{hux.type}</span>
-                                <span className="text-[#555555] truncate">{hux.location}</span>
+                                <span className="font-black text-[#075B3B]">{hux.type}</span>
+                                <span className="text-[#202B26]/70 truncate">{hux.location}</span>
                               </div>
-                              <h3 className="text-sm font-bold text-[#10251D] line-clamp-1 mt-1">
+                              <h3 className="text-sm font-bold text-[#202B26] line-clamp-1 mt-1">
                                 {hux.title}
                               </h3>
                             </div>
                             <div className="pt-2 border-t border-[#D9E5DF] flex items-center justify-between">
-                              <span className="px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A] text-sm font-black tabular-nums">
+                              <span className="px-2 py-0.5 rounded bg-[#075B3B] text-[#F2C94C] text-sm font-black tabular-nums">
                                 {formatNaira(hux.price)}
                                 <span className="text-[10px] text-white font-normal">/{hux.pricePer}</span>
                               </span>
-                              <span className="text-xs font-black text-[#087443]">Book Inspection →</span>
+                              <span className="text-xs font-black text-[#075B3B]">Book Inspection →</span>
                             </div>
                           </div>
                         </div>
@@ -2566,83 +2068,87 @@ function MainMarketplace() {
                   )}
                 </section>
 
-                {/* LOWER SECTION 3: Popular Campus Food Vendors */}
-                <section className="bg-white border border-[#D9E5DF] rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
+                {/* STEP 13: JOBS AND OPPORTUNITIES */}
+                <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#087443] text-[#D4A62A]">
-                        Campus Food Ordering &amp; Delivery
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                        Careers &amp; SIWES
                       </span>
-                      <h2 className="font-display text-lg sm:text-xl font-black text-[#10251D] flex items-center gap-2 mt-1">
-                        <Utensils className="w-5 h-5 text-[#087443]" />
-                        <span>Popular Campus Food Vendors</span>
+                      <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] flex items-center gap-2 mt-1">
+                        <Briefcase className="w-5 h-5 text-[#075B3B]" />
+                        <span>Jobs &amp; Student Opportunities</span>
                       </h2>
-                      <p className="text-xs text-[#555555] mt-0.5">
-                        Order Jollof Rice, Shawarma, Suya, Grills, Small Chops &amp; Drinks delivered straight to your hostel or gate.
+                      <p className="text-xs text-[#202B26]/70 mt-0.5">
+                        Verified internships, SIWES placements, part-time roles, and graduate openings across Nigeria.
                       </p>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => navigateToView('food')}
-                      className="px-4 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
+                      onClick={() => navigateToView('jobs')}
+                      className="px-4 py-2.5 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
                     >
-                      <Utensils className="w-4 h-4" />
-                      <span>Order Campus Food</span>
+                      <span>Explore All Jobs</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
                     </button>
                   </div>
 
-                  {latestFoodVendors.length === 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#F4F8F5] border border-[#D9E5DF] rounded-2xl overflow-hidden">
-                      <img
-                        src={campusFoodShowcaseImg}
-                        alt="Campus kitchen Jollof rice and grilled chicken"
-                        className="md:col-span-4 w-full h-44 md:h-full object-cover"
-                      />
-                      <div className="md:col-span-8 p-5 flex flex-col justify-center space-y-2">
-                        <h3 className="text-sm sm:text-base font-black text-[#10251D]">
-                          Campus Kitchens, Bukas, Fast Food &amp; Delivery Riders
+                  {latestJobs.length === 0 ? (
+                    <div className="p-5 rounded-2xl bg-[#F4F7F5] border border-[#D9E5DF] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-black text-[#202B26]">
+                          Post or Apply for Student Jobs, SIWES &amp; Internships
                         </h3>
-                        <p className="text-xs text-[#555555]">
-                          Register your campus food spot, publish menus with photos, accept online or eligible cash-on-delivery orders, or sign up as a student dispatch rider.
+                        <p className="text-xs text-[#202B26]/70">
+                          Campus businesses, tech startups, and organizations post part-time, remote, and SIWES opportunities here.
                         </p>
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => navigateToView('food')}
-                            className="px-4 py-2 bg-[#087443] text-white font-black text-xs rounded-xl cursor-pointer"
-                          >
-                            Browse Campus Food Hub
-                          </button>
-                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('jobs')}
+                        className="px-4 py-2 bg-[#F2C94C] text-[#202B26] font-black text-xs rounded-xl shrink-0 cursor-pointer"
+                      >
+                        Open Jobs Board
+                      </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {latestFoodVendors.map((vendor) => (
+                      {latestJobs.map((job) => (
                         <div
-                          key={vendor.id}
-                          onClick={() => navigateToView('food')}
-                          className="bg-[#F4F8F5] border border-[#D9E5DF] hover:border-[#087443] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col"
+                          key={job.id}
+                          onClick={() => navigateToView('jobs')}
+                          className="p-4 rounded-2xl bg-[#F4F7F5] border border-[#D9E5DF] hover:border-[#075B3B] transition cursor-pointer flex flex-col justify-between gap-3"
                         >
-                          <div className="h-36 bg-white overflow-hidden">
-                            <img
-                              src={vendor.bannerUrl || vendor.logoUrl || campusFoodShowcaseImg}
-                              alt={vendor.vendorName}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="p-4 space-y-1.5">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-black text-sm text-[#10251D] truncate flex items-center gap-1.5">
-                                <ChefHat className="w-4 h-4 text-[#087443] shrink-0" />
-                                {vendor.vendorName}
+                              <span className="px-2 py-0.5 rounded bg-[#075B3B] text-[#F2C94C] text-[10px] font-black uppercase">
+                                {job.jobType}
                               </span>
-                              <CeoVerifiedBadge verified={Boolean(vendor.ceoVerified)} variant="compact" />
+                              {job.isNationwide && (
+                                <span className="text-[10px] font-bold text-[#0B8050]">Nationwide</span>
+                              )}
                             </div>
-                            <p className="text-[11px] text-[#555555] line-clamp-1">
-                              {vendor.location} • {vendor.openingHours}
+                            <h3 className="text-sm font-black text-[#202B26] line-clamp-1">
+                              {job.title}
+                            </h3>
+                            <p className="text-xs font-bold text-[#075B3B] truncate">
+                              {job.companyOrOrg}
                             </p>
+                            <p className="text-[11px] text-[#202B26]/70 line-clamp-2">
+                              {job.description}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-[#D9E5DF] flex items-center justify-between text-[11px]">
+                            <span className="font-black text-[#202B26] truncate">
+                              {job.compensation || job.location}
+                            </span>
+                            {job.deadline && (
+                              <span className="text-[#202B26]/65 flex items-center gap-1 shrink-0">
+                                <Calendar className="w-3 h-3" />
+                                {job.deadline}
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -2650,59 +2156,91 @@ function MainMarketplace() {
                   )}
                 </section>
 
-                {/* LOWER SECTION 4: Trending Products & Live Campus Leaderboards */}
-                <TrendingCampusesSection
-                  activeInstitution={effectiveActiveInstitution}
-                  institutions={institutions}
-                  products={products}
-                  services={publicServices}
-                  advertisements={activePublicAds}
-                  sports={sportUpdates}
-                  announcements={generalAnnouncements}
-                  accommodations={allAccommodation}
-                  onSelectItem={(item) => {
-                    if (item.entityType === 'product' && item.raw) {
-                      setSelectedProduct(item.raw);
-                    } else if (item.entityType === 'accommodation') {
-                      navigateToView('hux');
-                    } else if (item.entityType === 'ad' && item.raw) {
-                      setSelectedAd(item.raw);
-                    } else if (item.entityType === 'service' && item.raw) {
-                      setSelectedServiceState({ service: item.raw, showContact: false });
-                    }
-                  }}
-                  onOpenNationwideSearch={() => setShowNationwideSearch(true)}
-                />
+                {/* STEP 14: TEXTBOOKS AND PAST QUESTIONS */}
+                <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                        Academic Library
+                      </span>
+                      <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] flex items-center gap-2 mt-1">
+                        <BookOpen className="w-5 h-5 text-[#075B3B]" />
+                        <span>Textbooks &amp; Past Questions</span>
+                      </h2>
+                      <p className="text-xs text-[#202B26]/70 mt-0.5">
+                        Course handouts, lab manuals, textbooks, and department past questions shared by students.
+                      </p>
+                    </div>
 
-                {/* LOWER SECTION 5: Explore Universities */}
-                <InstitutionDirectorySection
-                  institutions={institutions}
-                  selectedInstitutionId={selectedInstitutionId}
-                  selectedCampus={selectedCampus}
-                  onSelectInstitution={(id, campus) => handleSelectInstitution(id, campus, true)}
-                  onOpenFullModal={() => setShowInstitutionSwitcher(true)}
-                />
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('books')}
+                      className="px-4 py-2.5 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
+                    >
+                      <span>Browse Study Materials</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
+                    </button>
+                  </div>
 
-                {/* LOWER SECTION 6: Trusted Sellers, Community Hub & Campus Updates */}
+                  {latestBooks.length === 0 ? (
+                    <div className="p-5 rounded-2xl bg-[#F4F7F5] border border-[#D9E5DF] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-black text-[#202B26]">
+                          Share or Download Textbooks &amp; Past Questions
+                        </h3>
+                        <p className="text-xs text-[#202B26]/70">
+                          Find GST, 100L–500L departmental past questions, lecture notes, and affordable textbooks across Nigerian universities.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('books')}
+                        className="px-4 py-2 bg-[#F2C94C] text-[#202B26] font-black text-xs rounded-xl shrink-0 cursor-pointer"
+                      >
+                        Open Books &amp; Past Qs
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {latestBooks.map((book) => (
+                        <div
+                          key={book.id}
+                          onClick={() => navigateToView('books')}
+                          className="p-4 rounded-2xl bg-[#F4F7F5] border border-[#D9E5DF] hover:border-[#075B3B] transition cursor-pointer flex flex-col justify-between gap-3"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="px-2 py-0.5 rounded bg-[#075B3B] text-[#F2C94C] text-[10px] font-black uppercase">
+                                {book.materialType}
+                              </span>
+                              <span className="text-[10px] font-bold text-[#202B26]/70">
+                                {book.courseCode ? `${book.courseCode} · ` : ''}
+                                {book.level}
+                              </span>
+                            </div>
+                            <h3 className="text-sm font-black text-[#202B26] line-clamp-1">
+                              {book.title}
+                            </h3>
+                            <p className="text-xs text-[#202B26]/75 truncate">
+                              {book.department}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-[#D9E5DF] flex items-center justify-between text-xs">
+                            <span className="font-black text-[#075B3B] tabular-nums">
+                              {book.isFree ? 'FREE Resource' : formatNaira(book.priceNaira)}
+                            </span>
+                            <span className="text-[11px] font-bold text-[#202B26]/65">
+                              {book.downloadsCount || 0} downloads
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* STEP 15: CAMPUS EVENTS AND ANNOUNCEMENTS */}
                 <div className="space-y-6">
-                  <FuMarketAdsSection
-                    ads={activePublicAds}
-                    loading={adsLoading}
-                    selectedInstitutionId={selectedInstitutionId}
-                    activeInstitutionName={activeInstitution?.shortName || 'All Nigerian Campuses'}
-                    onOpenSubmitModal={scrollToAdsSectionOrCeo}
-                    onSelectAd={(ad) => setSelectedAd(ad)}
-                    onOpenMasterControl={() => {
-                      if (isAuthorizedCeo(user)) {
-                        navigateCeoRoute(
-                          isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login',
-                          null,
-                          'ads'
-                        );
-                      }
-                    }}
-                  />
-
                   <SportAndAnnouncementsSection
                     sportUpdates={sportUpdates}
                     generalAnnouncements={generalAnnouncements}
@@ -2711,6 +2249,8 @@ function MainMarketplace() {
                     selectedInstitutionId={selectedInstitutionId}
                     activeInstitution={activeInstitution}
                     institutions={institutions}
+                    ads={activePublicAds}
+                    onSelectAd={(ad) => setSelectedAd(ad)}
                     onSelectPost={(post) => setSelectedAnnouncement(post)}
                     onOpenPostModal={(defaultFeedType) =>
                       setPostAnnouncementModalState({
@@ -2736,244 +2276,803 @@ function MainMarketplace() {
                   </div>
                 </div>
 
-                {/* LOWER SECTION 7: Safety & Protection */}
-                <FuMarketEmergencySection
-                  contacts={emergencyContacts}
-                  announcements={safetyAnnouncements}
-                  lostFoundCount={lostFoundItems.length}
-                  onOpenContacts={(filter = 'all') =>
-                    setEmergencyDirectoryState({ open: true, filter })
-                  }
-                  onOpenReportEmergency={(defaultCategory) =>
-                    setEmergencyReportModalState({
-                      open: true,
-                      kind: 'emergency',
-                      defaultCategory
-                    })
-                  }
-                  onOpenSecurityConcern={() =>
-                    setEmergencyReportModalState({
-                      open: true,
-                      kind: 'security_concern'
-                    })
-                  }
-                  onOpenLostAndFound={() => setShowLostAndFoundModal(true)}
-                  onOpenSafetyInfo={() => setShowCampusSafetyInfoModal(true)}
-                  onOpenTrackReport={() => setShowReportTrackingModal(true)}
-                  onOpenAdminEmergency={() => {
-                    if (!isAuthorizedCeo(user)) return;
-                    setAdminInitialTab('emergency');
-                    setShowAdminDashboard(true);
-                  }}
-                />
-
-                {/* LOWER SECTION 8: Compact GPA & CGPA Calculator Teaser Card */}
-                <section className="bg-white border-2 border-[#087443]/25 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#087443] text-[#D4A62A] flex items-center justify-center shrink-0 shadow-sm">
-                      <Calculator className="w-6 h-6" />
+                {/* STEP 16: RECENTLY ADDED PRODUCTS */}
+                {recentlyAddedProducts.length > 0 && (
+                  <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6EFEA] pb-4">
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#F2C94C] text-[#202B26]">
+                          <Clock className="w-3 h-3" />
+                          Fresh Arrivals
+                        </span>
+                        <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] mt-1">
+                          Recently Added Products
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortOption('newest');
+                          navigateToView('marketplace');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs inline-flex items-center gap-1.5 self-start sm:self-auto transition cursor-pointer"
+                      >
+                        <span>Explore Full Marketplace</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
+                      </button>
                     </div>
-                    <div className="space-y-1">
-                      <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#F4F8F5] text-[#087443] border border-[#087443]/25">
-                        Free Academic Tool
-                      </span>
-                      <h2 className="font-display text-lg sm:text-xl font-black text-[#10251D]">
-                        🎓 GPA &amp; CGPA Calculator
-                      </h2>
-                      <p className="text-xs text-[#555555] max-w-2xl">
-                        Compute semester GPA &amp; cumulative CGPA free without login on 5.0, 4.0, or custom grading scales — includes Target CGPA Predictor, Performance Chart, and PDF/CSV export.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigateToView('gpa')}
-                    className="px-5 py-3 bg-[#087443] hover:bg-[#065D36] text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shrink-0 shadow-sm transition cursor-pointer"
-                  >
-                    <Calculator className="w-4 h-4 text-[#D4A62A]" />
-                    <span>Open GPA Calculator</span>
-                  </button>
-                </section>
 
-                {/* SECTION 3F: TRUST & COMMUNITY SECTION (2 SIDE-BY-SIDE CARDS) */}
-                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                  {/* LEFT CARD: YOUR SAFETY, OUR PRIORITY */}
-                  <div className="bg-[#10251D] text-white rounded-3xl p-6 sm:p-7 border-b-4 border-[#D4A62A] shadow-md flex flex-col justify-between gap-5">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#087443] text-[#D4A62A]">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                      {recentlyAddedProducts.map((prod) => (
+                        <ProductCard
+                          key={`recent-${prod.id}`}
+                          product={prod}
+                          onOpenDetail={setSelectedProduct}
+                          onOpenStorefront={setSelectedSellerStorefrontId}
+                          onAddToCart={addToCart}
+                          onStartDirectChat={handleStartDirectChat}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* STEP 17: NATIONWIDE UNIVERSITY COMMUNITY */}
+                <div className="space-y-6">
+                  {/* Campus Food Vendors & Nationwide Student Network */}
+                  <section className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                          Campus Food Ordering &amp; Delivery
+                        </span>
+                        <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26] flex items-center gap-2 mt-1">
+                          <Utensils className="w-5 h-5 text-[#075B3B]" />
+                          <span>Popular Campus Food Vendors</span>
+                        </h2>
+                        <p className="text-xs text-[#202B26]/70 mt-0.5">
+                          Order Jollof Rice, Shawarma, Suya, Grills, Small Chops &amp; Drinks delivered straight to your hostel or gate.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('food')}
+                        className="px-4 py-2.5 bg-[#F2C94C] hover:opacity-90 text-[#202B26] font-black text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto transition shrink-0 cursor-pointer"
+                      >
+                        <Utensils className="w-4 h-4" />
+                        <span>Order Campus Food</span>
+                      </button>
+                    </div>
+
+                    {latestFoodVendors.length === 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#F4F7F5] border border-[#D9E5DF] rounded-2xl overflow-hidden">
+                        <img
+                          src={campusFoodShowcaseImg}
+                          alt="Campus kitchen Jollof rice and grilled chicken"
+                          className="md:col-span-4 w-full h-44 md:h-full object-cover"
+                        />
+                        <div className="md:col-span-8 p-5 flex flex-col justify-center space-y-2">
+                          <h3 className="text-sm sm:text-base font-black text-[#202B26]">
+                            Campus Kitchens, Bukas, Fast Food &amp; Delivery Riders
+                          </h3>
+                          <p className="text-xs text-[#202B26]/70">
+                            Register your campus food spot, publish menus with photos, accept online or eligible cash-on-delivery orders, or sign up as a student dispatch rider.
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => navigateToView('food')}
+                              className="px-4 py-2 bg-[#075B3B] text-white font-black text-xs rounded-xl cursor-pointer"
+                            >
+                              Browse Campus Food Hub
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {latestFoodVendors.map((vendor) => (
+                          <div
+                            key={vendor.id}
+                            onClick={() => navigateToView('food')}
+                            className="bg-[#F4F7F5] border border-[#D9E5DF] hover:border-[#075B3B] rounded-2xl overflow-hidden cursor-pointer transition flex flex-col"
+                          >
+                            <div className="h-36 bg-white overflow-hidden">
+                              <img
+                                src={vendor.bannerUrl || vendor.logoUrl || campusFoodShowcaseImg}
+                                alt={vendor.vendorName}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="p-4 space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-black text-sm text-[#202B26] truncate flex items-center gap-1.5">
+                                  <ChefHat className="w-4 h-4 text-[#075B3B] shrink-0" />
+                                  {vendor.vendorName}
+                                </span>
+                                <CeoVerifiedBadge verified={Boolean(vendor.ceoVerified)} variant="compact" />
+                              </div>
+                              <p className="text-[11px] text-[#202B26]/70 line-clamp-1">
+                                {vendor.location} • {vendor.openingHours}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Trending Activity & Campus Leaderboards */}
+                  <TrendingCampusesSection
+                    activeInstitution={effectiveActiveInstitution}
+                    institutions={institutions}
+                    products={products}
+                    services={publicServices}
+                    advertisements={activePublicAds}
+                    sports={sportUpdates}
+                    announcements={generalAnnouncements}
+                    accommodations={allAccommodation}
+                    onSelectItem={(item) => {
+                      if (item.entityType === 'product' && item.raw) {
+                        setSelectedProduct(item.raw);
+                      } else if (item.entityType === 'accommodation') {
+                        navigateToView('hux');
+                      } else if (item.entityType === 'ad' && item.raw) {
+                        setSelectedAd(item.raw);
+                      } else if (item.entityType === 'service' && item.raw) {
+                        setSelectedServiceState({ service: item.raw, showContact: false });
+                      }
+                    }}
+                    onOpenNationwideSearch={() => setShowNationwideSearch(true)}
+                  />
+
+                  {/* Nationwide Community & Safety Charter Split */}
+                  <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <div className="bg-[#202B26] text-white rounded-2xl p-6 sm:p-7 border-b-4 border-[#F2C94C] shadow-md flex flex-col justify-between gap-5">
+                      <div className="space-y-4">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#075B3B] text-[#F2C94C]">
                           <ShieldCheck className="w-3.5 h-3.5" />
                           Campus Trust Charter
                         </span>
-                      </div>
-                      <h2 className="font-display text-2xl font-black text-white tracking-tight">
-                        YOUR SAFETY, OUR PRIORITY
-                      </h2>
-                      <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-                        Every student, seller, house agent, and campus business across Nigeria operates under strict marketplace verification and anti-scam safeguards.
-                      </p>
+                        <h2 className="font-display text-2xl font-black text-white tracking-tight">
+                          YOUR SAFETY, OUR PRIORITY
+                        </h2>
+                        <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+                          Every student, seller, house agent, and campus business across Nigeria operates under strict marketplace verification and anti-scam safeguards.
+                        </p>
 
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                        {[
-                          'Verified Students and Sellers',
-                          'Real Reviews and Ratings',
-                          'Secure Transactions',
-                          'Anti-Scam Protection'
-                        ].map((point) => (
-                          <li
-                            key={point}
-                            className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white"
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-[#D4A62A] shrink-0" />
-                            <span>{point}</span>
-                          </li>
-                        ))}
-                      </ul>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          {[
+                            'Verified Students and Sellers',
+                            'Real Reviews and Ratings',
+                            'Secure Transactions',
+                            'Anti-Scam Protection'
+                          ].map((point) => (
+                            <li
+                              key={point}
+                              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white"
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-[#F2C94C] shrink-0" />
+                              <span>{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-white/15">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEmergencyReportModalState({
+                              open: true,
+                              kind: 'security_concern'
+                            })
+                          }
+                          className="px-4 py-2.5 bg-[#F2C94C] hover:opacity-90 text-[#202B26] font-black text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>Report Suspicious Users</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowSafetyModal(true)}
+                          className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                        >
+                          Campus Safety Rules
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-white/15">
+                    <div className="bg-[#FFFFFF] border border-[#D9E5DF] rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between">
+                      <div className="grid grid-cols-1 sm:grid-cols-12 flex-1">
+                        <div className="sm:col-span-5 relative min-h-[180px] bg-[#075B3B]/10">
+                          <img
+                            src={campusCommunityShowcaseImg}
+                            alt="Nigerian students connecting across campuses on NIGERIA CAMPUS MARKET"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="sm:col-span-7 p-6 flex flex-col justify-between gap-4">
+                          <div className="space-y-3">
+                            <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#075B3B] text-[#F2C94C]">
+                              Nationwide Network
+                            </span>
+                            <h2 className="font-display text-2xl font-black text-[#202B26] tracking-tight">
+                              NATIONWIDE UNIVERSITY COMMUNITY
+                            </h2>
+                            <ul className="space-y-2 text-xs font-bold text-[#202B26]">
+                              {[
+                                'Connect with students across Nigeria',
+                                'Discover all Nigerian universities',
+                                'Create an account for free'
+                              ].map((item) => (
+                                <li key={item} className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-[#075B3B] shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (user) {
+                                  navigateToView('hub');
+                                } else {
+                                  handleOpenAuth('register', 'buyer');
+                                }
+                              }}
+                              className="px-5 py-2.5 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                            >
+                              <span>{user ? 'Open Single Hub' : 'Join Nigeria Campus Market'}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-[#F2C94C]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigateToView('friends')}
+                              className="px-4 py-2.5 bg-[#F4F7F5] hover:bg-[#F2C94C]/20 border border-[#D9E5DF] text-[#202B26] font-bold text-xs rounded-xl inline-flex items-center gap-1.5 transition cursor-pointer"
+                            >
+                              <Users className="w-3.5 h-3.5 text-[#075B3B]" />
+                              <span>Campus Friends</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#F4F7F5] border-t border-[#D9E5DF] px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-[#202B26]">
+                          <Smartphone className="w-4 h-4 text-[#075B3B]" />
+                          <span>
+                            {showPWAInstructions && isIOS
+                              ? 'Tap Share in Safari → Add to Home Screen.'
+                              : 'Install NIGERIA CAMPUS MARKET Mobile App'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => navigateToView('friends')}
+                            className="px-3 py-1.5 bg-white border border-[#D9E5DF] hover:border-[#075B3B] text-[#202B26] text-[11px] font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3 text-[#075B3B]" />
+                            <span>Messages</span>
+                          </button>
+                          {isInstalled ? (
+                            <span className="inline-flex px-3 py-1.5 bg-[#075B3B] text-[#F2C94C] font-black text-[11px] rounded-lg items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Installed</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isInstallable) {
+                                  install();
+                                } else {
+                                  setShowDownloadAppModal(true);
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-[11px] rounded-lg flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3 h-3 text-[#F2C94C]" />
+                              <span>Install App</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Campus Emergency & GPA Academic Tool */}
+                  <FuMarketEmergencySection
+                    contacts={emergencyContacts}
+                    announcements={safetyAnnouncements}
+                    lostFoundCount={lostFoundItems.length}
+                    onOpenContacts={(filter = 'all') =>
+                      setEmergencyDirectoryState({ open: true, filter })
+                    }
+                    onOpenReportEmergency={(defaultCategory) =>
+                      setEmergencyReportModalState({
+                        open: true,
+                        kind: 'emergency',
+                        defaultCategory
+                      })
+                    }
+                    onOpenSecurityConcern={() =>
+                      setEmergencyReportModalState({
+                        open: true,
+                        kind: 'security_concern'
+                      })
+                    }
+                    onOpenLostAndFound={() => setShowLostAndFoundModal(true)}
+                    onOpenSafetyInfo={() => setShowCampusSafetyInfoModal(true)}
+                    onOpenTrackReport={() => setShowReportTrackingModal(true)}
+                    onOpenAdminEmergency={() => {
+                      if (!isAuthorizedCeo(user)) return;
+                      setAdminInitialTab('emergency');
+                      setShowAdminDashboard(true);
+                    }}
+                  />
+
+                  <section className="bg-[#FFFFFF] border-2 border-[#075B3B]/20 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[#075B3B] text-[#F2C94C] flex items-center justify-center shrink-0 shadow-sm">
+                        <Calculator className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#F4F7F5] text-[#075B3B] border border-[#075B3B]/25">
+                          Free Academic Tool
+                        </span>
+                        <h2 className="font-display text-lg sm:text-xl font-black text-[#202B26]">
+                          GPA &amp; CGPA Calculator
+                        </h2>
+                        <p className="text-xs text-[#202B26]/70 max-w-2xl">
+                          Compute semester GPA &amp; cumulative CGPA free without login on 5.0, 4.0, or custom grading scales — includes Target CGPA Predictor, Performance Chart, and PDF/CSV export.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('gpa')}
+                      className="px-5 py-3 bg-[#075B3B] hover:bg-[#0B8050] text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shrink-0 shadow-sm transition cursor-pointer"
+                    >
+                      <Calculator className="w-4 h-4 text-[#F2C94C]" />
+                      <span>Open GPA Calculator</span>
+                    </button>
+                  </section>
+
+                  <div ref={downloadAppRef}>
+                    <DownloadAppSection
+                      deviceType={deviceType}
+                      isInstalled={isInstalled}
+                      isInstallable={isInstallable}
+                      appSettings={appSettings}
+                      onTriggerInstall={install}
+                      onTrackExternalDownload={(evType) => {
+                        trackPwaInstallEvent(evType, platform, selectedInstitutionId).catch(() => {});
+                      }}
+                      onOpenInstallModal={() => setShowDownloadAppModal(true)}
+                      onShowToast={showToast}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* FULL FILTERABLE MARKETPLACE CATALOG VIEW */
+              <section
+                ref={productCatalogRef}
+                className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
+              >
+                {/* Left Column: Campus Categories & Quick Portals */}
+                <aside className="hidden lg:block lg:col-span-3 space-y-4">
+                  <div className="bg-[#FFFFFF] rounded-2xl border border-[#D9E5DF] p-4 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-[#E6EFEA] pb-2">
+                      <h2 className="font-display text-sm font-black text-[#202B26]">
+                        Campus Categories
+                      </h2>
+                      <span className="text-[11px] font-bold text-[#075B3B] tabular-nums">
+                        {categories.length}
+                      </span>
+                    </div>
+                    <div className="space-y-1 max-h-[420px] overflow-y-auto pr-1">
                       <button
                         type="button"
-                        onClick={() =>
-                          setEmergencyReportModalState({
-                            open: true,
-                            kind: 'security_concern'
-                          })
-                        }
-                        className="px-4 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                        onClick={() => {
+                          setSelectedCategory('all');
+                          setViewingFavouritesOnly(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                          selectedCategory === 'all' && !viewingFavouritesOnly
+                            ? 'bg-[#075B3B] text-white'
+                            : 'hover:bg-[#F4F7F5] text-[#202B26]'
+                        }`}
                       >
-                        <AlertTriangle className="w-4 h-4" />
-                        <span>Report Suspicious Users</span>
+                        <span>All Marketplace Items</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-75" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowSafetyModal(true)}
-                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition cursor-pointer"
-                      >
-                        Campus Safety Rules
-                      </button>
+                      {categories.slice(0, 14).map((cat) => {
+                        const active = selectedCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory(active ? 'all' : cat.id);
+                              setViewingFavouritesOnly(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between gap-2 transition cursor-pointer ${
+                              active
+                                ? 'bg-[#075B3B] text-white'
+                                : 'hover:bg-[#F4F7F5] text-[#202B26]'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className={active ? 'text-[#F2C94C]' : 'text-[#075B3B]'}>
+                                {getCategoryIcon(cat.icon)}
+                              </span>
+                              <span className="truncate">{cat.name}</span>
+                            </span>
+                            <span className="text-[10px] opacity-75 tabular-nums shrink-0">
+                              {cat.productCount || 0}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* RIGHT CARD: JOIN OUR GROWING COMMUNITY */}
-                  <div className="bg-white border border-[#D9E5DF] rounded-3xl overflow-hidden shadow-xs flex flex-col justify-between">
-                    <div className="grid grid-cols-1 sm:grid-cols-12 flex-1">
-                      <div className="sm:col-span-5 relative min-h-[180px] bg-[#087443]/10">
-                        <img
-                          src={campusCommunityShowcaseImg}
-                          alt="Nigerian students connecting across campuses on NIGERIA CAMPUS MARKET"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="sm:col-span-7 p-6 flex flex-col justify-between gap-4">
-                        <div className="space-y-3">
-                          <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#087443] text-[#D4A62A]">
-                            Nationwide Network
-                          </span>
-                          <h2 className="font-display text-2xl font-black text-[#10251D] tracking-tight">
-                            JOIN OUR GROWING COMMUNITY
-                          </h2>
-                          <ul className="space-y-2 text-xs font-bold text-[#10251D]">
-                            {[
-                              'Connect with students across Nigeria',
-                              'Discover other universities',
-                              'Create an account for free'
-                            ].map((item) => (
-                              <li key={item} className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-[#087443] shrink-0" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                  {/* Quick Academic & Student Portals Card */}
+                  <div className="bg-[#202B26] text-white rounded-2xl p-4 border-b-4 border-[#F2C94C] space-y-2.5">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-[#F2C94C]">
+                      Student Toolkit
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('gpa')}
+                      className="w-full py-2.5 px-3 rounded-xl bg-[#075B3B] hover:bg-[#0B8050] text-xs font-black flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-[#F2C94C]" />
+                        <span>GPA &amp; CGPA Calculator</span>
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-[#F2C94C]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('books')}
+                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[#F2C94C]" />
+                        <span>Textbooks &amp; Past Qs</span>
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('deals')}
+                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-[#F2C94C]" />
+                        <span>Student Deals &amp; Giveaways</span>
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </aside>
 
-                        <div className="flex flex-wrap items-center gap-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (user) {
-                                navigateToView('hub');
-                              } else {
-                                handleOpenAuth('register', 'buyer');
-                              }
-                            }}
-                            className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white font-black text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                          >
-                            <span>{user ? 'Open Single Hub' : 'Join Nigeria Campus Market'}</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-[#D4A62A]" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleRequestSellModal}
-                            className="px-4 py-2.5 bg-[#F4F8F5] hover:bg-[#D4A62A]/20 border border-[#D9E5DF] text-[#10251D] font-bold text-xs rounded-xl transition cursor-pointer"
-                          >
-                            Start Selling
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Portal & App Install Footer Strip */}
-                    <div className="bg-[#F4F8F5] border-t border-[#D9E5DF] px-5 py-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#10251D]">
-                        <Smartphone className="w-4 h-4 text-[#087443]" />
-                        <span>
-                          {showPWAInstructions && isIOS
-                            ? 'Tap Share in Safari → Add to Home Screen.'
-                            : 'Install NIGERIA CAMPUS MARKET Mobile App'}
+                {/* Center Column: Filter Header + Sponsored Ad + Product Catalog */}
+                <div className="lg:col-span-6 space-y-4">
+                  <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#D9E5DF] shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#075B3B] text-[#F2C94C]">
+                          Marketplace Feed
                         </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigateToView('friends')}
-                          className="px-3 py-1.5 bg-white border border-[#D9E5DF] hover:border-[#087443] text-[#10251D] text-[11px] font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                        >
-                          <MessageSquare className="w-3 h-3 text-[#087443]" />
-                          <span>Messages</span>
-                        </button>
-                        {isInstalled ? (
-                          <span className="inline-flex px-3 py-1.5 bg-[#087443] text-[#D4A62A] font-black text-[11px] rounded-lg items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Installed</span>
+                        <h2 className="font-display text-lg font-black text-[#202B26] mt-1">
+                          {viewingFavouritesOnly
+                            ? 'Saved Favourites'
+                            : selectedCategory !== 'all'
+                            ? categories.find((c) => c.id === selectedCategory)?.name || 'Category Items'
+                            : searchQuery
+                            ? `Results for "${searchQuery}"`
+                            : activeInstitution
+                            ? `${activeInstitution.shortName} Marketplace`
+                            : 'National Campus Marketplace'}
+                        </h2>
+                        <p className="text-[11px] text-[#202B26]/70 flex items-center gap-2 tabular-nums">
+                          <span>
+                            Showing {visibleProducts.length} of {displayedProducts.length} listings
                           </span>
-                        ) : (
+                          {isRefreshing && (
+                            <span className="text-[10px] font-bold text-[#075B3B] animate-pulse">
+                              Syncing...
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <select
+                          value={selectedState}
+                          onChange={(e) => setSelectedState(e.target.value)}
+                          className="bg-[#F4F7F5] border border-[#D9E5DF] px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#202B26] outline-none"
+                        >
+                          <option value="all">All States</option>
+                          {NIGERIA_STATES.map((st) => (
+                            <option key={st} value={st}>
+                              {st}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={sortOption}
+                          onChange={(e) => setSortOption(e.target.value as any)}
+                          className="bg-[#F4F7F5] border border-[#D9E5DF] text-xs font-bold text-[#202B26] py-1.5 px-2.5 rounded-xl outline-none"
+                        >
+                          <option value="newest">Newest</option>
+                          <option value="price-asc">Price Low</option>
+                          <option value="price-desc">Price High</option>
+                          <option value="popular">Popular</option>
+                        </select>
+
+                        {hasActiveFilters && (
                           <button
                             type="button"
-                            onClick={() => {
-                              if (isInstallable) {
-                                install();
-                              } else {
-                                setShowDownloadAppModal(true);
-                              }
-                            }}
-                            className="px-3 py-1.5 bg-[#087443] hover:bg-[#065D36] text-white font-black text-[11px] rounded-lg flex items-center gap-1 cursor-pointer"
+                            onClick={resetAllFilters}
+                            className="px-2.5 py-1.5 text-xs bg-[#202B26] text-white rounded-xl font-bold flex items-center gap-1 cursor-pointer"
                           >
-                            <Download className="w-3 h-3 text-[#D4A62A]" />
-                            <span>Install App</span>
+                            <X className="w-3 h-3 text-[#F2C94C]" />
+                            Clear
                           </button>
                         )}
                       </div>
                     </div>
-                  </div>
-                </section>
 
-                {/* SECTION 3G: DOWNLOAD NIGERIA UNIVERSITY MARKET (ANDROID, IPHONE & IPAD + PWA) */}
-                <div ref={downloadAppRef}>
-                  <DownloadAppSection
-                    deviceType={deviceType}
-                    isInstalled={isInstalled}
-                    isInstallable={isInstallable}
-                    appSettings={appSettings}
-                    onTriggerInstall={install}
-                    onTrackExternalDownload={(evType) => {
-                      trackPwaInstallEvent(evType, platform, selectedInstitutionId).catch(() => {});
-                    }}
-                    onOpenInstallModal={() => setShowDownloadAppModal(true)}
-                    onShowToast={showToast}
-                  />
+                    {/* Condition & Price Presets */}
+                    <div className="pt-2.5 border-t border-[#E6EFEA] flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1 bg-[#F4F7F5] p-0.5 rounded-xl border border-[#D9E5DF]">
+                        {(['all', 'new', 'used'] as const).map((cond) => (
+                          <button
+                            key={cond}
+                            type="button"
+                            onClick={() => setConditionFilter(cond)}
+                            className={`px-2.5 py-1 rounded-lg font-bold capitalize transition cursor-pointer ${
+                              conditionFilter === cond
+                                ? 'bg-[#075B3B] text-[#F2C94C]'
+                                : 'text-[#202B26]/70 hover:text-[#202B26]'
+                            }`}
+                          >
+                            {cond}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-[#075B3B]" />
+                        {PRICE_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => handleSelectPricePreset(preset)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              activePricePreset === preset.id
+                                ? 'bg-[#F2C94C] border-[#F2C94C] text-[#202B26] font-black'
+                                : 'bg-[#F4F7F5] border-[#D9E5DF] text-[#202B26] hover:border-[#075B3B]'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category / Marketplace Sponsored Placement */}
+                  {(categoryFeedAds.length > 0 || marketplaceAds.length > 0) && (
+                    <div className="space-y-2">
+                      {(categoryFeedAds.length > 0 ? categoryFeedAds : marketplaceAds)
+                        .slice(0, 1)
+                        .map((ad) => (
+                          <SponsoredAdCard
+                            key={ad.id}
+                            ad={ad}
+                            variant="banner"
+                            onSelectAd={(picked) => setSelectedAd(picked)}
+                          />
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Product Grid */}
+                  {loading ? (
+                    <div className="py-14 text-center bg-white rounded-2xl border border-[#D9E5DF]">
+                      <div className="w-10 h-10 border-4 border-[#075B3B] border-t-[#F2C94C] rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-xs font-bold text-[#202B26]/70">
+                        Loading genuine NIGERIA CAMPUS MARKET listings...
+                      </p>
+                    </div>
+                  ) : fetchError ? (
+                    <div className="bg-white rounded-2xl p-8 text-center border border-[#D9E5DF] shadow-xs">
+                      <ShoppingBag className="w-10 h-10 text-[#075B3B] mx-auto mb-3" />
+                      <h3 className="text-base font-black text-[#202B26]">
+                        Unable to load listings right now
+                      </h3>
+                      <p className="text-xs text-[#202B26]/70 mt-1 mb-4 break-words">{fetchError}</p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => loadCatalogProducts(1, true)}
+                          className="px-4 py-2 bg-[#075B3B] text-white text-xs font-black rounded-xl cursor-pointer"
+                        >
+                          Retry
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRequestSellModal}
+                          className="px-4 py-2 bg-[#F2C94C] text-[#202B26] text-xs font-black rounded-xl cursor-pointer"
+                        >
+                          Post Item
+                        </button>
+                      </div>
+                    </div>
+                  ) : displayedProducts.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-8 text-center border border-[#D9E5DF] shadow-xs">
+                      <ShoppingBag className="w-10 h-10 text-[#075B3B] mx-auto mb-3" />
+                      <h3 className="text-base font-black text-[#202B26]">
+                        {viewingFavouritesOnly
+                          ? 'No saved favourites yet'
+                          : 'No listings yet for this filter'}
+                      </h3>
+                      <p className="text-xs text-[#202B26]/70 mt-1 mb-4">
+                        {hasActiveFilters
+                          ? 'Try clearing your search, category, or switching to All Institutions.'
+                          : 'Be the first to list textbooks, phones, fashion, or hostel items.'}
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRequestSellModal}
+                          className="px-4 py-2 bg-[#F2C94C] text-[#202B26] text-xs font-black rounded-xl cursor-pointer"
+                        >
+                          Start Selling
+                        </button>
+                        {hasActiveFilters && (
+                          <button
+                            type="button"
+                            onClick={resetAllFilters}
+                            className="px-4 py-2 bg-[#F4F7F5] border border-[#D9E5DF] text-[#202B26] text-xs font-bold rounded-xl cursor-pointer"
+                          >
+                            Reset Filters
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                        {visibleProducts.map((prod) => (
+                          <ProductCard
+                            key={prod.id}
+                            product={prod}
+                            onOpenDetail={setSelectedProduct}
+                            onOpenStorefront={setSelectedSellerStorefrontId}
+                            onAddToCart={addToCart}
+                            onStartDirectChat={handleStartDirectChat}
+                          />
+                        ))}
+                      </div>
+                      {hasMoreProducts && (
+                        <div ref={loadMoreRef} className="flex justify-center pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setVisibleCount((prev) => prev + 12)}
+                            className="px-5 py-2.5 bg-white border border-[#D9E5DF] hover:border-[#075B3B] text-[#075B3B] text-xs font-black rounded-xl shadow-xs transition cursor-pointer"
+                          >
+                            Load More Products ({displayedProducts.length - visibleProducts.length} left)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </>
+
+                {/* Right Column: Active Campus Card, Sponsored Ad & What Students Need */}
+                <aside className="lg:col-span-3 space-y-4">
+                  <div className="bg-[#FFFFFF] rounded-2xl border border-[#D9E5DF] p-4 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-display text-sm font-black text-[#202B26] flex items-center gap-1.5">
+                        <GraduationCap className="w-4 h-4 text-[#075B3B]" />
+                        <span>Campus Filter</span>
+                      </h2>
+                      <span className="text-[10px] font-bold text-[#075B3B]">
+                        {institutions.length} Schools
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-[#075B3B]">
+                      {activeInstitution ? `${activeInstitution.shortName} — ${selectedCampus}` : 'All Nigerian Campuses'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowInstitutionSwitcher(true)}
+                      className="w-full py-2.5 rounded-xl bg-[#F2C94C] hover:opacity-90 text-[#202B26] text-xs font-black transition cursor-pointer"
+                    >
+                      Switch University / Campus
+                    </button>
+                  </div>
+
+                  {/* Live What Students Need Mini Feed */}
+                  <div className="bg-[#FFFFFF] rounded-2xl border border-[#D9E5DF] p-4 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-display text-sm font-black text-[#202B26] flex items-center gap-1.5">
+                        <HelpCircle className="w-4 h-4 text-[#075B3B]" />
+                        <span>What Students Need</span>
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('requests')}
+                        className="text-[11px] font-black text-[#075B3B] hover:underline cursor-pointer"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    {latestRequests.length === 0 ? (
+                      <p className="text-[11px] text-[#202B26]/70">
+                        No open student requests on this campus yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {latestRequests.map((req) => (
+                          <button
+                            key={req.id}
+                            type="button"
+                            onClick={() => navigateToView('requests')}
+                            className="w-full text-left p-2.5 rounded-xl bg-[#F4F7F5] border border-[#D9E5DF] hover:border-[#075B3B] transition space-y-1 cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-black text-[#075B3B] tabular-nums">
+                                Budget: {formatNaira(req.budget)}
+                              </span>
+                              <span className="uppercase font-bold text-[#202B26]/70">{req.status}</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#202B26] line-clamp-1">{req.title}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => navigateToView('requests')}
+                      className="w-full py-2 rounded-xl bg-[#075B3B] hover:bg-[#0B8050] text-white text-xs font-black transition cursor-pointer"
+                    >
+                      Post Request for Sellers
+                    </button>
+                  </div>
+
+                  {/* Advertise CTA Card */}
+                  <div className="bg-[#075B3B] text-white rounded-2xl p-4 border-b-4 border-[#F2C94C] space-y-2.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#F2C94C]">
+                      <Sparkles className="w-3 h-3" />
+                      Nationwide Promotion
+                    </span>
+                    <p className="text-xs font-bold leading-relaxed text-white/95">
+                      Promote your brand, hostel, event, or campus store across Nigerian universities.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAdvertiseModal('featured')}
+                      className="w-full py-2 rounded-xl bg-[#F2C94C] text-[#202B26] font-black text-xs cursor-pointer"
+                    >
+                      Request to Advertise
+                    </button>
+                  </div>
+                </aside>
+              </section>
             )}
           </main>
 
@@ -2981,12 +3080,13 @@ function MainMarketplace() {
           <button
             type="button"
             onClick={handleRequestSellModal}
-            className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-30 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] font-black text-xs sm:text-sm px-5 py-3.5 rounded-full shadow-2xl border-2 border-[#065D36] flex items-center gap-2 active:scale-95 transition cursor-pointer"
+            className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-30 bg-[#F2C94C] hover:opacity-95 text-[#202B26] font-black text-xs sm:text-sm px-5 py-3.5 rounded-full shadow-2xl border-2 border-[#075B3B] flex items-center gap-2 active:scale-95 transition cursor-pointer"
           >
-            <PlusCircle className="w-5 h-5 text-[#065D36]" />
+            <PlusCircle className="w-5 h-5 text-[#075B3B]" />
             <span>Post Item for FREE</span>
           </button>
 
+          {/* Step 18: Professional Footer */}
           <Footer
             categories={categories}
             onSelectCategory={(catId) => {
@@ -2997,7 +3097,7 @@ function MainMarketplace() {
             onOpenSafetyModal={() => setShowSafetyModal(true)}
             onNavigateView={navigateToView}
             onTriggerPWAHelp={handleTriggerPWAHelp}
-            onOpenAdvertiseModal={scrollToAdsSectionOrCeo}
+            onOpenAdvertiseModal={() => handleOpenAdvertiseModal('featured')}
             onOpenServicesSection={scrollToServicesSection}
             onOpenEmergencySection={scrollToEmergencySection}
             onOpenPostServiceModal={() =>
@@ -3307,7 +3407,18 @@ function MainMarketplace() {
         <AdDetailModal
           ad={selectedAd}
           onClose={() => setSelectedAd(null)}
-          onAdvertiseNow={scrollToAdsSectionOrCeo}
+          onAdvertiseNow={() => handleOpenAdvertiseModal('featured')}
+        />
+      )}
+
+      {advertiseModalState.open && (
+        <AdvertiseBusinessModal
+          initialPackageId={advertiseModalState.packageId}
+          activeInstitutionId={selectedInstitutionId}
+          onClose={() => setAdvertiseModalState({ open: false })}
+          onSubmitted={() => {
+            showToast('Advertising request sent! The Super Admin team will review and reach out shortly.');
+          }}
         />
       )}
 

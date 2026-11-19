@@ -819,14 +819,21 @@ service cloud.firestore {
           'phone',
           'whatsappNumber',
           'businessCategory',
+          'adType',
           'title',
           'description',
           'imageUrl',
+          'images',
           'logoUrl',
+          'videoUrl',
           'location',
           'institutionId',
           'campus',
+          'targetInstitutionIds',
+          'targetCampuses',
           'placement',
+          'targetPlacements',
+          'targetCategoryId',
           'visibilityScope',
           'createdByCeoEmail',
           'packageId',
@@ -835,10 +842,12 @@ service cloud.firestore {
           'durationDays',
           'websiteOrSocialLink',
           'ownerUid',
+          'sourceRequestId',
           'status',
           'paymentStatus',
           'paymentReference',
           'isFeatured',
+          'isPinned',
           'isDeleted',
           'deletedAt',
           'deletedBy',
@@ -863,15 +872,33 @@ service cloud.firestore {
         data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
         data.whatsappNumber is string && data.whatsappNumber.size() >= 5 && data.whatsappNumber.size() <= 40 &&
         data.businessCategory is string && data.businessCategory.size() > 0 && data.businessCategory.size() <= 80 &&
+        (!('adType' in data) || (data.adType is string && data.adType in [
+          'business_ad', 'product_ad', 'company_promotion', 'university_announcement',
+          'school_event', 'scholarship', 'job_ad', 'hostel_ad', 'business_opening',
+          'special_offer', 'sponsored_post', 'public_notice', 'general_promotion'
+        ])) &&
         data.title is string && data.title.size() > 0 && data.title.size() <= 180 &&
         data.description is string && data.description.size() > 0 && data.description.size() <= 4000 &&
         data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 900000 &&
+        (!('images' in data) || (data.images is list && data.images.size() <= 8)) &&
         (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 900000)) &&
+        (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 600)) &&
         data.location is string && data.location.size() > 0 && data.location.size() <= 180 &&
         (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() <= 128)) &&
         (!('campus' in data) || (data.campus is string && data.campus.size() <= 120)) &&
-        (!('placement' in data) || (data.placement is string && data.placement in ['ads_section', 'homepage_hero', 'category_feed', 'institution_spotlight'])) &&
-        (!('visibilityScope' in data) || (data.visibilityScope is string && data.visibilityScope in ['all_institutions', 'specific_institution'])) &&
+        (!('targetInstitutionIds' in data) || (data.targetInstitutionIds is list && data.targetInstitutionIds.size() <= 250)) &&
+        (!('targetCampuses' in data) || (data.targetCampuses is list && data.targetCampuses.size() <= 250)) &&
+        (!('placement' in data) || (data.placement is string && data.placement in [
+          'homepage_featured', 'marketplace_sponsored', 'university_homepage',
+          'campus_announcements', 'category_feed', 'community_feed',
+          'ads_section', 'homepage_hero', 'institution_spotlight'
+        ])) &&
+        (!('targetPlacements' in data) || (data.targetPlacements is list && data.targetPlacements.size() <= 10)) &&
+        (!('targetCategoryId' in data) || (data.targetCategoryId is string && data.targetCategoryId.size() <= 100)) &&
+        (!('visibilityScope' in data) || (data.visibilityScope is string && data.visibilityScope in [
+          'all_institutions', 'federal_universities', 'state_universities', 'private_universities',
+          'selected_universities', 'selected_campuses', 'specific_institution', 'specific_communities'
+        ])) &&
         (!('createdByCeoEmail' in data) || (data.createdByCeoEmail is string && data.createdByCeoEmail.size() <= 160)) &&
         data.packageId is string && data.packageId in ['basic', 'premium', 'featured'] &&
         (!('packageName' in data) || (data.packageName is string && data.packageName.size() <= 80)) &&
@@ -879,10 +906,12 @@ service cloud.firestore {
         data.durationDays is number && data.durationDays >= 1 && data.durationDays <= 365 &&
         (!('websiteOrSocialLink' in data) || (data.websiteOrSocialLink is string && data.websiteOrSocialLink.size() <= 500)) &&
         (!('ownerUid' in data) || (data.ownerUid is string && data.ownerUid.size() <= 128)) &&
-        data.status is string && data.status in ['pending_approval', 'active', 'paused', 'rejected', 'expired'] &&
+        (!('sourceRequestId' in data) || (data.sourceRequestId is string && data.sourceRequestId.size() <= 128)) &&
+        data.status is string && data.status in ['pending_approval', 'active', 'paused', 'unpublished', 'rejected', 'expired'] &&
         data.paymentStatus is string && data.paymentStatus in ['unpaid', 'pending_verification', 'paid', 'failed'] &&
         (!('paymentReference' in data) || (data.paymentReference is string && data.paymentReference.size() <= 160)) &&
         data.isFeatured is bool &&
+        (!('isPinned' in data) || data.isPinned is bool) &&
         (!('isDeleted' in data) || data.isDeleted is bool) &&
         (!('deletedAt' in data) || (data.deletedAt is string && data.deletedAt.size() <= 64)) &&
         (!('deletedBy' in data) || (data.deletedBy is string && data.deletedBy.size() <= 160)) &&
@@ -942,6 +971,75 @@ service cloud.firestore {
         );
 
       allow delete: if isCeo() && isValidDocId(adId);
+    }
+
+    function isValidAdvertisingRequest(data) {
+      return data.keys().hasAll([
+          'id',
+          'advertiserName',
+          'businessName',
+          'phone',
+          'category',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'advertiserName',
+          'businessName',
+          'phone',
+          'whatsappNumber',
+          'email',
+          'category',
+          'adType',
+          'message',
+          'targetAudience',
+          'targetInstitutionId',
+          'preferredPackageId',
+          'attachments',
+          'ownerUid',
+          'status',
+          'adminReply',
+          'adminNotes',
+          'repliedAt',
+          'convertedAdId',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.advertiserName is string && data.advertiserName.size() > 0 && data.advertiserName.size() <= 120 &&
+        data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 140 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        (!('whatsappNumber' in data) || (data.whatsappNumber is string && data.whatsappNumber.size() <= 40)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 80 &&
+        (!('adType' in data) || (data.adType is string && data.adType.size() <= 60)) &&
+        data.message is string && data.message.size() > 0 && data.message.size() <= 4000 &&
+        (!('targetAudience' in data) || (data.targetAudience is string && data.targetAudience.size() <= 60)) &&
+        (!('targetInstitutionId' in data) || (data.targetInstitutionId is string && data.targetInstitutionId.size() <= 128)) &&
+        (!('preferredPackageId' in data) || (data.preferredPackageId is string && data.preferredPackageId in ['basic', 'premium', 'featured'])) &&
+        (!('attachments' in data) || (data.attachments is list && data.attachments.size() <= 6)) &&
+        (!('ownerUid' in data) || (data.ownerUid is string && data.ownerUid.size() <= 128)) &&
+        data.status is string && data.status in ['pending', 'approved', 'rejected', 'converted'] &&
+        (!('adminReply' in data) || (data.adminReply is string && data.adminReply.size() <= 2000)) &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 1000)) &&
+        (!('repliedAt' in data) || (data.repliedAt is string && data.repliedAt.size() <= 64)) &&
+        (!('convertedAdId' in data) || (data.convertedAdId is string && data.convertedAdId.size() <= 128));
+    }
+
+    // Public Advertising Requests Inbox: anyone can submit; only Admin/CEO or submitter can read; only Admin/CEO can manage
+    match /advertisingRequests/{requestId} {
+      allow create: if isValidDocId(requestId) &&
+        isValidAdvertisingRequest(request.resource.data) &&
+        request.resource.data.status == 'pending' &&
+        (!isSignedIn() || !('ownerUid' in request.resource.data) || request.resource.data.ownerUid == request.auth.uid) &&
+        !('adminReply' in request.resource.data) &&
+        !('adminNotes' in request.resource.data) &&
+        !('convertedAdId' in request.resource.data);
+      allow read: if isCeo() || isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if isCeo() || isAdmin();
     }
 
     // Protected Payment Records: Admin read/write only, never deletable

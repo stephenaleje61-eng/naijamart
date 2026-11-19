@@ -100,6 +100,7 @@ export type StorageFolder =
   | 'general_announcements'
   | 'advertisements'
   | 'ad_logos'
+  | 'ad_requests'
   | 'services'
   | 'emergency_reports'
   | 'lost_and_found'
@@ -705,6 +706,21 @@ export async function uploadAdLogoImage(
 ): Promise<UploadResult> {
   return uploadImageToFirebaseStorage(file, {
     folder: 'ad_logos',
+    ownerId,
+    onProgress,
+    onTaskCreated,
+    allowPersistentFallback: true
+  });
+}
+
+export async function uploadAdRequestAttachment(
+  file: File,
+  ownerId = 'requester',
+  onProgress?: (percent: number) => void,
+  onTaskCreated?: (task: UploadTask) => void
+): Promise<UploadResult> {
+  return uploadImageToFirebaseStorage(file, {
+    folder: 'ad_requests',
     ownerId,
     onProgress,
     onTaskCreated,

@@ -30,13 +30,16 @@ import {
   getInstitutionById
 } from '../constants/institutions.js';
 import {
+  Advertisement,
   CommunityAnnouncementPost,
   GeneralAnnouncementPost,
   Institution,
   SportMatchStatus,
   SportUpdatePost
 } from '../types.js';
+import { filterAdsForAudience } from '../services/ads.js';
 import { EventPosterImage } from './EventPosterImage.js';
+import { SponsoredAdCard } from './SponsoredAdCard.js';
 
 interface SportAndAnnouncementsSectionProps {
   sportUpdates: SportUpdatePost[];
@@ -46,6 +49,8 @@ interface SportAndAnnouncementsSectionProps {
   selectedInstitutionId?: string;
   activeInstitution?: Institution;
   institutions?: Institution[];
+  ads?: Advertisement[];
+  onSelectAd?: (ad: Advertisement) => void;
   onSelectPost: (post: CommunityAnnouncementPost) => void;
   onOpenPostModal: (defaultFeedType: 'sport_update' | 'general_announcement') => void;
   onOpenAuthorProfile: (authorId: string, authorName: string, authorAvatar?: string) => void;
@@ -78,6 +83,8 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
   selectedInstitutionId = DEFAULT_INSTITUTION_ID,
   activeInstitution,
   institutions,
+  ads = [],
+  onSelectAd,
   onSelectPost,
   onOpenPostModal,
   onOpenAuthorProfile
@@ -94,6 +101,16 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
   const currentInst = useMemo(
     () => activeInstitution || getInstitutionById(selectedInstitutionId, institutions),
     [activeInstitution, selectedInstitutionId, institutions]
+  );
+
+  const announcementAds = useMemo(
+    () =>
+      filterAdsForAudience(ads, {
+        institutionId: selectedInstitutionId,
+        institutions,
+        placement: 'campus_announcements'
+      }),
+    [ads, selectedInstitutionId, institutions]
   );
 
   const instSports = useMemo(
@@ -286,6 +303,18 @@ export const SportAndAnnouncementsSection: React.FC<SportAndAnnouncementsSection
 
       {/* Filter & Search Bar */}
       <div className="p-4 sm:p-6 space-y-4">
+        {announcementAds.length > 0 && onSelectAd && (
+          <div className="space-y-2.5">
+            {announcementAds.slice(0, 2).map((ad) => (
+              <SponsoredAdCard
+                key={`ann-ad-${ad.id}`}
+                ad={ad}
+                onSelectAd={onSelectAd}
+                variant="banner"
+              />
+            ))}
+          </div>
+        )}
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3.5 top-3" />

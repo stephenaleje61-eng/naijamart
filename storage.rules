@@ -100,6 +100,13 @@ service firebase.storage {
       allow delete: if isCeo();
     }
 
+    // Public Advertising Request attachments (uploaded by advertisers/students requesting ads)
+    match /ad_requests/{ownerId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isImage() && isUnder5MB() && (!isSignedIn() || request.auth.uid == ownerId || isAdmin());
+      allow delete: if isAdmin() || isCeo() || (isSignedIn() && request.auth.uid == ownerId);
+    }
+
     // FU MARKET STUDENT SERVICES photos
     match /services/{ownerId}/{fileName} {
       allow read: if true;

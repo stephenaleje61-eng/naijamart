@@ -16,6 +16,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import {
+  Advertisement,
   Institution,
   StudentPost,
   StudentPostCategory,
@@ -24,7 +25,9 @@ import {
 } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { NIGERIAN_INSTITUTIONS } from '../constants/institutions.js';
+import { filterAdsForAudience } from '../services/ads.js';
 import { uploadImageToFirebaseStorage } from '../services/imageStorage.js';
+import { SponsoredAdCard } from './SponsoredAdCard.js';
 import {
   addPostComment,
   createStudentPost,
@@ -53,6 +56,8 @@ interface StudentSocialFeedProps {
     institutionId?: string;
   }) => void;
   knownUsers?: RegisteredUser[];
+  ads?: Advertisement[];
+  onSelectAd?: (ad: Advertisement) => void;
 }
 
 const POST_CATEGORIES: Array<{ id: StudentPostCategory; label: string }> = [
@@ -213,12 +218,18 @@ export const StudentSocialFeed: React.FC<StudentSocialFeedProps> = ({
   onStartDirectChat,
   onOpenAuthModal,
   onReportScam,
-  knownUsers = []
+  knownUsers = [],
+  ads = [],
+  onSelectAd
 }) => {
   const { user } = useAuth();
   const [scope, setScope] = useState<'nationwide' | 'campus'>(
     lockToInstitution ? 'campus' : 'nationwide'
   );
+  const communityAds = filterAdsForAudience(ads, {
+    institutionId: scope === 'campus' ? selectedInstitution?.id : 'all',
+    placement: 'community_feed'
+  });
   const [categoryFilter, setCategoryFilter] = useState<StudentPostCategory | 'all'>('all');
   const [posts, setPosts] = useState<StudentPost[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -603,6 +614,13 @@ export const StudentSocialFeed: React.FC<StudentSocialFeedProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
+          {communityAds.length > 0 && onSelectAd && (
+            <SponsoredAdCard
+              ad={communityAds[0]}
+              onSelectAd={onSelectAd}
+              variant="banner"
+            />
+          )}
           {visiblePosts.map((post) => {
             const isLiked = likedIds.has(post.id);
             const isFollowed = followedIds.has(post.id);

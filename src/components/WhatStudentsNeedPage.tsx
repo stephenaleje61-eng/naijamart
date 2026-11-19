@@ -117,7 +117,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
   const instShort = activeInst?.shortName || 'All Campuses';
 
   useEffect(() => {
-    document.title = `What Students Need | FU MARKET — ${instShort}`;
+    document.title = `What Students Need | NIGERIA CAMPUS MARKET — ${instShort}`;
   }, [instShort]);
 
   useEffect(() => {
@@ -349,7 +349,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
           userName: student.name,
           matricNumber: student.matricNumber
         });
-        showToast('Your request is now live on FU MARKET!');
+        showToast('Your request is now live on NIGERIA CAMPUS MARKET!');
       }
 
       setShowFormModal(false);
@@ -390,7 +390,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
     if (cleaned.startsWith('0')) cleaned = '234' + cleaned.substring(1);
     else if (cleaned && !cleaned.startsWith('234')) cleaned = '234' + cleaned;
     const text = encodeURIComponent(
-      `Hello ${req.userName}, I saw your request "${req.title}" on FU MARKET (What Students Need). I can help with this!`
+      `Hello ${req.userName}, I saw your request "${req.title}" on NIGERIA CAMPUS MARKET (What Students Need). I can help with this!`
     );
     return `https://wa.me/${cleaned}?text=${text}`;
   };
@@ -434,7 +434,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#065D36] hover:bg-[#D4A62A] hover:text-[#10251D] border border-white/20 rounded-xl transition cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to FU MARKET</span>
+              <span className="hidden sm:inline">Back to NIGERIA CAMPUS MARKET</span>
             </button>
             <div>
               <h1 className="text-sm sm:text-base font-black text-[#D4A62A] tracking-tight">
@@ -726,7 +726,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
                   {editingRequest ? 'Edit Student Request' : 'Post What You Need'}
                 </h3>
                 <p className="text-[11px] text-white/85">
-                  Visible to genuine {modalInst.shortName} students on FU MARKET
+                  Visible to genuine {modalInst.shortName} students on NIGERIA CAMPUS MARKET
                 </p>
               </div>
               <button
@@ -1007,7 +1007,7 @@ export const WhatStudentsNeedPage: React.FC<WhatStudentsNeedPageProps> = ({
           setWhatsapp(logged.whatsappNumber || logged.phone || '');
         }}
         initialData={student}
-        title="Verify Student Identity — FU MARKET"
+        title="Verify Student Identity — NIGERIA CAMPUS MARKET"
         subtitle="Enter your name and student matric number to post requests and chat directly with other students."
       />
     </div>

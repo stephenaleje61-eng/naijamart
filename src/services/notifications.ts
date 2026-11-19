@@ -68,13 +68,15 @@ export function subscribeToUserNotifications(
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(60)
+      limit(80)
     );
     return onSnapshot(
       q,
       (snap) => {
-        const list = snap.docs.map((d) => sanitizeNotification(d.id, d.data()));
+        const list = snap.docs
+          .map((d) => sanitizeNotification(d.id, d.data()))
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+          .slice(0, 60);
         try {
           localStorage.setItem(`${LOCAL_NOTIFS_PREFIX}${userId}`, JSON.stringify(list));
         } catch {

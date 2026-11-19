@@ -624,7 +624,7 @@ export interface PublicAuthorProfile {
 }
 
 // ============================================================================
-// FU MARKET ADS & CEO MASTER CONTROL SYSTEM
+// NIGERIA CAMPUS MARKET NATIONWIDE ADVERTISING & REQUEST INBOX SYSTEM
 // ============================================================================
 export type AdPackageId = 'basic' | 'premium' | 'featured';
 
@@ -638,14 +638,49 @@ export interface AdvertisingPackage {
   featuredPosition?: boolean;
 }
 
-export type AdStatus = 'pending_approval' | 'active' | 'paused' | 'rejected' | 'expired';
+export type AdStatus =
+  | 'pending_approval'
+  | 'active'
+  | 'paused'
+  | 'unpublished'
+  | 'rejected'
+  | 'expired';
 export type AdPaymentStatus = 'unpaid' | 'pending_verification' | 'paid' | 'failed';
 export type AdPlacement =
+  | 'homepage_featured'
+  | 'marketplace_sponsored'
+  | 'university_homepage'
+  | 'campus_announcements'
+  | 'category_feed'
+  | 'community_feed'
   | 'ads_section'
   | 'homepage_hero'
-  | 'category_feed'
   | 'institution_spotlight';
-export type AdVisibilityScope = 'all_institutions' | 'specific_institution';
+
+export type AdVisibilityScope =
+  | 'all_institutions'
+  | 'federal_universities'
+  | 'state_universities'
+  | 'private_universities'
+  | 'selected_universities'
+  | 'selected_campuses'
+  | 'specific_institution'
+  | 'specific_communities';
+
+export type AdType =
+  | 'business_ad'
+  | 'product_ad'
+  | 'company_promotion'
+  | 'university_announcement'
+  | 'school_event'
+  | 'scholarship'
+  | 'job_ad'
+  | 'hostel_ad'
+  | 'business_opening'
+  | 'special_offer'
+  | 'sponsored_post'
+  | 'public_notice'
+  | 'general_promotion';
 
 export interface Advertisement {
   id: string;
@@ -654,14 +689,21 @@ export interface Advertisement {
   phone: string;
   whatsappNumber: string;
   businessCategory: string;
+  adType?: AdType;
   title: string;
   description: string;
   imageUrl: string;
+  images?: string[];
   logoUrl?: string;
+  videoUrl?: string;
   location: string;
   institutionId?: string;
   campus?: string;
+  targetInstitutionIds?: string[];
+  targetCampuses?: string[];
   placement?: AdPlacement;
+  targetPlacements?: AdPlacement[];
+  targetCategoryId?: string;
   visibilityScope?: AdVisibilityScope;
   createdByCeoEmail?: string;
   packageId: AdPackageId;
@@ -670,10 +712,12 @@ export interface Advertisement {
   durationDays: number;
   websiteOrSocialLink?: string;
   ownerUid?: string;
+  sourceRequestId?: string;
   status: AdStatus;
   paymentStatus: AdPaymentStatus;
   paymentReference?: string;
   isFeatured: boolean;
+  isPinned?: boolean;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
@@ -689,6 +733,32 @@ export interface Advertisement {
   verifiedByCeoAt?: string;
   verifiedByCeoEmail?: string;
   verificationNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdvertisingRequestStatus = 'pending' | 'approved' | 'rejected' | 'converted';
+
+export interface AdvertisingRequest {
+  id: string;
+  advertiserName: string;
+  businessName: string;
+  phone: string;
+  whatsappNumber?: string;
+  email?: string;
+  category: string;
+  adType?: AdType;
+  message: string;
+  targetAudience?: AdVisibilityScope;
+  targetInstitutionId?: string;
+  preferredPackageId?: AdPackageId;
+  attachments?: string[];
+  ownerUid?: string;
+  status: AdvertisingRequestStatus;
+  adminReply?: string;
+  adminNotes?: string;
+  repliedAt?: string;
+  convertedAdId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -760,6 +830,7 @@ export type WebsiteContentFilterKey =
   | 'all'
   | 'products'
   | 'services'
+  | 'accommodation'
   | 'advertisements'
   | 'events'
   | 'announcements'
@@ -767,6 +838,7 @@ export type WebsiteContentFilterKey =
   | 'emergency'
   | 'business_listings'
   | 'student_posts'
+  | 'groups_messages'
   | 'comments'
   | 'other';
 

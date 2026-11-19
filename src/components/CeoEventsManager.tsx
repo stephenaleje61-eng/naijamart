@@ -223,7 +223,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
     ...(eventTime.trim() ? { eventTime: eventTime.trim() } : {}),
     venue: venue.trim() || 'FUWUKARI Campus Venue',
     description:
-      description.trim() || 'Event description will appear here cleanly for all FU MARKET visitors.',
+      description.trim() || 'Event description will appear here cleanly for all NIGERIA CAMPUS MARKET visitors.',
     ...(additionalInfo.trim() ? { additionalInfo: additionalInfo.trim() } : {}),
     photoUrl: photoUrl || '',
     status: publishMode === 'draft' ? 'draft' : 'published',
@@ -321,7 +321,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             ? 'Announcement saved as draft.'
             : publishMode === 'schedule'
             ? 'Announcement scheduled successfully!'
-            : 'Announcement published live on FU MARKET!'
+            : 'Announcement published live on NIGERIA CAMPUS MARKET!'
         );
       }
 
@@ -343,7 +343,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
       await updateEventInFirestore(ev, { status: nextStatus, publishAt: '' });
       setSuccessMsg(
         nextStatus === 'published'
-          ? `"${ev.celebrantName}" is now published on FU MARKET.`
+          ? `"${ev.celebrantName}" is now published on NIGERIA CAMPUS MARKET.`
           : `"${ev.celebrantName}" moved to drafts (hidden from public).`
       );
       await refreshVerificationAndEvents();
@@ -381,7 +381,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
           CEO Access Required
         </h3>
         <p className="text-xs text-[#4B5563]">
-          Only the authorized FU MARKET CEO can create, edit, schedule, or delete Birthday &amp; Events announcements.
+          Only the authorized NIGERIA CAMPUS MARKET CEO can create, edit, schedule, or delete Birthday &amp; Events announcements.
         </p>
         {onClose && (
           <button
@@ -803,7 +803,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
               Manage All Announcements ({events.length})
             </h3>
             <p className="text-[11px] text-[#6B7280]">
-              Publish, unpublish, schedule, edit, or delete FU MARKET Birthday &amp; Events entries.
+              Publish, unpublish, schedule, edit, or delete NIGERIA CAMPUS MARKET Birthday &amp; Events entries.
             </p>
           </div>
 
@@ -978,7 +978,7 @@ export const CeoEventsManager: React.FC<CeoEventsManagerProps> = ({
             </div>
             <div>
               <h2 className="font-display text-base sm:text-lg font-black text-white">
-                FU MARKET CEO — Birthday &amp; Events Publishing Centre
+                NIGERIA CAMPUS MARKET CEO — Birthday &amp; Events Publishing Centre
               </h2>
               <p className="text-[11px] text-white/80">
                 Authorized CEO Account ({user?.email || CEO_EMAIL})

@@ -291,7 +291,7 @@
     },
     "Advertisement": {
       "title": "Advertisement",
-      "description": "Sponsored business or event advertisement submitted to FU MARKET ADS",
+      "description": "Nationwide & campus-targeted sponsored advertisement or announcement published by the Admin",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
@@ -300,15 +300,42 @@
         "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
         "whatsappNumber": { "type": "string", "minLength": 5, "maxLength": 40 },
         "businessCategory": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "adType": {
+          "type": "string",
+          "enum": [
+            "business_ad", "product_ad", "company_promotion", "university_announcement",
+            "school_event", "scholarship", "job_ad", "hostel_ad", "business_opening",
+            "special_offer", "sponsored_post", "public_notice", "general_promotion"
+          ]
+        },
         "title": { "type": "string", "minLength": 1, "maxLength": 180 },
         "description": { "type": "string", "minLength": 1, "maxLength": 4000 },
         "imageUrl": { "type": "string", "minLength": 1, "maxLength": 900000 },
+        "images": { "type": "array" },
         "logoUrl": { "type": "string", "maxLength": 900000 },
+        "videoUrl": { "type": "string", "maxLength": 600 },
         "location": { "type": "string", "minLength": 1, "maxLength": 180 },
         "institutionId": { "type": "string", "maxLength": 128 },
         "campus": { "type": "string", "maxLength": 120 },
-        "placement": { "type": "string", "enum": ["ads_section", "homepage_hero", "category_feed", "institution_spotlight"] },
-        "visibilityScope": { "type": "string", "enum": ["all_institutions", "specific_institution"] },
+        "targetInstitutionIds": { "type": "array" },
+        "targetCampuses": { "type": "array" },
+        "placement": {
+          "type": "string",
+          "enum": [
+            "homepage_featured", "marketplace_sponsored", "university_homepage",
+            "campus_announcements", "category_feed", "community_feed",
+            "ads_section", "homepage_hero", "institution_spotlight"
+          ]
+        },
+        "targetPlacements": { "type": "array" },
+        "targetCategoryId": { "type": "string", "maxLength": 100 },
+        "visibilityScope": {
+          "type": "string",
+          "enum": [
+            "all_institutions", "federal_universities", "state_universities", "private_universities",
+            "selected_universities", "selected_campuses", "specific_institution", "specific_communities"
+          ]
+        },
         "createdByCeoEmail": { "type": "string", "maxLength": 160 },
         "packageId": { "type": "string", "enum": ["basic", "premium", "featured"] },
         "packageName": { "type": "string", "maxLength": 80 },
@@ -316,10 +343,12 @@
         "durationDays": { "type": "number" },
         "websiteOrSocialLink": { "type": "string", "maxLength": 500 },
         "ownerUid": { "type": "string", "maxLength": 128 },
-        "status": { "type": "string", "enum": ["pending_approval", "active", "paused", "rejected", "expired"] },
+        "sourceRequestId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending_approval", "active", "paused", "unpublished", "rejected", "expired"] },
         "paymentStatus": { "type": "string", "enum": ["unpaid", "pending_verification", "paid", "failed"] },
         "paymentReference": { "type": "string", "maxLength": 160 },
         "isFeatured": { "type": "boolean" },
+        "isPinned": { "type": "boolean" },
         "isDeleted": { "type": "boolean" },
         "deletedAt": { "type": "string", "maxLength": 64 },
         "deletedBy": { "type": "string", "maxLength": 160 },
@@ -339,6 +368,35 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "businessName", "ownerName", "phone", "whatsappNumber", "businessCategory", "title", "description", "imageUrl", "location", "packageId", "packagePrice", "durationDays", "status", "paymentStatus", "isFeatured", "impressions", "clicks", "whatsappClicks", "createdAt", "updatedAt"]
+    },
+    "AdvertisingRequest": {
+      "title": "AdvertisingRequest",
+      "description": "Public business/organization advertising request submitted to the Admin Inbox",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "advertiserName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "whatsappNumber": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 160 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "adType": { "type": "string", "maxLength": 60 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "targetAudience": { "type": "string", "maxLength": 60 },
+        "targetInstitutionId": { "type": "string", "maxLength": 128 },
+        "preferredPackageId": { "type": "string", "enum": ["basic", "premium", "featured"] },
+        "attachments": { "type": "array" },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "converted"] },
+        "adminReply": { "type": "string", "maxLength": 2000 },
+        "adminNotes": { "type": "string", "maxLength": 1000 },
+        "repliedAt": { "type": "string", "maxLength": 64 },
+        "convertedAdId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "advertiserName", "businessName", "phone", "category", "message", "status", "createdAt", "updatedAt"]
     },
     "AdPayment": {
       "title": "AdPayment",
@@ -1252,7 +1310,11 @@
     },
     "/advertisements/{adId}": {
       "schema": "Advertisement",
-      "description": "FU MARKET ADS sponsored business and event advertisements"
+      "description": "Nationwide & campus-targeted sponsored business advertisements and announcements"
+    },
+    "/advertisingRequests/{requestId}": {
+      "schema": "AdvertisingRequest",
+      "description": "Public business advertising requests inbox managed by Super Admin"
     },
     "/adPayments/{paymentId}": {
       "schema": "AdPayment",

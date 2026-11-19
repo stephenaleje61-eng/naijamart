@@ -402,7 +402,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
             </button>
           </div>
           <p className="text-xs text-[#444444] leading-relaxed">
-            <strong>FU MARKET CEO MASTER CONTROL</strong> is strictly restricted to the authorized administrator Google account ({CEO_EMAIL}).
+            <strong>NIGERIA CAMPUS MARKET CEO MASTER CONTROL</strong> is strictly restricted to the authorized administrator Google account ({CEO_EMAIL}).
           </p>
           <button
             type="button"
@@ -421,14 +421,14 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
       className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
-      aria-label="FU MARKET CEO MASTER CONTROL"
+      aria-label="NIGERIA CAMPUS MARKET CEO MASTER CONTROL"
     >
       <div className="relative w-full max-w-7xl bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl overflow-hidden max-h-[94vh] flex flex-col text-[#10251D]">
         {/* Header */}
         <div className="bg-[#10251D] text-white px-5 py-4 flex items-center justify-between gap-4 border-b border-[#27272A] shrink-0">
           <div className="min-w-0">
             <h2 className="text-base sm:text-lg font-black text-[#D4A62A] tracking-tight truncate">
-              FU MARKET CEO MASTER CONTROL
+              NIGERIA CAMPUS MARKET CEO MASTER CONTROL
             </h2>
             <p className="text-xs text-white/75 truncate">
               Signed in as {user?.email || CEO_EMAIL} · Central Content, Advertising, Payment &amp; Audit Control
@@ -912,7 +912,7 @@ export const CeoMasterControlModal: React.FC<CeoMasterControlModalProps> = ({
                               setErrorMsg(null);
                               try {
                                 await adminApproveAndActivateAd(ad);
-                                flash(`Activated "${ad.businessName}" on FU MARKET ADS.`);
+                                flash(`Activated "${ad.businessName}" on NIGERIA CAMPUS MARKET ADS.`);
                                 await loadMasterData();
                                 onDataChanged?.();
                               } catch (err: any) {

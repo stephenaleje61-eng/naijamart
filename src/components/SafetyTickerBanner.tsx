@@ -9,7 +9,7 @@ export const SafetyTickerBanner: React.FC = () => {
     <div
       role="region"
       aria-label="NIGERIA CAMPUS MARKET Payment Safety Notice"
-      className="w-full overflow-hidden bg-[#10251D] text-[#D4A62A] border-b-2 border-[#D4A62A] py-1.5 fu-marquee-container select-none"
+      className="w-full overflow-hidden bg-[#202B26] text-[#F2C94C] border-b-2 border-[#F2C94C] py-1.5 fu-marquee-container select-none"
     >
       <div className="fu-marquee-track flex items-center">
         {[0, 1].map((copyIndex) => (
@@ -19,7 +19,7 @@ export const SafetyTickerBanner: React.FC = () => {
             className="flex items-center shrink-0 gap-4 sm:gap-6 pr-6 sm:pr-10"
           >
             <span className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-black tracking-wide uppercase whitespace-nowrap">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D4A62A] shrink-0" aria-hidden="true" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#F2C94C] shrink-0" aria-hidden="true" />
               <span>{SAFETY_ANNOUNCEMENT_TEXT}</span>
             </span>
             <span className="text-[#FFFFFF]/60 text-xs font-black" aria-hidden="true">

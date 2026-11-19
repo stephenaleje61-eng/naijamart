@@ -620,7 +620,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-[#D9E5DF] p-8 flex flex-col items-center justify-center gap-3 text-xs font-bold text-[#10251D]">
-        <Loader2 className="w-6 h-6 text-[#087443] animate-spin" />
+        <Loader2 className="w-6 h-6 text-[#075B3B] animate-spin" />
         <span>Aggregating live NIGERIA CAMPUS MARKET statistics from database...</span>
       </div>
     );
@@ -634,7 +634,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
           <button
             type="button"
             onClick={loadFullAnalytics}
-            className="px-3 py-1.5 rounded-lg bg-[#087443] text-white font-black text-[11px] inline-flex items-center gap-1"
+            className="px-3 py-1.5 rounded-lg bg-[#075B3B] text-white font-black text-[11px] inline-flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
             Retry
@@ -646,7 +646,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#D9E5DF] shadow-xs">
         <div>
           <h2 className="text-base sm:text-lg font-black text-[#10251D] flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[#087443]" />
+            <BarChart3 className="w-5 h-5 text-[#075B3B]" />
             <span>
               {mode === 'ceo' ? 'CEO Live Platform Overview & Analytics' : 'Live Platform Overview & Analytics'}
             </span>
@@ -658,7 +658,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
         <button
           type="button"
           onClick={loadFullAnalytics}
-          className="px-3.5 py-2 rounded-xl bg-[#F4F8F5] hover:bg-[#087443] hover:text-white border border-[#D9E5DF] text-[#087443] text-xs font-black inline-flex items-center gap-1.5 transition cursor-pointer"
+          className="px-3.5 py-2 rounded-xl bg-[#F4F8F5] hover:bg-[#075B3B] hover:text-white border border-[#D9E5DF] text-[#075B3B] text-xs font-black inline-flex items-center gap-1.5 transition cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Sync Live Stats</span>
@@ -674,7 +674,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
               key={card.label}
               className={`rounded-2xl p-4 border shadow-xs transition ${
                 card.highlight
-                  ? 'bg-gradient-to-br from-[#10251D] to-[#087443] text-white border-[#087443]'
+                  ? 'bg-gradient-to-br from-[#10251D] to-[#075B3B] text-white border-[#075B3B]'
                   : 'bg-white text-[#10251D] border-[#E5E7EB]'
               }`}
             >
@@ -688,7 +688,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                 </span>
                 <div
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    card.highlight ? 'bg-[#D4A62A] text-[#10251D]' : 'bg-[#F4F8F5] text-[#087443]'
+                    card.highlight ? 'bg-[#D4A62A] text-[#10251D]' : 'bg-[#F4F8F5] text-[#075B3B]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -732,7 +732,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                   onClick={() => setChartPeriod(period)}
                   className={`px-2.5 py-1 rounded-lg capitalize transition cursor-pointer ${
                     chartPeriod === period
-                      ? 'bg-[#087443] text-white'
+                      ? 'bg-[#075B3B] text-white'
                       : 'text-[#555555] hover:text-[#10251D]'
                   }`}
                 >
@@ -767,7 +767,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                         width={26}
                         height={Math.max(4, barHeight)}
                         rx={6}
-                        fill={bucket.count > 0 ? '#087443' : '#E5E7EB'}
+                        fill={bucket.count > 0 ? '#075B3B' : '#E5E7EB'}
                       />
                       {bucket.count > 0 && (
                         <text
@@ -808,7 +808,7 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                 Persisted visits &amp; visitor device breakdown
               </p>
             </div>
-            <span className="text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#F4F8F5] text-[#087443] border border-[#D9E5DF]">
+            <span className="text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#F4F8F5] text-[#075B3B] border border-[#D9E5DF]">
               Today: {visitors.todayVisits} visits
             </span>
           </div>
@@ -881,14 +881,14 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                 <div key={dev.key} className="p-2.5 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB] text-xs">
                   <div className="flex items-center justify-between text-[#10251D] font-bold">
                     <span className="inline-flex items-center gap-1">
-                      <Icon className="w-3.5 h-3.5 text-[#087443]" />
+                      <Icon className="w-3.5 h-3.5 text-[#075B3B]" />
                       {dev.label}
                     </span>
                     <span className="tabular-nums">{dev.count}</span>
                   </div>
                   <div className="h-1.5 bg-white rounded-full mt-1.5 overflow-hidden">
                     <div
-                      className="h-full bg-[#087443] rounded-full"
+                      className="h-full bg-[#075B3B] rounded-full"
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
@@ -924,13 +924,13 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                         {uni.shortName}{' '}
                         <span className="font-normal text-[#555555]">— {uni.name}</span>
                       </span>
-                      <span className="font-black text-[#087443] tabular-nums shrink-0">
+                      <span className="font-black text-[#075B3B] tabular-nums shrink-0">
                         {uni.total} total
                       </span>
                     </div>
                     <div className="h-2.5 bg-[#F4F8F5] rounded-full overflow-hidden border border-[#E5E7EB]">
                       <div
-                        className="h-full bg-gradient-to-r from-[#087443] to-[#D4A62A] rounded-full"
+                        className="h-full bg-gradient-to-r from-[#075B3B] to-[#D4A62A] rounded-full"
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>
@@ -964,13 +964,13 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
                   <div key={cat.id} className="space-y-1 text-xs">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-[#10251D] truncate">{cat.name}</span>
-                      <span className="text-[11px] font-black text-[#087443] tabular-nums shrink-0">
+                      <span className="text-[11px] font-black text-[#075B3B] tabular-nums shrink-0">
                         {cat.count} items · {cat.views.toLocaleString()} views
                       </span>
                     </div>
                     <div className="h-2.5 bg-[#F4F8F5] rounded-full overflow-hidden border border-[#E5E7EB]">
                       <div
-                        className="h-full bg-[#087443] rounded-full"
+                        className="h-full bg-[#075B3B] rounded-full"
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>

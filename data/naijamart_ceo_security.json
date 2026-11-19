@@ -1,6 +1,17 @@
 {
   "securityLogs": [
     {
+      "id": "ceosec_1795102472892_njebke",
+      "eventType": "UNAUTHORIZED_CEO_ACCESS",
+      "severity": "warning",
+      "actorEmail": "anonymous",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.8059.12 Safari/537.36",
+      "targetId": "/ceo-admin",
+      "summary": "Blocked unauthorized or unauthenticated direct access to /ceo-admin route.",
+      "createdAt": "2026-11-19T15:34:32.892Z"
+    },
+    {
       "id": "ceosec_1794732417944_y1gzg1",
       "eventType": "UNAUTHORIZED_CEO_ACCESS",
       "severity": "critical",
@@ -177,9 +188,11 @@
   },
   "gradingConfigs": {},
   "visitorAnalytics": {
-    "lifetimeVisits": 1,
+    "lifetimeVisits": 24,
     "uniqueVisitorIds": [
-      "verify-test-1"
+      "verify-test-1",
+      "20fdccef-bf69-4b80-a90d-12c3ebadbb3c",
+      "5ad8708c-e54c-473a-8841-ae0086f17162"
     ],
     "dailyBuckets": {
       "2026-11-18": {
@@ -192,6 +205,19 @@
         "iphone": 0,
         "ipad": 0,
         "desktop": 0,
+        "other": 0
+      },
+      "2026-11-19": {
+        "date": "2026-11-19",
+        "totalVisits": 23,
+        "uniqueVisitorIds": [
+          "20fdccef-bf69-4b80-a90d-12c3ebadbb3c",
+          "5ad8708c-e54c-473a-8841-ae0086f17162"
+        ],
+        "android": 0,
+        "iphone": 0,
+        "ipad": 0,
+        "desktop": 23,
         "other": 0
       }
     }
