@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { AccountType, Institution, User } from '../types.js';
 import { upsertInstitutionUserProfile } from '../services/institutions.js';
-import { DEFAULT_INSTITUTION_ID, getInstitutionById } from '../constants/institutions.js';
+import { findInstitutionById, getInstitutionById } from '../constants/institutions.js';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ interface UserProfileModalProps {
   selectedInstitutionId: string;
   selectedCampus: string;
   onProfileSaved: (updatedUser: User, institutionId: string, campus: string) => void;
+  onOpenFullSettings?: () => void;
   onRequireLogin?: () => void;
 }
 
@@ -42,6 +43,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   selectedInstitutionId,
   selectedCampus,
   onProfileSaved,
+  onOpenFullSettings,
   onRequireLogin
 }) => {
   const [name, setName] = useState('');
@@ -49,7 +51,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('student');
   const [department, setDepartment] = useState('');
-  const [institutionId, setInstitutionId] = useState(selectedInstitutionId || DEFAULT_INSTITUTION_ID);
+  const [institutionId, setInstitutionId] = useState(
+    selectedInstitutionId && selectedInstitutionId !== 'all' ? selectedInstitutionId : ''
+  );
   const [campus, setCampus] = useState(selectedCampus || '');
   const [preferredContactMethod, setPreferredContactMethod] = useState<'whatsapp' | 'phone' | 'both'>('whatsapp');
   const [saving, setSaving] = useState(false);
@@ -65,16 +69,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setWhatsappNumber(currentUser?.whatsappNumber || currentUser?.phone || '');
     setAccountType(currentUser?.accountType || (currentUser?.role === 'seller' ? 'seller' : 'student'));
     setDepartment(currentUser?.department || '');
-    const instId = currentUser?.institutionId || selectedInstitutionId || DEFAULT_INSTITUTION_ID;
+    const rawInst = currentUser?.institutionId || selectedInstitutionId;
+    const instId = rawInst && rawInst !== 'all' ? rawInst : '';
     setInstitutionId(instId);
-    const inst = getInstitutionById(instId, institutions);
-    setCampus(currentUser?.campus || selectedCampus || inst.campus || inst.campuses[0] || '');
+    const inst = findInstitutionById(instId, institutions);
+    setCampus(currentUser?.campus || selectedCampus || inst?.campus || inst?.campuses[0] || '');
     setPreferredContactMethod(currentUser?.preferredContactMethod || 'whatsapp');
   }, [isOpen, currentUser, selectedInstitutionId, selectedCampus, institutions]);
 
   if (!isOpen) return null;
 
-  const chosenInstitution = getInstitutionById(institutionId, institutions);
+  const chosenInstitution = institutionId ? findInstitutionById(institutionId, institutions) : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,8 +104,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         email: currentUser.email,
         phone: phone.trim(),
         whatsappNumber: whatsappNumber.trim() || phone.trim(),
-        institutionId,
-        campus: campus || chosenInstitution.campus,
+        institutionId: institutionId || '',
+        campus: campus || chosenInstitution?.campus || '',
         accountType,
         department: department.trim(),
         preferredContactMethod
@@ -263,11 +268,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     onChange={(e) => {
                       const nextId = e.target.value;
                       setInstitutionId(nextId);
-                      const inst = getInstitutionById(nextId, institutions);
-                      setCampus(inst.campus || inst.campuses[0] || '');
+                      const inst = nextId ? getInstitutionById(nextId, institutions) : undefined;
+                      setCampus(inst?.campus || inst?.campuses[0] || '');
                     }}
                     className="w-full px-3 py-2 border border-gray-300 focus:border-[#087443] rounded-xl text-sm text-[#10251D] bg-white outline-none"
                   >
+                    <option value="">-- Select University / Institution --</option>
                     {institutions.map((inst) => (
                       <option key={inst.id} value={inst.id}>
                         {inst.name} ({inst.state})
@@ -281,9 +287,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <select
                     value={campus}
                     onChange={(e) => setCampus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 focus:border-[#087443] rounded-xl text-sm text-[#10251D] bg-white outline-none"
+                    disabled={!chosenInstitution}
+                    className="w-full px-3 py-2 border border-gray-300 focus:border-[#087443] rounded-xl text-sm text-[#10251D] bg-white outline-none disabled:bg-gray-50"
                   >
-                    {chosenInstitution.campuses.map((c) => (
+                    <option value="">{chosenInstitution ? 'Select Campus' : 'Select institution first'}</option>
+                    {(chosenInstitution?.campuses || []).map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -309,22 +317,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-gray-300 text-xs font-bold text-[#10251D] hover:bg-gray-50 cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-extrabold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
-                >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {saving ? 'Saving Profile...' : 'Save Profile Changes'}
-                </button>
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-2.5 border-t border-gray-100">
+                {onOpenFullSettings ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenFullSettings();
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-[#F4F8F5] hover:bg-emerald-50 border border-[#087443]/25 text-xs font-extrabold text-[#087443] cursor-pointer"
+                  >
+                    Open Full Settings &amp; Privacy
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl border border-gray-300 text-xs font-bold text-[#10251D] hover:bg-gray-50 cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-5 py-2.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-extrabold flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {saving ? 'Saving Profile...' : 'Save Profile Changes'}
+                  </button>
+                </div>
               </div>
             </>
           )}

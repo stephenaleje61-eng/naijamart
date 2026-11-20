@@ -53,6 +53,12 @@ import {
   unblockUserInChat,
   reportPrivateConversation
 } from '../services/messagingSafety.js';
+import {
+  canMessageTargetUser,
+  shouldIncludeInPeopleSearch,
+  shouldShowTargetOnlineStatus,
+  shouldShowTargetUniversity
+} from '../utils/privacy.js';
 
 export interface DirectChatTarget {
   id: string;
@@ -136,7 +142,8 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       setStudent({
         id: authUser.id,
         name: authUser.name,
-        matricNumber: student?.matricNumber || 'FUW-STUDENT',
+        matricNumber: authUser.matricNumber || student?.matricNumber || '',
+        institutionId: authUser.institutionId,
         phone: authUser.phone || authUser.whatsappNumber,
         whatsappNumber: authUser.whatsappNumber,
         isOnline: true,
@@ -257,6 +264,20 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       return;
     }
     setActionError(null);
+    const targetUser = allUsers.find((u) => u.id === target.id);
+    if (targetUser) {
+      const viewer = authUser || {
+        id: student.id,
+        institutionId: student.institutionId,
+        role: 'buyer' as const
+      };
+      const isConnected = friends.some((f) => f.userId === target.id);
+      const msgCheck = canMessageTargetUser(targetUser, viewer, isConnected);
+      if (!msgCheck.allowed) {
+        setActionError(msgCheck.reason || 'This user has restricted who can message them.');
+        return;
+      }
+    }
     try {
       const chatId = await openOrCreateDirectChat(
         { id: student.id, name: student.name, matricNumber: student.matricNumber },
@@ -473,12 +494,15 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
 
   const filteredDiscoverUsers = allUsers.filter((u) => {
     if (friendIds.includes(u.id)) return false;
+    if (!shouldIncludeInPeopleSearch(u, student?.id)) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
+    const canShowUni = shouldShowTargetUniversity(u, student?.id);
     return (
       u.name.toLowerCase().includes(q) ||
-      (u.matricNumber && u.matricNumber.toLowerCase().includes(q)) ||
-      (u.department && u.department.toLowerCase().includes(q))
+      (u.username && u.username.toLowerCase().includes(q)) ||
+      (canShowUni && u.matricNumber && u.matricNumber.toLowerCase().includes(q)) ||
+      (canShowUni && u.department && u.department.toLowerCase().includes(q))
     );
   });
 
@@ -911,7 +935,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               <GraduationCap className="w-12 h-12 text-[#087443] mx-auto mb-3" />
               <h3 className="text-base font-black text-[#10251D]">Sign in to message students &amp; sellers</h3>
               <p className="text-xs text-[#555555] mt-1 mb-5">
-                Enter your FUWUKARI name and matric number to view your direct chats, friend requests, and campus peers.
+                Enter your campus name and details to view your direct chats, friend requests, and campus peers.
               </p>
               <button
                 onClick={() => setShowLoginModal(true)}
@@ -935,14 +959,14 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                         onClick={() => setActiveTab('discover')}
                         className="px-5 py-2.5 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl"
                       >
-                        Browse FUWUKARI Students
+                        Browse Campus Students
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-2.5">
                       {directChats.map((chat) => {
                         const peerId = chat.participants.find((p) => p !== student.id) || chat.participants[0];
-                        const peerName = chat.participantNames?.[peerId] || 'FUWUKARI Student';
+                        const peerName = chat.participantNames?.[peerId] || 'Campus Peer';
                         const peerMatric = chat.participantMatrics?.[peerId];
                         return (
                           <div
@@ -1003,43 +1027,55 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {friends.map((f) => (
-                        <div
-                          key={f.id}
-                          onClick={() =>
-                            setActivePeer({
-                              userId: f.userId,
-                              name: f.name,
-                              matricNumber: f.matricNumber,
-                              chatId: f.chatId,
-                              isOnline: f.isOnline
-                            })
-                          }
-                          className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#E5E7EB] hover:border-[#087443] cursor-pointer flex items-center justify-between shadow-xs"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="relative">
-                              <div className="w-11 h-11 rounded-full bg-[#087443]/10 border border-[#087443] text-[#087443] font-black flex items-center justify-center uppercase">
-                                {f.name.charAt(0)}
+                      {friends.map((f) => {
+                        const peerRecord = allUsers.find((u) => u.id === f.userId);
+                        const canShowOnline = peerRecord
+                          ? shouldShowTargetOnlineStatus(peerRecord, student?.id)
+                          : true;
+                        const canShowUni = peerRecord
+                          ? shouldShowTargetUniversity(peerRecord, student?.id)
+                          : true;
+                        return (
+                          <div
+                            key={f.id}
+                            onClick={() =>
+                              setActivePeer({
+                                userId: f.userId,
+                                name: f.name,
+                                matricNumber: canShowUni ? f.matricNumber : undefined,
+                                chatId: f.chatId,
+                                isOnline: canShowOnline ? f.isOnline : undefined
+                              })
+                            }
+                            className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#E5E7EB] hover:border-[#087443] cursor-pointer flex items-center justify-between shadow-xs"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="relative">
+                                <div className="w-11 h-11 rounded-full bg-[#087443]/10 border border-[#087443] text-[#087443] font-black flex items-center justify-center uppercase">
+                                  {f.name.charAt(0)}
+                                </div>
+                                {canShowOnline && (
+                                  <span
+                                    className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-[#FFFFFF] rounded-full ${
+                                      f.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
+                                    }`}
+                                  />
+                                )}
                               </div>
-                              <span
-                                className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-[#FFFFFF] rounded-full ${
-                                  f.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
-                                }`}
-                              />
+                              <div className="min-w-0">
+                                <h4 className="text-sm font-black text-[#10251D] truncate">{f.name}</h4>
+                                <p className="text-[11px] text-[#555555]">
+                                  {canShowOnline ? (f.isOnline ? 'Online' : 'Offline') : 'Campus Friend'}{' '}
+                                  {canShowUni && f.matricNumber ? `• ${f.matricNumber}` : ''}
+                                </p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <h4 className="text-sm font-black text-[#10251D] truncate">{f.name}</h4>
-                              <p className="text-[11px] text-[#555555]">
-                                {f.isOnline ? 'Online' : 'Offline'} {f.matricNumber ? `• ${f.matricNumber}` : ''}
-                              </p>
-                            </div>
+                            <span className="px-3 py-1.5 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl">
+                              Chat
+                            </span>
                           </div>
-                          <span className="px-3 py-1.5 bg-[#D4A62A] text-[#10251D] text-xs font-black rounded-xl">
-                            Chat
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1124,6 +1160,8 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {filteredDiscoverUsers.map((target) => {
                         const isPending = pendingOutgoingIds.includes(target.id);
+                        const canShowOnline = shouldShowTargetOnlineStatus(target, student?.id);
+                        const canShowUni = shouldShowTargetUniversity(target, student?.id);
                         return (
                           <div
                             key={target.id}
@@ -1134,21 +1172,23 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                                 <div className="w-11 h-11 rounded-full bg-[#087443]/10 border border-[#087443]/30 text-[#087443] font-black flex items-center justify-center uppercase">
                                   {target.name.charAt(0)}
                                 </div>
-                                <span
-                                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-[#FFFFFF] ${
-                                    target.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
-                                  }`}
-                                />
+                                {canShowOnline && (
+                                  <span
+                                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-[#FFFFFF] ${
+                                      target.isOnline ? 'bg-[#087443]' : 'bg-[#9CA3AF]'
+                                    }`}
+                                  />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <h4 className="text-xs sm:text-sm font-black text-[#10251D] truncate">{target.name}</h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  {target.matricNumber && (
+                                  {canShowUni && target.matricNumber && (
                                     <span className="text-[10px] text-[#087443] font-mono font-bold">
                                       {target.matricNumber}
                                     </span>
                                   )}
-                                  {target.department && (
+                                  {canShowUni && target.department && (
                                     <span className="text-[10px] text-[#555555] truncate max-w-[120px]">
                                       {target.department}
                                     </span>
@@ -1163,7 +1203,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                                   handleOpenDirectConversation({
                                     id: target.id,
                                     name: target.name,
-                                    matricNumber: target.matricNumber
+                                    matricNumber: canShowUni ? target.matricNumber : undefined
                                   })
                                 }
                                 className="px-2.5 py-1.5 bg-[#087443] text-white text-xs font-bold rounded-xl"

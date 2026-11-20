@@ -113,7 +113,8 @@ export type StorageFolder =
   | 'scam_evidence'
   | 'student_posts'
   | 'student_verifications'
-  | 'appeal_evidence';
+  | 'appeal_evidence'
+  | 'chat_attachments';
 export type UploadStage = 'compressing' | 'uploading' | 'retrying' | 'finalizing';
 
 export interface UploadOptions {
@@ -262,14 +263,26 @@ async function executeSingleUploadAttempt(params: {
   storage: ReturnType<typeof getStorage>;
   bucket: string;
   storagePath: string;
-  file: File;
+  file: Blob;
+  contentType?: string;
   timeoutMs: number;
   signal?: AbortSignal;
   onProgress?: (percent: number) => void;
   onStageChange?: (stage: UploadStage, attempt?: number, maxAttempts?: number) => void;
   onTaskCreated?: (task: UploadTask) => void;
 }): Promise<string> {
-  const { storage, bucket, storagePath, file, timeoutMs, signal, onProgress, onStageChange, onTaskCreated } = params;
+  const {
+    storage,
+    bucket,
+    storagePath,
+    file,
+    contentType,
+    timeoutMs,
+    signal,
+    onProgress,
+    onStageChange,
+    onTaskCreated
+  } = params;
 
   if (signal?.aborted) {
     throw new Error('Upload cancelled.');
@@ -277,7 +290,7 @@ async function executeSingleUploadAttempt(params: {
 
   const fileRef = ref(storage, storagePath);
   const metadata = {
-    contentType: 'image/jpeg',
+    contentType: contentType || (file as File).type || 'image/jpeg',
     cacheControl: 'public, max-age=31536000'
   };
 
@@ -787,6 +800,150 @@ export async function uploadCeoVerificationLogo(
     allowPersistentFallback: true
   });
 }
+
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain'
+]);
+
+const ALLOWED_DOCUMENT_EXTS = new Set(['pdf', 'doc', 'docx', 'txt']);
+
+function readBlobAsDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to encode attachment.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function uploadChatAttachment(
+  fileOrBlob: File | Blob,
+  params: {
+    kind: 'image' | 'document' | 'audio';
+    fileName?: string;
+    ownerId?: string;
+    onProgress?: (percent: number) => void;
+    onTaskCreated?: (task: UploadTask) => void;
+    signal?: AbortSignal;
+  }
+): Promise<UploadResult> {
+  const { kind, ownerId, onProgress, onTaskCreated, signal } = params;
+  const rawName = params.fileName || (fileOrBlob as File).name || (kind === 'audio' ? 'voice-note.webm' : 'attachment');
+
+  if (kind === 'image' && fileOrBlob instanceof File) {
+    return uploadImageToFirebaseStorage(fileOrBlob, {
+      folder: 'chat_attachments',
+      ownerId,
+      timeoutMs: 30000,
+      onProgress,
+      onTaskCreated,
+      signal,
+      allowPersistentFallback: true
+    });
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('No internet connection. Please reconnect and try sending your attachment.');
+  }
+
+  const maxBytes = 10 * 1024 * 1024;
+  if (fileOrBlob.size > maxBytes) {
+    throw new Error('Attachment must be 10MB or smaller.');
+  }
+
+  const ext = rawName.split('.').pop()?.toLowerCase() || '';
+  const mime = (fileOrBlob.type || '').toLowerCase();
+
+  if (kind === 'document') {
+    const isValidDoc = ALLOWED_DOCUMENT_TYPES.has(mime) || ALLOWED_DOCUMENT_EXTS.has(ext);
+    if (!isValidDoc) {
+      throw new Error('Only PDF, DOC, DOCX, or TXT files are allowed in campus chat.');
+    }
+  } else if (kind === 'audio') {
+    if (mime && !mime.startsWith('audio/')) {
+      throw new Error('Invalid voice note audio format.');
+    }
+  }
+
+  const contentType =
+    mime ||
+    (kind === 'audio'
+      ? 'audio/webm'
+      : ext === 'pdf'
+      ? 'application/pdf'
+      : ext === 'txt'
+      ? 'text/plain'
+      : 'application/octet-stream');
+
+  const effectiveOwner = auth.currentUser?.uid || ownerId || 'anonymous';
+  const ownerSegment = sanitizePathSegment(effectiveOwner, 'anonymous');
+  const safeBase = rawName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 60) || 'file';
+  const uniqueFileName = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safeBase}`;
+  const storagePath = `chat_attachments/${ownerSegment}/${uniqueFileName}`;
+
+  const tryInlineFallback = async (reasonErr: any): Promise<UploadResult> => {
+    // Keep inline Firestore document payload well within 1MB document limit
+    if (fileOrBlob.size > 480 * 1024) {
+      throw new Error(
+        kind === 'audio'
+          ? 'Voice note is too long while cloud media bucket is offline. Keep voice notes under ~25 seconds.'
+          : `${formatStorageErrorMessage(reasonErr)} Files over 450 KB require Firebase Storage enabled.`
+      );
+    }
+    onProgress?.(85);
+    const dataUrl = await readBlobAsDataUrl(fileOrBlob);
+    onProgress?.(100);
+    return {
+      downloadUrl: dataUrl,
+      storagePath: `firestore-fallback/${ownerSegment}/${uniqueFileName}`,
+      previewUrl: dataUrl,
+      fileName: rawName,
+      isFirebaseStorage: false,
+      isFallback: true,
+      payloadBytes: dataUrl.length
+    };
+  };
+
+  onProgress?.(10);
+  const { bucket, provisioned } = await resolveWorkingStorageBucket();
+  if (provisioned === false) {
+    const bucketErr: any = new Error(`Firebase Storage bucket (${bucket}) is not enabled yet.`);
+    bucketErr.code = 'storage/bucket-not-found';
+    return await tryInlineFallback(bucketErr);
+  }
+
+  const storage = getStorageInstance(bucket);
+  try {
+    const downloadUrl = await executeSingleUploadAttempt({
+      storage,
+      bucket,
+      storagePath,
+      file: fileOrBlob,
+      contentType,
+      timeoutMs: 30000,
+      signal,
+      onProgress,
+      onTaskCreated
+    });
+    return {
+      downloadUrl,
+      storagePath,
+      previewUrl: downloadUrl,
+      fileName: rawName,
+      isFirebaseStorage: true,
+      isFallback: false
+    };
+  } catch (err: any) {
+    if (!signal?.aborted && isFallbackEligibleError(err)) {
+      return await tryInlineFallback(err);
+    }
+    throw new Error(formatStorageErrorMessage(err));
+  }
+}
+
 
 
 

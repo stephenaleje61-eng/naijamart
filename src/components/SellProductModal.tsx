@@ -19,7 +19,7 @@ import {
   MapPin,
   Building2
 } from 'lucide-react';
-import { Category, Institution, Product } from '../types.js';
+import { Category, Institution, Product, UserSettingsDocument } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
   createProductListing,
@@ -50,6 +50,7 @@ interface SellProductModalProps {
   selectedInstitutionId?: string;
   selectedCampus?: string;
   institutions?: Institution[];
+  userSettings?: UserSettingsDocument;
   onClose: () => void;
   onSuccess: () => void;
   onRequireAuth?: () => void;
@@ -105,9 +106,10 @@ const CAMPUS_LOCATION_CHIPS = [
 
 export const SellProductModal: React.FC<SellProductModalProps> = ({
   categories,
-  selectedInstitutionId = DEFAULT_INSTITUTION_ID,
-  selectedCampus = DEFAULT_INSTITUTION_CAMPUS,
+  selectedInstitutionId = '',
+  selectedCampus = '',
   institutions = VERIFIED_NIGERIAN_INSTITUTIONS,
+  userSettings,
   onClose,
   onSuccess,
   onRequireAuth,
@@ -119,24 +121,48 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
   const activeCategories = categories.length > 0 ? categories : ALL_MARKETPLACE_CATEGORIES;
 
   const initialInstId =
-    selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId;
+    selectedInstitutionId && selectedInstitutionId !== 'all'
+      ? selectedInstitutionId
+      : user?.institutionId && user.institutionId !== 'all'
+      ? user.institutionId
+      : DEFAULT_INSTITUTION_ID;
   const initialInst = getInstitutionById(initialInstId, institutions);
 
   const [showBackendConfig, setShowBackendConfig] = useState(false);
   const [customBackendUrl, setCustomBackendUrl] = useState(getApiBaseUrl());
 
   const [institutionId, setInstitutionId] = useState(initialInst.id);
-  const [campus, setCampus] = useState(selectedCampus || initialInst.campus);
+  const [campus, setCampus] = useState(
+    userSettings?.marketplace?.defaultListingCampus ||
+      selectedCampus ||
+      user?.campus ||
+      initialInst.campus ||
+      DEFAULT_INSTITUTION_CAMPUS
+  );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
   const [category, setCategory] = useState(activeCategories[0]?.id || 'hostel-items');
-  const [condition, setCondition] = useState<'new' | 'used'>('new');
-  const [state, setState] = useState(sellerProfile?.state || user?.state || initialInst.state || 'Taraba');
+  const [condition, setCondition] = useState<'new' | 'used'>(
+    userSettings?.marketplace?.defaultListingCondition || 'new'
+  );
+  const [state, setState] = useState(
+    userSettings?.marketplace?.defaultDeliveryState ||
+      userSettings?.languageRegion?.state ||
+      sellerProfile?.state ||
+      user?.state ||
+      initialInst.state ||
+      ''
+  );
   const [stateManuallyChanged, setStateManuallyChanged] = useState(false);
   const [city, setCity] = useState(
-    sellerProfile?.city || user?.city || (initialInst.id === DEFAULT_INSTITUTION_ID ? 'Hostel A, 100L' : initialInst.location)
+    userSettings?.marketplace?.defaultDeliveryCity ||
+      userSettings?.languageRegion?.city ||
+      sellerProfile?.city ||
+      user?.city ||
+      initialInst.location ||
+      ''
   );
   const [whatsapp, setWhatsapp] = useState(
     sellerProfile?.whatsappNumber || user?.whatsappNumber || user?.phone || ''
@@ -691,7 +717,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
               </span>
               <h3 className="text-2xl font-black text-[#10251D] mt-3">Product posted successfully!</h3>
               <p className="text-xs sm:text-sm text-[#555555] max-w-md mx-auto mt-1">
-                Your genuine listing and uploaded photographs are now live for FUWUKARI students.
+                Your genuine listing and uploaded photographs are now live for {currentSellInst.shortName || 'Nigerian campus'} students.
               </p>
             </div>
 
@@ -1138,7 +1164,7 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                     type="text"
                     required
                     name="city"
-                    placeholder="e.g. Hostel A, 100L"
+                    placeholder="e.g. Campus Gate, Hostel A, Nsukka..."
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
@@ -1151,12 +1177,14 @@ export const SellProductModal: React.FC<SellProductModalProps> = ({
                   <select
                     name="state"
                     value={state}
+                    required
                     onChange={(e) => {
                       setStateManuallyChanged(true);
                       setState(e.target.value);
                     }}
                     className="w-full p-3 text-xs sm:text-sm bg-[#F4F8F5] border border-[#E5E7EB] focus:border-[#087443] rounded-xl text-[#10251D] outline-none"
                   >
+                    <option value="">Select Nigerian State</option>
                     {NIGERIA_STATES.map((st) => (
                       <option key={st} value={st}>
                         {st}

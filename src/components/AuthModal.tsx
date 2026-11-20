@@ -42,8 +42,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [state, setState] = useState('Taraba');
-  const [city, setCity] = useState('Hostel A, 100L');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
   const [shopName, setShopName] = useState('');
 
   const [resetStep, setResetStep] = useState<'request' | 'reset'>('request');
@@ -173,8 +173,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Please enter a valid WhatsApp phone number (e.g. 08012345678).');
       return;
     }
+    if (!state) {
+      setError('Please select your state in Nigeria.');
+      return;
+    }
     if (!cleanCity) {
-      setError('Please enter your hostel or campus location.');
+      setError('Please enter your campus, hostel, or city.');
       return;
     }
     if (!password || password.length < 6) {
@@ -536,6 +540,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onChange={(e) => setState(e.target.value)}
                     className="w-full p-2 text-xs bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"
                   >
+                    <option value="">Select Nigerian State</option>
                     {NIGERIA_STATES.map((st) => (
                       <option key={st} value={st}>
                         {st}
@@ -546,11 +551,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#333333] mb-1">Hostel / Campus Location</label>
+                <label className="block text-xs font-bold text-[#333333] mb-1">Campus / Hostel / City</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Hostel A, 100L"
+                  placeholder="e.g. Nsukka, Akoka, Zaria, Wukari..."
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-[#10251D] focus:border-[#087443] outline-none"

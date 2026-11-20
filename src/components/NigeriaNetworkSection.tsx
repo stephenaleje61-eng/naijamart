@@ -29,6 +29,11 @@ import {
   subscribeToCommunityMemberships
 } from '../services/universityNetwork.js';
 import { sendFriendRequest } from '../services/firebase.js';
+import {
+  canMessageTargetUser,
+  shouldIncludeInPeopleSearch,
+  shouldShowTargetUniversity
+} from '../utils/privacy.js';
 
 interface NigeriaNetworkSectionProps {
   institutions?: Institution[];
@@ -98,12 +103,17 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
     return knownUsers
       .filter((u) => {
         if (u.id === user?.id) return false;
-        if (studentFilterInst !== 'all' && u.institutionId !== studentFilterInst) return false;
+        if (!shouldIncludeInPeopleSearch(u, user?.id)) return false;
+        const canShowUni = shouldShowTargetUniversity(u, user?.id);
+        if (studentFilterInst !== 'all') {
+          if (!canShowUni || u.institutionId !== studentFilterInst) return false;
+        }
         if (!q) return true;
         return (
           u.name.toLowerCase().includes(q) ||
-          (u.department && u.department.toLowerCase().includes(q)) ||
-          (u.campus && u.campus.toLowerCase().includes(q))
+          (u.username && u.username.toLowerCase().includes(q)) ||
+          (canShowUni && u.department && u.department.toLowerCase().includes(q)) ||
+          (canShowUni && u.campus && u.campus.toLowerCase().includes(q))
         );
       })
       .slice(0, 8);
@@ -355,7 +365,9 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {discoverStudents.map((peer) => {
-              const peerInst = institutions.find((i) => i.id === peer.institutionId);
+              const canShowUni = shouldShowTargetUniversity(peer, user?.id);
+              const peerInst = canShowUni ? institutions.find((i) => i.id === peer.institutionId) : undefined;
+              const msgCheck = canMessageTargetUser(peer, user, false);
               return (
                 <div
                   key={peer.id}
@@ -377,10 +389,11 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                         )}
                       </div>
                       <p className="text-[10px] text-slate-600 truncate">
-                        {peerInst?.shortName || 'Nigeria Hub'}
-                        {peer.department ? ` · ${peer.department}` : ''}
+                        {canShowUni
+                          ? `${peerInst?.shortName || 'Nigeria Hub'}${peer.department ? ` · ${peer.department}` : ''}`
+                          : 'Private Campus Profile'}
                       </p>
-                      {peer.levelOfStudy && (
+                      {canShowUni && peer.levelOfStudy && (
                         <p className="text-[10px] font-semibold text-[#087443]">{peer.levelOfStudy}</p>
                       )}
                     </div>
@@ -398,14 +411,25 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                     {onStartDirectChat && (
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          if (!msgCheck.allowed) {
+                            setNetworkNotice(
+                              msgCheck.reason || 'Messaging restricted by user privacy settings.'
+                            );
+                            setTimeout(() => setNetworkNotice(null), 4000);
+                            return;
+                          }
                           onStartDirectChat({
                             id: peer.id,
                             name: peer.name,
                             matricNumber: peer.matricNumber
-                          })
-                        }
-                        className="py-1.5 px-2.5 rounded-lg bg-white border border-[#D9E5DF] hover:border-[#087443] text-[#172B24] text-[11px] font-bold flex items-center gap-1 transition"
+                          });
+                        }}
+                        className={`py-1.5 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition ${
+                          msgCheck.allowed
+                            ? 'bg-white border-[#D9E5DF] hover:border-[#087443] text-[#172B24]'
+                            : 'bg-slate-100 border-slate-200 text-slate-500'
+                        }`}
                       >
                         <MessageCircle className="w-3 h-3 text-[#087443]" />
                         <span>Chat</span>

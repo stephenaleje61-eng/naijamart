@@ -78,6 +78,9 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                 <h3 className="font-display text-lg font-black text-white truncate">
                   {profile.name}
                 </h3>
+                {profile.username && (
+                  <span className="text-xs font-bold text-[#D4A62A]">@{profile.username}</span>
+                )}
                 <CeoVerifiedBadge
                   verified={Boolean(profile.isVerifiedSeller)}
                   entityIds={[profile.authorId, authorId]}
@@ -89,6 +92,11 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-[#D4A62A]" />
                     {profile.city}
+                  </span>
+                )}
+                {profile.department && (
+                  <span className="flex items-center gap-1">
+                    {profile.department}
                   </span>
                 )}
                 {profile.joinedAt && (
@@ -113,6 +121,18 @@ export const AuthorProfileModal: React.FC<AuthorProfileModalProps> = ({
 
         {/* Author's Posts */}
         <div className="p-5 sm:p-6 max-h-[68vh] overflow-y-auto space-y-4">
+          {profile.bio && !profile.isPrivateProfile && (
+            <div className="p-3.5 rounded-2xl bg-[#F4F8F5] border border-[#E5E7EB] text-xs text-[#374151]">
+              {profile.bio}
+            </div>
+          )}
+
+          {profile.isPrivateProfile && (
+            <div className="p-4 rounded-2xl bg-[#FFF8DB] border border-[#D4A62A] text-xs font-semibold text-[#10251D]">
+              This member has limited their public profile details in Privacy Settings.
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-black uppercase tracking-wider text-[#10251D]">
               Published Sports &amp; Announcements ({authorPosts.length})

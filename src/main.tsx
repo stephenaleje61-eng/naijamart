@@ -1,5 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import { bootstrapAppearanceFromStorage } from './utils/theme.js';
+
+bootstrapAppearanceFromStorage();
 
 async function prepareServiceWorkers(): Promise<void> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;

@@ -28,6 +28,17 @@ export const STANDARD_NIGERIAN_4_0_GRADES: GradingScaleGrade[] = [
   { letter: 'F', minScore: 0, maxScore: 44, point: 0.0 }
 ];
 
+export const STANDARD_NIGERIAN_7_0_GRADES: GradingScaleGrade[] = [
+  { letter: 'A+', minScore: 70, maxScore: 100, point: 7.0 },
+  { letter: 'A', minScore: 65, maxScore: 69, point: 6.0 },
+  { letter: 'A-', minScore: 60, maxScore: 64, point: 5.0 },
+  { letter: 'B+', minScore: 55, maxScore: 59, point: 4.0 },
+  { letter: 'B', minScore: 50, maxScore: 54, point: 3.0 },
+  { letter: 'C', minScore: 45, maxScore: 49, point: 2.0 },
+  { letter: 'D', minScore: 40, maxScore: 44, point: 1.0 },
+  { letter: 'F', minScore: 0, maxScore: 39, point: 0.0 }
+];
+
 const GUEST_GPA_STORAGE_KEY = 'ncm_guest_gpa_records_v1';
 
 export function getGradePointForEntry(
@@ -126,8 +137,16 @@ export function calculateCumulativeMetrics(
   };
 }
 
-export function getDegreeClassification(cgpa: number, scaleMax: 5 | 4): string {
+export function getDegreeClassification(cgpa: number, scaleMax: 7 | 5 | 4): string {
   if (cgpa <= 0) return 'Enter courses to estimate standing';
+  if (scaleMax === 7) {
+    if (cgpa >= 6.0) return 'First Class Honours (7.0 Scale)';
+    if (cgpa >= 4.6) return 'Second Class Upper (2:1)';
+    if (cgpa >= 2.6) return 'Second Class Lower (2:2)';
+    if (cgpa >= 1.6) return 'Third Class';
+    if (cgpa >= 1.0) return 'Pass';
+    return 'Probation / Below Pass Standing';
+  }
   if (scaleMax === 5) {
     if (cgpa >= 4.5) return 'First Class Honours (1st Class)';
     if (cgpa >= 3.5) return 'Second Class Upper (2:1)';
@@ -149,7 +168,7 @@ export function computeTargetGpaPrediction(params: {
   currentPoints: number;
   targetCgpa: number;
   upcomingUnits: number;
-  scaleMax: 5 | 4;
+  scaleMax: 7 | 5 | 4;
 }): {
   requiredGpa: number;
   achievable: boolean;
@@ -267,7 +286,7 @@ export function exportGpaSummaryCsv(
   semesters: GpaSemesterRecord[],
   grades: GradingScaleGrade[],
   institutionName: string,
-  scaleMax: 5 | 4
+  scaleMax: 7 | 5 | 4
 ): string {
   const rows: string[] = [
     ['Institution', 'Scale', 'Session', 'Semester', 'Course Code', 'Course Title', 'Credit Units', 'Grade', 'Grade Point', 'Quality Points'].join(',')

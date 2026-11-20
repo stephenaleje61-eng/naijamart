@@ -65,14 +65,20 @@ export type ScamEntityStatus = 'clear' | 'reported' | 'under_investigation' | 'c
 export interface User {
   id: string;
   name: string;
+  username?: string;
   email: string;
   role: 'buyer' | 'seller' | 'admin';
   accountType?: AccountType;
+  faculty?: string;
   department?: string;
   levelOfStudy?: string;
+  matricNumber?: string;
+  graduationStatus?: AccountGraduationStatus;
+  academicSession?: string;
   bio?: string;
   interests?: string[];
   institutionId?: string;
+  institutionType?: InstitutionType;
   campus?: string;
   joinedInstitutionIds?: string[];
   preferredContactMethod?: 'whatsapp' | 'phone' | 'both';
@@ -83,6 +89,9 @@ export interface User {
   avatarUrl?: string;
   isSuspended?: boolean;
   suspensionReason?: string;
+  isDeactivated?: boolean;
+  deactivatedAt?: string;
+  deactivationReason?: string;
   isVerified?: boolean;
   ceoVerified?: boolean;
   verifiedBadgeText?: string;
@@ -92,8 +101,12 @@ export interface User {
   verificationMethod?: 'edu_email' | 'student_id' | 'ceo_approved';
   scamStatus?: ScamEntityStatus;
   scamReportsCount?: number;
+  privacy?: Partial<PrivacySettings>;
   lastSeen?: string | number;
   lastSeenAt?: string;
+  lastLoginAt?: string;
+  lastPasswordChangedAt?: string;
+  settingsUpdatedAt?: string;
   createdAt: string;
 }
 
@@ -135,6 +148,7 @@ export interface SellerProfile {
   verifiedByCeoAt?: string;
   verifiedByCeoEmail?: string;
   isSuspended?: boolean;
+  privacy?: Partial<PrivacySettings>;
   createdAt: string;
 }
 
@@ -332,6 +346,7 @@ export interface HubActiveUser {
 export interface RegisteredUser {
   id: string;
   name: string;
+  username?: string;
   matricNumber?: string;
   email?: string;
   phone?: string;
@@ -340,11 +355,18 @@ export interface RegisteredUser {
   isOnline?: boolean;
   lastSeen?: string | number;
   institutionId?: string;
+  institutionType?: InstitutionType;
   campus?: string;
+  state?: string;
+  faculty?: string;
   department?: string;
   levelOfStudy?: string;
+  graduationStatus?: AccountGraduationStatus;
+  academicSession?: string;
   bio?: string;
   interests?: string[];
+  privacy?: Partial<PrivacySettings>;
+  isDeactivated?: boolean;
   isVerified?: boolean;
   ceoVerified?: boolean;
   scamStatus?: ScamEntityStatus;
@@ -368,12 +390,25 @@ export interface Friend {
   userId: string;
   name: string;
   matricNumber?: string;
+  institutionId?: string;
+  department?: string;
   avatarUrl?: string;
   friendSince: string;
   isOnline?: boolean;
   lastSeen?: string | number;
   chatId: string;
   unreadCount?: number;
+}
+
+export type ChatAttachmentType = 'image' | 'document' | 'audio';
+
+export interface PrivateMessageReplyRef {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text?: string;
+  attachmentType?: ChatAttachmentType;
+  attachmentName?: string;
 }
 
 export interface PrivateMessage {
@@ -383,10 +418,21 @@ export interface PrivateMessage {
   senderName: string;
   text?: string;
   imageUrl?: string;
+  attachmentUrl?: string;
+  attachmentType?: ChatAttachmentType;
+  attachmentName?: string;
+  attachmentSize?: number;
+  audioDurationSec?: number;
+  replyTo?: PrivateMessageReplyRef;
   createdAt: string;
   timestamp?: number;
+  delivered?: boolean;
+  deliveredAt?: string;
   seen: boolean;
   seenAt?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface ChatMetadata {
@@ -394,9 +440,15 @@ export interface ChatMetadata {
   participants: string[];
   participantNames?: Record<string, string>;
   participantMatrics?: Record<string, string>;
+  participantAvatars?: Record<string, string>;
+  participantInstitutions?: Record<string, string>;
   lastMessageText?: string;
   lastMessageTime?: string;
   lastSenderId?: string;
+  lastAttachmentType?: ChatAttachmentType;
+  unreadCounts?: Record<string, number>;
+  messagesCount?: number;
+  createdAt?: string;
   updatedAt?: string;
   typing?: Record<string, number>;
 }
@@ -617,8 +669,12 @@ export interface AnnouncementReport {
 export interface PublicAuthorProfile {
   authorId: string;
   name: string;
+  username?: string;
   avatarUrl?: string;
   city?: string;
+  department?: string;
+  bio?: string;
+  isPrivateProfile?: boolean;
   isVerifiedSeller?: boolean;
   joinedAt?: string;
 }
@@ -1695,7 +1751,7 @@ export interface GradingScaleGrade {
 export interface InstitutionGradingConfig {
   id: string; // institutionId or 'default_5_0' | 'default_4_0'
   institutionId: string;
-  scaleMax: 5 | 4;
+  scaleMax: 7 | 5 | 4;
   isVerifiedOfficial: boolean;
   scaleLabel: string;
   grades: GradingScaleGrade[];
@@ -1723,7 +1779,7 @@ export interface SavedAcademicRecord {
   id: string; // userId
   userId: string;
   institutionId: string;
-  scaleMax: 5 | 4;
+  scaleMax: 7 | 5 | 4;
   customGrades?: GradingScaleGrade[];
   semesters: GpaSemesterRecord[];
   updatedAt: string;
@@ -1925,4 +1981,137 @@ export interface NationalCampusAnnouncement {
   createdAt: string;
   updatedAt: string;
 }
+
+// ============================================================================
+// NIGERIA UNIVERSITY MARKET HUB: SETTINGS, PRIVACY, SESSIONS & REPORTS
+// ============================================================================
+export type ThemePreference = 'light' | 'dark' | 'system';
+export type FontSizePreference = 'small' | 'medium' | 'large';
+export type VisibilityAudience = 'everyone' | 'same_university' | 'connections_only' | 'only_me';
+export type MessageAudience = 'everyone' | 'same_university' | 'connections_only';
+export type GradingScaleOption = '5.0' | '4.0' | '7.0' | 'custom';
+export type AccountGraduationStatus =
+  | 'undergraduate'
+  | 'finalist'
+  | 'nysc'
+  | 'alumni'
+  | 'postgraduate'
+  | 'lecturer_staff';
+
+export interface PrivacySettings {
+  profileVisibility: VisibilityAudience;
+  postVisibility: 'everyone' | 'same_university' | 'connections_only';
+  whoCanMessage: MessageAudience;
+  showUniversityInfo: boolean;
+  appearInSearch: boolean;
+  showOnlineStatus: boolean;
+  showPhoneNumber: boolean;
+}
+
+export interface AppearanceSettings {
+  theme: ThemePreference;
+  fontSize: FontSizePreference;
+  compactMode: boolean;
+}
+
+export interface AcademicSettings {
+  academicSession: string;
+  semester: 'First Semester' | 'Second Semester' | 'Harmattan Semester' | 'Rain Semester' | string;
+  faculty: string;
+  department: string;
+  academicLevel: string;
+  matricNumber?: string;
+  graduationStatus: AccountGraduationStatus;
+  institutionTypeFilter: InstitutionType | 'all';
+  courseRegistrationAlerts: boolean;
+  defaultGpaScale: GradingScaleOption;
+  targetCgpa: number;
+}
+
+export interface MarketplaceSettings {
+  marketplaceRole: 'buyer' | 'seller' | 'both';
+  defaultListingCampus: string;
+  defaultListingCondition: 'new' | 'used';
+  defaultDeliveryState: string;
+  defaultDeliveryCity: string;
+  contactPreference: 'whatsapp' | 'phone' | 'both';
+  autoNotifyPriceDrops: boolean;
+  showSellerStoreBadge: boolean;
+  marketplaceActivityAlerts: boolean;
+}
+
+export interface LanguageRegionSettings {
+  language: 'en-NG' | 'en' | 'pidgin';
+  country: 'Nigeria';
+  state: string;
+  city: string;
+  timezone: 'Africa/Lagos' | 'UTC';
+  currency: 'NGN';
+}
+
+export interface ExtendedNotificationPreferences {
+  enabled: boolean;
+  newMessages: boolean;
+  marketplaceActivities: boolean;
+  commentsAndLikes: boolean;
+  universityAnnouncements: boolean;
+  newFollowers: boolean;
+  groupActivities: boolean;
+  advertisementsAndPromotions: boolean;
+  platformUpdates: boolean;
+  browserAlertsEnabled: boolean;
+  suspiciousLoginAlerts: boolean;
+}
+
+export interface SecuritySettingsMeta {
+  suspiciousLoginAlerts: boolean;
+  recoveryEmail: string;
+  recoveryPhone: string;
+  lastPasswordChangedAt?: string;
+}
+
+export interface UserSettingsDocument {
+  userId: string;
+  privacy: PrivacySettings;
+  appearance: AppearanceSettings;
+  academic: AcademicSettings;
+  marketplace: MarketplaceSettings;
+  notifications: ExtendedNotificationPreferences;
+  languageRegion: LanguageRegionSettings;
+  security: SecuritySettingsMeta;
+  updatedAt: string;
+}
+
+export interface UserSessionRecord {
+  id: string;
+  userId: string;
+  deviceLabel: string;
+  browserName: string;
+  osName: string;
+  platformType: DevicePlatformType;
+  userAgent?: string;
+  revoked: boolean;
+  revokedAt?: string;
+  createdAt: string;
+  lastActiveAt: string;
+}
+
+export interface SupportReportRecord {
+  id: string;
+  kind: 'problem' | 'user_report' | 'support_ticket';
+  reporterId: string;
+  reporterName: string;
+  reporterEmail: string;
+  subject: string;
+  category: string;
+  targetUserId?: string;
+  targetUserName?: string;
+  description: string;
+  institutionId?: string;
+  status: 'open' | 'under_review' | 'resolved' | 'dismissed';
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 

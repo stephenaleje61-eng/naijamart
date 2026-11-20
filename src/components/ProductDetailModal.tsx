@@ -23,6 +23,7 @@ import { ProductImage } from './ProductImage.js';
 import { getValidProductImages } from '../utils/productImages.js';
 import { DirectChatTarget } from './FriendsPage.js';
 import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
+import { shouldShowTargetPhone } from '../utils/privacy.js';
 import {
   submitProductReview,
   subscribeToProductReviews,
@@ -89,7 +90,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
 
+  const canShowSellerPhone = product.sellerProfile?.privacy
+    ? shouldShowTargetPhone(
+        {
+          id: product.sellerId,
+          institutionId: product.institutionId,
+          privacy: product.sellerProfile.privacy
+        },
+        currentUid
+      )
+    : true;
+
   const buildWhatsAppHref = (): string | null => {
+    if (!canShowSellerPhone) return null;
     const raw = (product.whatsappNumber || '').trim();
     if (!raw) return null;
     let cleaned = raw.replace(/[^0-9]/g, '');
@@ -187,7 +200,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const images = getValidProductImages(product.images, product.imageUrl);
   const whatsappHref = buildWhatsAppHref();
-  const locationDisplay = product.city || product.state || 'FUWUKARI Campus';
+  const locationDisplay = [product.city, product.state].filter(Boolean).join(', ') || 'Nigeria Campus';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
@@ -503,7 +516,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               <div className="flex items-center justify-between text-[11px] text-[#555555] px-1 pt-1">
                 <span className="font-mono">
-                  {product.whatsappNumber ? `Contact: ${product.whatsappNumber}` : 'Direct in-app chat enabled'}
+                  {canShowSellerPhone && product.whatsappNumber
+                    ? `Contact: ${product.whatsappNumber}`
+                    : 'Direct in-app chat enabled'}
                 </span>
                 <button
                   type="button"

@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, stripUndefined, toIsoString } from './firebase.js';
 import { isFirebaseCeoVerified } from './events.js';
-import { DEFAULT_INSTITUTION_ID } from '../constants/institutions.js';
+import { sanitizePrivacySettings } from '../utils/privacy.js';
 import {
   AnnouncementComment,
   AnnouncementModerationStatus,
@@ -207,7 +207,7 @@ function sanitizeSportUpdate(id: string, data: any): SportUpdatePost {
     categoryType: 'sport_update',
     sportCategory: String(data?.sportCategory || 'Sports News').trim(),
     ...(data?.matchStatus ? { matchStatus: data.matchStatus as SportMatchStatus } : {}),
-    institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+    institutionId: data?.institutionId ? String(data.institutionId) : '',
     ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     title: String(data?.title || '').trim(),
     ...(data?.teamOrPlayer ? { teamOrPlayer: String(data.teamOrPlayer).trim() } : {}),
@@ -219,7 +219,7 @@ function sanitizeSportUpdate(id: string, data: any): SportUpdatePost {
     description: String(data?.description || '').trim(),
     ...(data?.imageUrl ? { imageUrl: String(data.imageUrl).trim() } : {}),
     authorId: String(data?.authorId || ''),
-    authorName: String(data?.authorName || 'FUWUKARI Student').trim(),
+    authorName: String(data?.authorName || 'Campus Member').trim(),
     ...(data?.authorAvatar ? { authorAvatar: String(data.authorAvatar) } : {}),
     status: (['published', 'pending', 'rejected', 'removed'].includes(data?.status)
       ? data.status
@@ -248,7 +248,7 @@ function sanitizeGeneralAnnouncement(id: string, data: any): GeneralAnnouncement
     announcementCategory: String(
       data?.announcementCategory || 'General Important Information'
     ).trim(),
-    institutionId: data?.institutionId ? String(data.institutionId) : DEFAULT_INSTITUTION_ID,
+    institutionId: data?.institutionId ? String(data.institutionId) : '',
     ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     title: String(data?.title || '').trim(),
     ...(data?.eventDate ? { eventDate: String(data.eventDate).trim() } : {}),
@@ -257,7 +257,7 @@ function sanitizeGeneralAnnouncement(id: string, data: any): GeneralAnnouncement
     description: String(data?.description || '').trim(),
     ...(data?.imageUrl ? { imageUrl: String(data.imageUrl).trim() } : {}),
     authorId: String(data?.authorId || ''),
-    authorName: String(data?.authorName || 'FUWUKARI Student').trim(),
+    authorName: String(data?.authorName || 'Campus Member').trim(),
     ...(data?.authorAvatar ? { authorAvatar: String(data.authorAvatar) } : {}),
     status: (['published', 'pending', 'rejected', 'removed'].includes(data?.status)
       ? data.status
@@ -445,7 +445,7 @@ async function assertAuthenticatedAndActive(appUser?: User | null): Promise<{
     appUser?.name ||
     fbUser.displayName ||
     fbUser.email?.split('@')[0] ||
-    'FUWUKARI Student'
+    'Campus Member'
   )
     .trim()
     .slice(0, 120);
@@ -497,7 +497,7 @@ export async function createSportUpdatePost(
     categoryType: 'sport_update' as const,
     sportCategory: input.sportCategory.trim().slice(0, 80),
     ...(input.matchStatus ? { matchStatus: input.matchStatus } : {}),
-    institutionId: (input.institutionId || DEFAULT_INSTITUTION_ID).trim().slice(0, 128),
+    institutionId: (input.institutionId || appUser?.institutionId || '').trim().slice(0, 128),
     ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
     title: input.title.trim().slice(0, 180),
     ...(input.teamOrPlayer?.trim() ? { teamOrPlayer: input.teamOrPlayer.trim().slice(0, 160) } : {}),
@@ -577,7 +577,7 @@ export async function createGeneralAnnouncementPost(
     id,
     categoryType: 'general_announcement' as const,
     announcementCategory: input.announcementCategory.trim().slice(0, 80),
-    institutionId: (input.institutionId || DEFAULT_INSTITUTION_ID).trim().slice(0, 128),
+    institutionId: (input.institutionId || appUser?.institutionId || '').trim().slice(0, 128),
     ...(input.campus?.trim() ? { campus: input.campus.trim().slice(0, 120) } : {}),
     title: input.title.trim().slice(0, 180),
     ...(input.eventDate?.trim() ? { eventDate: input.eventDate.trim().slice(0, 32) } : {}),
@@ -1002,7 +1002,7 @@ export async function getPublicAuthorProfile(
 ): Promise<PublicAuthorProfile> {
   const safeFallback: PublicAuthorProfile = {
     authorId,
-    name: fallbackName || 'FUWUKARI Student',
+    name: fallbackName || 'Campus Member',
     ...(fallbackAvatar ? { avatarUrl: fallbackAvatar } : {})
   };
   if (!authorId) return safeFallback;
@@ -1020,13 +1020,26 @@ export async function getPublicAuthorProfile(
         ? sellerSnap.value.data()
         : null;
 
-    // Strictly expose ONLY public non-PII profile fields (never email, phone, or passwordHash)
+    const privacy = sanitizePrivacySettings(userData?.privacy);
+    const isSelf = auth.currentUser?.uid === authorId;
+    const isPrivateProfile =
+      !isSelf &&
+      (privacy.profileVisibility === 'only_me' || privacy.profileVisibility === 'connections_only');
+    const canShowUniversity = isSelf || (!isPrivateProfile && privacy.showUniversityInfo);
+
+    // Strictly expose ONLY public non-PII profile fields & enforce privacy preferences
     return {
       authorId,
-      name: String(userData?.name || fallbackName || 'FUWUKARI Student').trim(),
+      name: String(userData?.name || fallbackName || 'Campus Member').trim(),
+      ...(userData?.username && !isPrivateProfile ? { username: String(userData.username).trim() } : {}),
       avatarUrl: userData?.avatarUrl || fallbackAvatar,
-      city: userData?.city || 'Wukari',
-      isVerifiedSeller: Boolean(sellerData?.isVerified),
+      ...(canShowUniversity && userData?.city ? { city: String(userData.city).trim() } : {}),
+      ...(canShowUniversity && userData?.department
+        ? { department: String(userData.department).trim() }
+        : {}),
+      ...(!isPrivateProfile && userData?.bio ? { bio: String(userData.bio).trim() } : {}),
+      ...(isPrivateProfile ? { isPrivateProfile: true } : {}),
+      isVerifiedSeller: Boolean(sellerData?.isVerified || userData?.ceoVerified),
       joinedAt: userData?.createdAt ? toIsoString(userData.createdAt) : undefined
     };
   } catch {

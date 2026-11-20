@@ -105,18 +105,36 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "username": { "type": "string" },
         "email": { "type": "string" },
         "role": { "type": "string", "enum": ["buyer", "seller", "admin"] },
+        "accountType": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "institutionType": { "type": "string" },
+        "campus": { "type": "string" },
+        "faculty": { "type": "string" },
+        "department": { "type": "string" },
+        "levelOfStudy": { "type": "string" },
+        "graduationStatus": { "type": "string" },
+        "academicSession": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
         "phone": { "type": "string" },
         "whatsappNumber": { "type": "string" },
         "matricNumber": { "type": "string" },
         "state": { "type": "string" },
         "city": { "type": "string" },
+        "privacy": { "type": "object" },
+        "isDeactivated": { "type": "boolean" },
+        "deactivatedAt": { "type": "string" },
         "isVerified": { "type": "boolean" },
         "ceoVerified": { "type": "boolean" },
         "verifiedBadgeText": { "type": "string" },
         "verifiedByCeoAt": { "type": "string" },
         "verifiedByCeoEmail": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "lastPasswordChangedAt": { "type": "string" },
+        "settingsUpdatedAt": { "type": "string" },
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name"]
@@ -1257,6 +1275,153 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["date", "totalVisits", "uniqueVisitors"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Private user settings across privacy, appearance, academic, marketplace, notifications, language/region, and security metadata",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "privacy": { "type": "object" },
+        "appearance": { "type": "object" },
+        "academic": { "type": "object" },
+        "marketplace": { "type": "object" },
+        "notifications": { "type": "object" },
+        "languageRegion": { "type": "object" },
+        "security": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "updatedAt"]
+    },
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Tracked device login session enabling users to monitor and remotely revoke sessions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "deviceLabel": { "type": "string" },
+        "browserName": { "type": "string" },
+        "osName": { "type": "string" },
+        "platformType": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "revoked": { "type": "boolean" },
+        "revokedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastActiveAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "deviceLabel", "revoked", "createdAt", "lastActiveAt"]
+    },
+    "SupportReport": {
+      "title": "SupportReport",
+      "description": "User problem reports, abusive user complaints, and help centre support tickets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["problem", "user_report", "support_ticket"] },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "reporterEmail": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "targetUserName": { "type": "string" },
+        "description": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "under_review", "resolved", "dismissed"] },
+        "adminNotes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "kind", "reporterId", "subject", "category", "description", "status", "createdAt", "updatedAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Pending, accepted, or rejected campus friend connection request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fromId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "fromMatric": { "type": "string", "maxLength": 60 },
+        "fromAvatar": { "type": "string", "maxLength": 500 },
+        "toId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "fromId", "fromName", "toId", "toName", "status"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "Bidirectional campus friend connection record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userA": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userAName": { "type": "string", "maxLength": 120 },
+        "userAMatric": { "type": "string", "maxLength": 60 },
+        "userB": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userBName": { "type": "string", "maxLength": 120 },
+        "userBMatric": { "type": "string", "maxLength": 60 },
+        "institutionId": { "type": "string", "maxLength": 128 },
+        "department": { "type": "string", "maxLength": 120 },
+        "chatId": { "type": "string", "maxLength": 128 },
+        "friendSince": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userA", "userB"]
+    },
+    "ChatMetadata": {
+      "title": "ChatMetadata",
+      "description": "1-on-1 direct private chat room metadata and per-participant unread/typing state",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "participants": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "participantMatrics": { "type": "object" },
+        "participantAvatars": { "type": "object" },
+        "participantInstitutions": { "type": "object" },
+        "lastMessageText": { "type": "string", "maxLength": 240 },
+        "lastMessageTime": { "type": "string", "maxLength": 64 },
+        "lastSenderId": { "type": "string", "maxLength": 128 },
+        "lastAttachmentType": { "type": "string", "enum": ["image", "document", "audio"] },
+        "typing": { "type": "object" },
+        "unreadCounts": { "type": "object" },
+        "messagesCount": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["chatId", "participants"]
+    },
+    "PrivateMessage": {
+      "title": "PrivateMessage",
+      "description": "Direct 1-on-1 private message supporting text, images, documents, voice notes, quoted replies, soft deletion, and read receipts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "chatId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "senderId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 120 },
+        "text": { "type": "string", "maxLength": 4000 },
+        "imageUrl": { "type": "string", "maxLength": 900000 },
+        "attachmentUrl": { "type": "string", "maxLength": 900000 },
+        "attachmentType": { "type": "string", "enum": ["image", "document", "audio"] },
+        "attachmentName": { "type": "string", "maxLength": 160 },
+        "attachmentSize": { "type": "number" },
+        "audioDurationSec": { "type": "number" },
+        "replyTo": { "type": "object" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "timestamp": { "type": "number" },
+        "delivered": { "type": "boolean" },
+        "deliveredAt": { "type": "string", "maxLength": 64 },
+        "seen": { "type": "boolean" },
+        "seenAt": { "type": "string", "maxLength": 64 },
+        "isDeleted": { "type": "boolean" },
+        "deletedAt": { "type": "string", "maxLength": 64 },
+        "deletedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "chatId", "senderId", "createdAt"]
     }
   },
   "firestore": {
@@ -1535,6 +1700,34 @@
     "/siteVisitors/{dateKey}": {
       "schema": "SiteVisitorStat",
       "description": "Daily website visitor metrics readable and writable by authorized CEO administrator"
+    },
+    "/userSettings/{userId}": {
+      "schema": "UserSettings",
+      "description": "Owner-scoped user preferences, privacy, appearance, academic, marketplace, and regional settings"
+    },
+    "/userSessions/{sessionId}": {
+      "schema": "UserSession",
+      "description": "Authenticated device session records for session management and remote sign-out"
+    },
+    "/supportReports/{reportId}": {
+      "schema": "SupportReport",
+      "description": "User problem reports, user safety reports, and support tickets"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Student friend connection requests"
+    },
+    "/friends/{friendId}": {
+      "schema": "Friend",
+      "description": "Confirmed campus friend connections"
+    },
+    "/privateChats/{chatId}": {
+      "schema": "ChatMetadata",
+      "description": "Direct 1-on-1 private chat rooms scoped exclusively to participants"
+    },
+    "/privateChats/{chatId}/messages/{msgId}": {
+      "schema": "PrivateMessage",
+      "description": "Private 1-on-1 messages with text, photos, documents, voice notes, and receipts"
     }
   }
 }

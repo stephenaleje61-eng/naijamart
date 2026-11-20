@@ -48,12 +48,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUser = useCallback(async () => {
     const token = getAuthToken();
     const cached = getCachedSessionInfo();
-    if (!token && !cached.uid) {
+    const activeFbUser = auth.currentUser;
+
+    if (!token && !cached.uid && (!activeFbUser || activeFbUser.isAnonymous)) {
       setUser(null);
       setSellerProfile(null);
       setFavourites([]);
       setLoading(false);
       return;
+    }
+
+    if (activeFbUser && !activeFbUser.isAnonymous && cached.uid && cached.uid !== activeFbUser.uid) {
+      try {
+        const canonical = await getUserSessionFromFirestore(activeFbUser.uid);
+        if (canonical) {
+          setAuthToken(`firebase-session:${canonical.user.id}`);
+          setUser(canonical.user);
+          setSellerProfile(canonical.sellerProfile || null);
+          setFavourites(canonical.favourites || []);
+          setLoading(false);
+          return;
+        }
+      } catch {}
     }
 
     try {
@@ -95,6 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
           setLoading(false);
         }
+      } else if (!fbUser) {
+        setLoading(false);
       }
     });
 
@@ -140,6 +158,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setAuthToken(null);
     signOutFromFirebase();
+    try {
+      localStorage.removeItem('fuwukari_student_session');
+      localStorage.removeItem('fu_market_guest_mode');
+      localStorage.removeItem('fu_market_guest_id');
+    } catch {}
     setUser(null);
     setFirebaseUser(null);
     setSellerProfile(null);

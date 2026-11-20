@@ -1648,3 +1648,32 @@ export function belongsToInstitution(
   const normalizedRecord = String(recordInstitutionId || DEFAULT_INSTITUTION_ID).trim().toLowerCase();
   return normalizedRecord === normalizedSelected;
 }
+
+export function findInstitutionById(
+  institutionId?: string | null,
+  customInstitutions?: Institution[]
+): Institution | undefined {
+  const clean = String(institutionId || '').trim().toLowerCase();
+  if (!clean || clean === 'all') return undefined;
+  return getInstitutionBySlugOrId(clean, customInstitutions);
+}
+
+export const NIGERIAN_UNIVERSITY_FACULTIES: string[] = [
+  'Agriculture & Agricultural Technology',
+  'Arts & Humanities',
+  'Basic Medical Sciences',
+  'Clinical Sciences / Medicine',
+  'Computing & Information Technology',
+  'Education',
+  'Engineering & Technology',
+  'Environmental Sciences',
+  'Law',
+  'Life Sciences',
+  'Management Sciences',
+  'Pharmaceutical Sciences',
+  'Physical Sciences',
+  'Social Sciences',
+  'Veterinary Medicine',
+  'General & Vocational Studies'
+];
+

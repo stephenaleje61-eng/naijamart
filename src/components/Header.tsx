@@ -32,7 +32,8 @@ import {
   Trophy,
   ClipboardList,
   Bike,
-  ShoppingBag
+  ShoppingBag,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { Category, Institution } from '../types.js';
@@ -880,6 +881,18 @@ export const Header: React.FC<HeaderProps> = ({
                       Student Account Hub
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onNavigateView('settings');
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
+                    >
+                      <Settings className="w-4 h-4 text-[#16834A]" />
+                      Settings &amp; Preferences
+                    </button>
+
                     {onOpenUserProfile && (
                       <button
                         type="button"
@@ -890,7 +903,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className="w-full text-left px-4 py-2 text-xs text-[#202B26] hover:bg-[#F4F7F5] flex items-center gap-2 font-bold transition"
                       >
                         <UserCog className="w-4 h-4 text-[#075B3B]" />
-                        Campus Profile Settings
+                        Campus Profile Quick Edit
                       </button>
                     )}
 
@@ -1034,6 +1047,7 @@ export const Header: React.FC<HeaderProps> = ({
               { label: 'Giveaways', action: () => onNavigateView('giveaways') },
               { label: 'Community Hub', action: () => onNavigateView('hub') },
               { label: 'My Orders', action: () => onNavigateView('orders') },
+              { label: 'Settings', action: () => onNavigateView('settings') },
               { label: 'Safety & Help', action: () => onOpenEmergencySection?.() }
             ].map((item) => (
               <button

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { X, GraduationCap, User, Phone, BookOpen, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, GraduationCap, User, Phone, BookOpen, CheckCircle2, Building2, Loader2 } from 'lucide-react';
 import { RegisteredUser } from '../types.js';
-import { generateStudentId, saveLocalStudentSession } from '../utils/studentAuth.js';
+import { saveLocalStudentSession } from '../utils/studentAuth.js';
+import { signInStudentSessionWithFirebase } from '../services/firebase.js';
+import { VERIFIED_NIGERIAN_INSTITUTIONS } from '../constants/institutions.js';
 
 interface StudentLoginModalProps {
   isOpen: boolean;
@@ -17,19 +19,25 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
   onClose,
   onSuccess,
   initialData,
-  title = 'Join NIGERIA CAMPUS MARKET Campus Network',
-  subtitle = 'Enter your name and matric number to join Single Hub, message sellers or agents directly, and post student requests.'
+  title = 'Join NIGERIA CAMPUS MARKET Network',
+  subtitle = 'Set up your nationwide student profile to message sellers, buyers, and peers across Nigerian campuses.'
 }) => {
   const [fullName, setFullName] = useState(initialData?.name || '');
+  const [institutionId, setInstitutionId] = useState(initialData?.institutionId || '');
   const [matricNumber, setMatricNumber] = useState(initialData?.matricNumber || '');
   const [department, setDepartment] = useState(initialData?.department || '');
   const [phone, setPhone] = useState(initialData?.phone || initialData?.whatsappNumber || '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const selectedInstitution = useMemo(
+    () => VERIFIED_NIGERIAN_INSTITUTIONS.find((i) => i.id === institutionId),
+    [institutionId]
+  );
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -41,31 +49,34 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
       return;
     }
 
-    if (!trimmedMatric || trimmedMatric.length < 3) {
-      setError('Please enter your Matriculation Number (e.g. FUW/2022/...).');
+    if (!institutionId) {
+      setError('Please select your Nigerian university, polytechnic, or college.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const studentId = initialData?.id || generateStudentId(trimmedMatric);
-      const student: RegisteredUser = {
-        id: studentId,
+      const syncedStudent = await signInStudentSessionWithFirebase({
         name: trimmedName,
-        matricNumber: trimmedMatric,
+        matricNumber: trimmedMatric || undefined,
+        institutionId,
+        state: selectedInstitution?.state || initialData?.state,
         department: department.trim() || undefined,
         phone: phone.trim() || undefined,
         whatsappNumber: phone.trim() || undefined,
         isOnline: true,
         lastSeen: Date.now(),
         createdAt: initialData?.createdAt || new Date().toISOString()
-      };
+      });
 
-      saveLocalStudentSession(student);
-      onSuccess(student);
+      saveLocalStudentSession(syncedStudent, false);
+      onSuccess(syncedStudent);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Could not save campus profile. Please try again.');
+      setError(
+        err?.message ||
+          'Could not verify your campus messaging session. Please sign in with Email or Google to continue.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -91,7 +102,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <div>
               <h3 className="text-base font-black tracking-tight text-white">{title}</h3>
               <p className="text-[11px] text-white/90 mt-0.5">
-                NIGERIA CAMPUS MARKET • Campus Student Network
+                NIGERIA CAMPUS MARKET • Nationwide Campus Network
               </p>
             </div>
           </div>
@@ -125,22 +136,40 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-[#333333] mb-1">
-              Matriculation Number <span className="text-[#087443]">*</span>
+              Nigerian Institution / Campus <span className="text-[#087443]">*</span>
+            </label>
+            <div className="relative">
+              <Building2 className="w-4 h-4 text-[#087443] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                required
+                value={institutionId}
+                onChange={(e) => setInstitutionId(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold text-[#10251D] focus:outline-none focus:border-[#087443]"
+              >
+                <option value="">Select your university, polytechnic, or college...</option>
+                {VERIFIED_NIGERIAN_INSTITUTIONS.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.shortName} — {inst.name} ({inst.state})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#333333] mb-1">
+              Matric / Student ID Number <span className="opacity-60 font-normal">(Optional)</span>
             </label>
             <div className="relative">
               <GraduationCap className="w-4 h-4 text-[#087443] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                required
                 value={matricNumber}
                 onChange={(e) => setMatricNumber(e.target.value)}
-                placeholder="e.g. FUW/2022/..."
+                placeholder="e.g. UNILAG/2023/... or 21/1045"
                 className="w-full pl-10 pr-4 py-2.5 bg-[#F4F8F5] border border-[#E5E7EB] rounded-xl text-xs font-semibold uppercase text-[#10251D] placeholder-[#666666] focus:outline-none focus:border-[#087443]"
               />
             </div>
-            <p className="text-[10px] text-[#555555] mt-1">
-              Used to identify genuine FUWUKARI student members
-            </p>
           </div>
 
           <div>
@@ -180,11 +209,22 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             disabled={submitting}
             className="w-full mt-2 py-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs sm:text-sm font-black rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <CheckCircle2 className="w-4 h-4 text-[#087443]" />
-            <span>{initialData ? 'Update Campus Profile' : 'Continue to NIGERIA CAMPUS MARKET'}</span>
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#087443]" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-[#087443]" />
+            )}
+            <span>
+              {submitting
+                ? 'Connecting Campus Session...'
+                : initialData
+                ? 'Update Campus Profile'
+                : 'Continue to NIGERIA CAMPUS MARKET'}
+            </span>
           </button>
         </form>
       </div>
     </div>
   );
 };
+

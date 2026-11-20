@@ -15,6 +15,7 @@ import {
   orderBy,
   limit,
   startAfter,
+  increment,
   Query,
   QuerySnapshot,
   QueryDocumentSnapshot,
@@ -51,6 +52,8 @@ import {
   FriendRequest,
   Friend,
   PrivateMessage,
+  PrivateMessageReplyRef,
+  ChatAttachmentType,
   ChatMetadata,
   HuxListing,
   HuxReport,
@@ -313,6 +316,13 @@ let pendingAnonAuthPromise: Promise<string | null> | null = null;
  * Gracefully returns null without blocking Guest flow if disabled (auth/admin-restricted-operation).
  */
 export async function ensureGuestAuth(): Promise<string | null> {
+  try {
+    if (typeof (auth as any).authStateReady === 'function') {
+      await withTimeout((auth as any).authStateReady(), 4000, 'Auth state check timed out.').catch(() => {});
+    }
+  } catch {
+    // Non-blocking
+  }
   if (auth.currentUser?.uid) {
     return auth.currentUser.uid;
   }
@@ -324,7 +334,7 @@ export async function ensureGuestAuth(): Promise<string | null> {
     try {
       const cred = await withTimeout(
         signInAnonymously(auth),
-        4000,
+        4500,
         'Anonymous auth timed out.'
       );
       return cred.user.uid;
@@ -346,6 +356,16 @@ export async function ensureGuestAuth(): Promise<string | null> {
   })();
 
   return pendingAnonAuthPromise;
+}
+
+export async function ensureMessagingAuthSession(): Promise<string> {
+  const uid = await ensureGuestAuth();
+  if (!uid) {
+    throw new Error(
+      'Please sign in with Google or your Email & Password to use direct student messaging and friends.'
+    );
+  }
+  return uid;
 }
 
 // 4. Firestore Product Operations (Paginated Full Catalog + Stale-While-Revalidate Cache + Legacy Recovery)
@@ -801,14 +821,20 @@ function sanitizeUserDoc(id: string, data: any): User {
   return {
     id,
     name: String(data?.name || data?.displayName || 'University Student').trim(),
+    ...(data?.username ? { username: String(data.username).trim() } : {}),
     email: normalizedEmail,
     role,
     ...(data?.accountType ? { accountType: data.accountType } : {}),
+    ...(data?.faculty ? { faculty: String(data.faculty).trim() } : {}),
     ...(data?.department ? { department: String(data.department).trim() } : {}),
     ...(data?.levelOfStudy ? { levelOfStudy: String(data.levelOfStudy).trim() } : {}),
+    ...(data?.matricNumber ? { matricNumber: String(data.matricNumber).trim() } : {}),
+    ...(data?.graduationStatus ? { graduationStatus: data.graduationStatus } : {}),
+    ...(data?.academicSession ? { academicSession: String(data.academicSession).trim() } : {}),
     ...(data?.bio ? { bio: String(data.bio).trim() } : {}),
     ...(Array.isArray(data?.interests) ? { interests: data.interests.filter((x: any) => typeof x === 'string') } : {}),
-    institutionId: data?.institutionId ? String(data.institutionId).trim() : DEFAULT_INSTITUTION_ID,
+    institutionId: data?.institutionId ? String(data.institutionId).trim() : '',
+    ...(data?.institutionType ? { institutionType: data.institutionType } : {}),
     ...(data?.campus ? { campus: String(data.campus).trim() } : {}),
     ...(Array.isArray(data?.joinedInstitutionIds)
       ? { joinedInstitutionIds: data.joinedInstitutionIds.filter((x: any) => typeof x === 'string') }
@@ -816,11 +842,14 @@ function sanitizeUserDoc(id: string, data: any): User {
     ...(data?.preferredContactMethod ? { preferredContactMethod: data.preferredContactMethod } : {}),
     phone: data?.phone ? String(data.phone).trim() : '',
     whatsappNumber: data?.whatsappNumber ? String(data.whatsappNumber).trim() : (data?.phone ? String(data.phone).trim() : ''),
-    state: data?.state ? String(data.state).trim() : 'Taraba',
-    city: data?.city ? String(data.city).trim() : 'Wukari',
+    state: data?.state ? String(data.state).trim() : '',
+    city: data?.city ? String(data.city).trim() : '',
     ...(data?.avatarUrl || data?.photoURL ? { avatarUrl: String(data.avatarUrl || data.photoURL) } : {}),
     ...(data?.isSuspended ? { isSuspended: true } : {}),
     ...(data?.suspensionReason ? { suspensionReason: String(data.suspensionReason) } : {}),
+    ...(data?.isDeactivated ? { isDeactivated: true } : {}),
+    ...(data?.deactivatedAt ? { deactivatedAt: toIsoString(data.deactivatedAt) } : {}),
+    ...(data?.deactivationReason ? { deactivationReason: String(data.deactivationReason) } : {}),
     ...(data?.isVerified !== undefined ? { isVerified: Boolean(data.isVerified) } : {}),
     ...(data?.ceoVerified !== undefined ? { ceoVerified: Boolean(data.ceoVerified) } : {}),
     ...(data?.verifiedBadgeText ? { verifiedBadgeText: String(data.verifiedBadgeText) } : {}),
@@ -830,8 +859,12 @@ function sanitizeUserDoc(id: string, data: any): User {
     ...(data?.verificationMethod ? { verificationMethod: data.verificationMethod } : {}),
     ...(data?.scamStatus ? { scamStatus: data.scamStatus } : {}),
     ...(typeof data?.scamReportsCount === 'number' ? { scamReportsCount: data.scamReportsCount } : {}),
+    ...(data?.privacy ? { privacy: data.privacy } : {}),
     ...(data?.lastSeen !== undefined ? { lastSeen: data.lastSeen } : {}),
     ...(data?.lastSeenAt ? { lastSeenAt: toIsoString(data.lastSeenAt) } : {}),
+    ...(data?.lastLoginAt ? { lastLoginAt: toIsoString(data.lastLoginAt) } : {}),
+    ...(data?.lastPasswordChangedAt ? { lastPasswordChangedAt: toIsoString(data.lastPasswordChangedAt) } : {}),
+    ...(data?.settingsUpdatedAt ? { settingsUpdatedAt: toIsoString(data.settingsUpdatedAt) } : {}),
     createdAt: data?.createdAt ? toIsoString(data.createdAt) : new Date().toISOString()
   };
 }
@@ -989,10 +1022,10 @@ export async function registerAccountInFirebase(payload: {
   const accountRole: 'buyer' | 'seller' = payload.role === 'seller' ? 'seller' : 'buyer';
   const cleanWhatsapp = String(payload.whatsappNumber || payload.whatsapp || payload.phone || '').trim();
   const cleanPhone = String(payload.phone || cleanWhatsapp).trim();
-  const cleanState = String(payload.state || 'Taraba').trim();
-  const cleanCity = String(payload.city || 'Wukari').trim();
+  const cleanState = String(payload.state || '').trim();
+  const cleanCity = String(payload.city || '').trim();
   const cleanShopName = String(payload.shopName || '').trim();
-  const cleanInstitutionId = String(payload.institutionId || DEFAULT_INSTITUTION_ID).trim();
+  const cleanInstitutionId = String(payload.institutionId || '').trim();
   const cleanCampus = payload.campus ? String(payload.campus).trim() : '';
   const cleanAccountType = payload.accountType
     ? String(payload.accountType).trim()
@@ -1144,46 +1177,64 @@ export async function loginAccountInFirebase(
     try {
       const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       const fbUser = cred.user;
-      let userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-
-      if (!userDoc.exists()) {
-        // Check if profile exists by email
-        const byEmail = await getDocs(
-          query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
-        );
-        if (!byEmail.empty) {
-          userDoc = byEmail.docs[0];
-        }
-      }
+      const canonicalRef = doc(db, 'users', fbUser.uid);
+      const canonicalDoc = await getDoc(canonicalRef);
 
       let cleanUser: User;
-      if (userDoc.exists()) {
-        const raw = userDoc.data();
+      if (canonicalDoc.exists()) {
+        const raw = canonicalDoc.data();
         if (raw?.isSuspended) {
           throw new Error(
             `Account suspended by marketplace moderation: ${raw.suspensionReason || 'Violation of trust & safety policy.'}`
           );
         }
-        cleanUser = sanitizeUserDoc(userDoc.id, raw);
-        await updateDoc(doc(db, 'users', userDoc.id), {
+        cleanUser = sanitizeUserDoc(fbUser.uid, raw);
+        await updateDoc(canonicalRef, {
           lastSeen: Date.now(),
           lastSeenAt: new Date().toISOString(),
           isOnline: true
         }).catch(() => {});
       } else {
-        cleanUser = {
-          id: fbUser.uid,
-          name: fbUser.displayName || 'FUWUKARI Student',
-          email: normalizedEmail,
-          role: 'buyer',
-          accountType: 'student',
-          institutionId: DEFAULT_INSTITUTION_ID,
-          state: 'Taraba',
-          city: 'Wukari',
-          lastSeenAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'users', fbUser.uid), stripUndefined(cleanUser), { merge: true });
+        // Migrate email-matched legacy profile to canonical users/{fbUser.uid} so auth.uid matches 100%
+        const byEmail = await getDocs(
+          query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+        );
+        if (!byEmail.empty) {
+          const legacyRaw = byEmail.docs[0].data() || {};
+          if (legacyRaw?.isSuspended) {
+            throw new Error(
+              `Account suspended by marketplace moderation: ${legacyRaw.suspensionReason || 'Violation of trust & safety policy.'}`
+            );
+          }
+          const sanitizedLegacy = sanitizeUserDoc(fbUser.uid, legacyRaw);
+          await setDoc(
+            canonicalRef,
+            stripUndefined({
+              ...sanitizedLegacy,
+              id: fbUser.uid,
+              isOnline: true,
+              lastSeen: Date.now(),
+              lastSeenAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }),
+            { merge: true }
+          ).catch(() => {});
+          cleanUser = sanitizedLegacy;
+        } else {
+          cleanUser = {
+            id: fbUser.uid,
+            name: fbUser.displayName || 'Campus Member',
+            email: normalizedEmail,
+            role: 'buyer',
+            accountType: 'student',
+            institutionId: '',
+            state: '',
+            city: '',
+            lastSeenAt: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(canonicalRef, stripUndefined({ ...cleanUser, isOnline: true, lastSeen: Date.now(), favourites: [] }), { merge: true });
+        }
       }
 
       const sellerProfile = await getSellerProfileForUser(cleanUser.id);
@@ -1226,9 +1277,33 @@ export async function loginAccountInFirebase(
       throw new Error("This account uses Google Sign-In. Please click 'Continue with Google' or reset your password.");
     }
 
-    const cleanUser = sanitizeUserDoc(userDoc.id, data);
+    // Upgrade verified legacy bcrypt login into a real Firebase Auth session when possible
+    let finalUid = userDoc.id;
+    try {
+      const createdCred = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+      finalUid = createdCred.user.uid;
+      if (finalUid !== userDoc.id) {
+        const migratedUser = sanitizeUserDoc(finalUid, data);
+        await setDoc(
+          doc(db, 'users', finalUid),
+          stripUndefined({
+            ...migratedUser,
+            id: finalUid,
+            isOnline: true,
+            lastSeen: Date.now(),
+            lastSeenAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }),
+          { merge: true }
+        ).catch(() => {});
+      }
+    } catch {
+      // If email/password creation isn't enabled, fall back safely
+    }
+
+    const cleanUser = sanitizeUserDoc(finalUid, data);
     const sellerProfile = await getSellerProfileForUser(cleanUser.id);
-    await updateDoc(userDoc.ref, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
+    await updateDoc(doc(db, 'users', finalUid), { isOnline: true, lastSeen: Date.now() }).catch(() => {});
     saveUserSessionCache(cleanUser, sellerProfile);
 
     return {
@@ -1251,37 +1326,61 @@ export async function signInWithGoogle(): Promise<{
     const fbUser = cred.user;
     const normalizedEmail = (fbUser.email || '').toLowerCase().trim();
 
-    let userDocRef = doc(db, 'users', fbUser.uid);
-    let userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists() && normalizedEmail) {
-      const byEmailSnap = await getDocs(
-        query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
-      );
-      if (!byEmailSnap.empty) {
-        userDoc = byEmailSnap.docs[0];
-        userDocRef = userDoc.ref;
-      }
-    }
+    const userDocRef = doc(db, 'users', fbUser.uid);
+    const userDoc = await getDoc(userDocRef);
 
     let appUser: User;
     if (userDoc.exists()) {
-      appUser = sanitizeUserDoc(userDoc.id, userDoc.data());
-      await updateDoc(userDocRef, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
+      const raw = userDoc.data();
+      if (raw?.isSuspended) {
+        throw new Error(
+          `Account suspended by marketplace moderation: ${raw.suspensionReason || 'Violation of trust & safety policy.'}`
+        );
+      }
+      appUser = sanitizeUserDoc(fbUser.uid, raw);
+      await updateDoc(userDocRef, {
+        isOnline: true,
+        lastSeen: Date.now(),
+        lastSeenAt: new Date().toISOString()
+      }).catch(() => {});
     } else {
-      appUser = stripUndefined({
-        id: fbUser.uid,
-        name: fbUser.displayName || 'FUWUKARI Student',
+      let legacyData: Record<string, any> = {};
+      if (normalizedEmail) {
+        const byEmailSnap = await getDocs(
+          query(collection(db, 'users'), where('email', '==', normalizedEmail), limit(1))
+        ).catch(() => null);
+        if (byEmailSnap && !byEmailSnap.empty) {
+          legacyData = byEmailSnap.docs[0].data() || {};
+          if (legacyData?.isSuspended) {
+            throw new Error(
+              `Account suspended by marketplace moderation: ${legacyData.suspensionReason || 'Violation of trust & safety policy.'}`
+            );
+          }
+        }
+      }
+
+      const sanitized = sanitizeUserDoc(fbUser.uid, {
+        ...legacyData,
+        name: legacyData.name || fbUser.displayName || 'Campus Member',
         email: normalizedEmail,
-        role: 'buyer' as const,
-        phone: fbUser.phoneNumber || '',
-        whatsappNumber: fbUser.phoneNumber || '',
-        state: 'Taraba',
-        city: 'Wukari',
-        ...(fbUser.photoURL ? { avatarUrl: fbUser.photoURL } : {}),
-        createdAt: new Date().toISOString()
+        phone: legacyData.phone || fbUser.phoneNumber || '',
+        whatsappNumber: legacyData.whatsappNumber || fbUser.phoneNumber || '',
+        ...(fbUser.photoURL && !legacyData.avatarUrl ? { avatarUrl: fbUser.photoURL } : {})
       });
-      await setDoc(userDocRef, stripUndefined({ ...appUser, isOnline: true, lastSeen: Date.now(), favourites: [] }));
+      appUser = sanitized;
+      await setDoc(
+        userDocRef,
+        stripUndefined({
+          ...sanitized,
+          id: fbUser.uid,
+          isOnline: true,
+          lastSeen: Date.now(),
+          lastSeenAt: new Date().toISOString(),
+          favourites: Array.isArray(legacyData.favourites) ? legacyData.favourites : [],
+          updatedAt: new Date().toISOString()
+        }),
+        { merge: true }
+      );
     }
 
     const sellerProfile = await getSellerProfileForUser(appUser.id);
@@ -1450,27 +1549,35 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
     }
   }
 
-  // 2. Auto-build from users doc if needed
-  if (!profile) {
-    const userSnap = await getDoc(doc(db, 'users', cleanId));
-    if (userSnap.exists()) {
+  // 2. Auto-build from users doc if needed & always load user's privacy settings
+  let ownerPrivacy: User['privacy'] | undefined;
+  const ownerId = profile?.userId || cleanId;
+  if (ownerId) {
+    const userSnap = await getDoc(doc(db, 'users', ownerId)).catch(() => null);
+    if (userSnap && userSnap.exists()) {
       const u = sanitizeUserDoc(userSnap.id, userSnap.data());
-      const shopName = `${u.name}'s Store`;
-      const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      profile = {
-        id: `profile-${u.id}`,
-        userId: u.id,
-        shopName,
-        shopSlug: `${slug}-${u.id.slice(-4)}`,
-        description: `Student storefront on NIGERIA CAMPUS MARKET (${u.city || 'Wukari'}).`,
-        whatsappNumber: u.whatsappNumber || u.phone || '',
-        state: u.state || 'Taraba',
-        city: u.city || 'Wukari',
-        isVerified: Boolean(u.ceoVerified || u.isVerified),
-        ceoVerified: Boolean(u.ceoVerified || u.isVerified),
-        ...(u.verifiedBadgeText ? { verifiedBadgeText: u.verifiedBadgeText } : {}),
-        createdAt: u.createdAt
-      };
+      ownerPrivacy = u.privacy;
+      if (!profile) {
+        const shopName = `${u.name}'s Store`;
+        const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        profile = {
+          id: `profile-${u.id}`,
+          userId: u.id,
+          shopName,
+          shopSlug: `${slug}-${u.id.slice(-4)}`,
+          description: `Student storefront on NIGERIA CAMPUS MARKET${u.city ? ` (${u.city})` : ''}.`,
+          whatsappNumber: u.whatsappNumber || u.phone || '',
+          state: u.state || 'Nigeria',
+          city: u.city || '',
+          institutionId: u.institutionId,
+          campus: u.campus,
+          isVerified: Boolean(u.ceoVerified || u.isVerified),
+          ceoVerified: Boolean(u.ceoVerified || u.isVerified),
+          ...(u.verifiedBadgeText ? { verifiedBadgeText: u.verifiedBadgeText } : {}),
+          ...(ownerPrivacy ? { privacy: ownerPrivacy } : {}),
+          createdAt: u.createdAt
+        };
+      }
     }
   }
 
@@ -1488,8 +1595,9 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
       shopSlug: `${slug}-${cleanId.slice(-4)}`,
       description: 'Genuine student seller on NIGERIA CAMPUS MARKET.',
       whatsappNumber: first.whatsappNumber || '',
-      state: first.state || 'Taraba',
-      city: first.city || 'Wukari',
+      state: first.state || 'Nigeria',
+      city: first.city || '',
+      institutionId: first.institutionId,
       isVerified: false,
       createdAt: first.createdAt
     };
@@ -1502,6 +1610,7 @@ export async function getSellerStorefrontFromFirestore(identifier: string): Prom
   return {
     seller: {
       ...profile,
+      ...(ownerPrivacy ? { privacy: ownerPrivacy } : {}),
       totalListings: products.length
     },
     products
@@ -1818,16 +1927,62 @@ export function subscribeToHubActiveUsers(
 // 2. FRIEND SYSTEM, PRESENCE & DIRECT/PRIVATE 1-ON-1 CHAT
 // ============================================================================
 
+export async function signInStudentSessionWithFirebase(
+  profile: Omit<RegisteredUser, 'id'> & { id?: string }
+): Promise<RegisteredUser> {
+  const uid = await ensureMessagingAuthSession();
+  const safeStudent: RegisteredUser = stripUndefined({
+    id: uid,
+    name: String(profile.name || 'Campus Student').trim().slice(0, 110) || 'Campus Student',
+    ...(profile.matricNumber ? { matricNumber: String(profile.matricNumber).trim().slice(0, 60) } : {}),
+    ...(profile.institutionId ? { institutionId: String(profile.institutionId).trim().slice(0, 128) } : {}),
+    ...(profile.state ? { state: String(profile.state).trim().slice(0, 60) } : {}),
+    ...(profile.faculty ? { faculty: String(profile.faculty).trim().slice(0, 120) } : {}),
+    ...(profile.department ? { department: String(profile.department).trim().slice(0, 120) } : {}),
+    ...(profile.levelOfStudy ? { levelOfStudy: String(profile.levelOfStudy).trim().slice(0, 40) } : {}),
+    ...(profile.phone ? { phone: String(profile.phone).trim().slice(0, 40) } : {}),
+    ...(profile.whatsappNumber ? { whatsappNumber: String(profile.whatsappNumber).trim().slice(0, 40) } : {}),
+    isOnline: true,
+    lastSeen: Date.now(),
+    createdAt: profile.createdAt || new Date().toISOString()
+  });
+
+  await saveCampusUserProfile(safeStudent);
+  return safeStudent;
+}
+
 export async function saveCampusUserProfile(user: RegisteredUser): Promise<void> {
-  const path = `users/${user.id}`;
+  const activeUid = auth.currentUser?.uid || (await ensureGuestAuth());
+  if (!activeUid) {
+    return;
+  }
+  const path = `users/${activeUid}`;
   try {
-    const refDoc = doc(db, 'users', user.id);
-    await setDoc(refDoc, stripUndefined({
-      ...user,
-      isOnline: true,
-      lastSeen: Date.now(),
-      updatedAt: new Date().toISOString()
-    }), { merge: true });
+    const refDoc = doc(db, 'users', activeUid);
+    // Strip privileged fields so user profile writes never trigger security rule rejections
+    const {
+      isVerified: _iv,
+      ceoVerified: _cv,
+      verifiedBadgeText: _vbt,
+      verifiedByCeoAt: _vbca,
+      verifiedByCeoEmail: _vbce,
+      scamStatus: _ss,
+      ...safeFields
+    } = user as any;
+
+    await setDoc(
+      refDoc,
+      stripUndefined({
+        ...safeFields,
+        id: activeUid,
+        role: 'buyer',
+        isOnline: true,
+        lastSeen: Date.now(),
+        lastSeenAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }),
+      { merge: true }
+    );
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -1849,7 +2004,7 @@ export function subscribeToRegisteredUsers(
         snapshot.forEach((docSnap) => {
           if (docSnap.id !== currentUserId) {
             const data = docSnap.data();
-            if (data.isSuspended) return;
+            if (data.isSuspended || data.isDeactivated) return;
             const lastSeenMs =
               typeof data.lastSeen === 'number'
                 ? data.lastSeen
@@ -1860,6 +2015,7 @@ export function subscribeToRegisteredUsers(
             list.push({
               id: docSnap.id,
               name: data.name || data.displayName || 'Campus Member',
+              ...(data.username ? { username: String(data.username) } : {}),
               matricNumber: data.matricNumber || '',
               email: data.email || '',
               phone: data.phone || data.whatsappNumber || '',
@@ -1867,15 +2023,20 @@ export function subscribeToRegisteredUsers(
               avatarUrl: data.avatarUrl || data.photoURL || '',
               isOnline: actuallyOnline,
               lastSeen: data.lastSeen,
-              institutionId: data.institutionId || DEFAULT_INSTITUTION_ID,
+              institutionId: data.institutionId || '',
               campus: data.campus || '',
+              state: data.state || '',
+              ...(data.faculty ? { faculty: String(data.faculty) } : {}),
               department: data.department || '',
               levelOfStudy: data.levelOfStudy || '',
+              ...(data.graduationStatus ? { graduationStatus: data.graduationStatus } : {}),
+              ...(data.academicSession ? { academicSession: String(data.academicSession) } : {}),
               bio: data.bio || '',
               interests: Array.isArray(data.interests) ? data.interests.filter((x: any) => typeof x === 'string') : [],
               isVerified: Boolean(data.isVerified),
               ceoVerified: Boolean(data.ceoVerified),
               scamStatus: data.scamStatus || 'clear',
+              ...(data.privacy ? { privacy: data.privacy } : {}),
               createdAt: data.createdAt ? toIsoString(data.createdAt) : ''
             });
           }
@@ -1927,11 +2088,15 @@ export async function sendFriendRequest(
   fromUser: { id: string; name: string; matricNumber?: string; avatarUrl?: string },
   toUser: { id: string; name: string }
 ): Promise<void> {
-  if (!fromUser.id || !toUser.id || fromUser.id === toUser.id) {
+  const activeUid = await ensureMessagingAuthSession();
+  if (activeUid !== fromUser.id) {
+    throw new Error('Your messaging session is out of sync. Please sign in again.');
+  }
+  if (!activeUid || !toUser.id || activeUid === toUser.id) {
     throw new Error('Cannot send a friend request to yourself.');
   }
   const path = 'friendRequests';
-  const pairKey = [fromUser.id, toUser.id].sort().join('_');
+  const pairKey = [activeUid, toUser.id].sort().join('_');
   const requestId = `req_${pairKey}`;
 
   try {
@@ -1946,7 +2111,7 @@ export async function sendFriendRequest(
     if (existingSnap && existingSnap.exists()) {
       const existingData = existingSnap.data();
       if (existingData?.status === 'pending') {
-        if (existingData.fromId === fromUser.id) {
+        if (existingData.fromId === activeUid) {
           throw new Error(`Friend request already sent to ${toUser.name}.`);
         } else {
           throw new Error(`${toUser.name} already sent you a friend request! Check Incoming Requests.`);
@@ -1958,7 +2123,7 @@ export async function sendFriendRequest(
       refDoc,
       stripUndefined({
         id: requestId,
-        fromId: fromUser.id,
+        fromId: activeUid,
         fromName: fromUser.name,
         fromMatric: fromUser.matricNumber || '',
         fromAvatar: fromUser.avatarUrl || '',
@@ -1973,9 +2138,9 @@ export async function sendFriendRequest(
       userId: toUser.id,
       type: 'friend_request',
       title: 'New Friend Request',
-      body: `${fromUser.name} wants to connect with you on NIGERIA UNIVERSITY HUB.`,
+      body: `${fromUser.name} wants to connect with you on NIGERIA CAMPUS MARKET.`,
       targetType: 'friend_request',
-      targetId: fromUser.id
+      targetId: activeUid
     });
   } catch (err: any) {
     if (err?.message?.includes('already')) throw err;
@@ -1996,7 +2161,7 @@ export function subscribeToFriendRequests(
   userId: string,
   callback: (requests: FriendRequest[]) => void
 ): () => void {
-  if (!userId) {
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) {
     callback([]);
     return () => {};
   }
@@ -2094,7 +2259,7 @@ export async function respondToFriendRequest(
         userId: request.fromId,
         type: 'friend_accepted',
         title: 'Friend Request Accepted',
-        body: `${request.toName} accepted your friend request on NIGERIA UNIVERSITY HUB.`,
+        body: `${request.toName} accepted your friend request on NIGERIA CAMPUS MARKET.`,
         targetType: 'friend',
         targetId: request.toId
       });
@@ -2122,7 +2287,7 @@ export function subscribeToFriends(
   userId: string,
   callback: (friends: Friend[]) => void
 ): () => void {
-  if (!userId) {
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) {
     callback([]);
     return () => {};
   }
@@ -2146,11 +2311,15 @@ export function subscribeToFriends(
           let isOnline = false;
           let lastSeen: number | string | undefined;
           let avatarUrl = data.avatarUrl || '';
+          let institutionId = '';
+          let department = '';
           try {
             const userDoc = await getDoc(doc(db, 'users', friendUserId));
             if (userDoc.exists()) {
               const uData = userDoc.data();
               if (uData.avatarUrl) avatarUrl = uData.avatarUrl;
+              if (uData.institutionId) institutionId = String(uData.institutionId);
+              if (uData.department) department = String(uData.department);
               lastSeen = uData.lastSeen;
               const lastSeenMs =
                 typeof uData.lastSeen === 'number'
@@ -2169,6 +2338,8 @@ export function subscribeToFriends(
             userId: friendUserId,
             name: friendName || 'Campus Peer',
             matricNumber: friendMatric || '',
+            institutionId: institutionId || undefined,
+            department: department || undefined,
             avatarUrl,
             friendSince: toIsoString(data.friendSince),
             isOnline,
@@ -2220,32 +2391,92 @@ export function getPrivateChatId(userId1: string, userId2: string): string {
 
 /**
  * Ensures a direct 1-on-1 chat metadata document exists between Buyer & Seller,
- * Student & Agent, or Friends so they can message securely.
+ * Student & Agent, or Friends so they can message securely without permission mismatches.
  */
 export async function openOrCreateDirectChat(
-  currentUser: { id: string; name: string; matricNumber?: string },
-  targetUser: { id: string; name: string; matricNumber?: string }
+  currentUser: {
+    id: string;
+    name: string;
+    matricNumber?: string;
+    institutionId?: string;
+    avatarUrl?: string;
+  },
+  targetUser: {
+    id: string;
+    name: string;
+    matricNumber?: string;
+    institutionId?: string;
+    avatarUrl?: string;
+  }
 ): Promise<string> {
-  const chatId = getPrivateChatId(currentUser.id, targetUser.id);
-  const chatRef = doc(db, 'privateChats', chatId);
-  try {
-    await setDoc(
-      chatRef,
-      stripUndefined({
-        chatId,
-        participants: [currentUser.id, targetUser.id].sort(),
-        participantNames: {
-          [currentUser.id]: currentUser.name,
-          [targetUser.id]: targetUser.name
-        },
-        participantMatrics: {
-          ...(currentUser.matricNumber ? { [currentUser.id]: currentUser.matricNumber } : {}),
-          ...(targetUser.matricNumber ? { [targetUser.id]: targetUser.matricNumber } : {})
-        },
-        updatedAt: new Date().toISOString()
-      }),
-      { merge: true }
+  if (!currentUser.id || !targetUser.id) {
+    throw new Error('Both chat participants must have valid user profiles.');
+  }
+  if (currentUser.id === targetUser.id) {
+    throw new Error('You cannot start a direct chat with yourself.');
+  }
+
+  const activeUid = await ensureMessagingAuthSession();
+  if (activeUid !== currentUser.id) {
+    throw new Error(
+      'Your campus session is out of sync with Firebase Auth. Please sign out and sign back in to message privately.'
     );
+  }
+
+  const chatId = getPrivateChatId(activeUid, targetUser.id);
+  const chatRef = doc(db, 'privateChats', chatId);
+  const now = new Date().toISOString();
+
+  try {
+    const existingSnap = await getDoc(chatRef);
+    if (!existingSnap.exists()) {
+      const participants = [activeUid, targetUser.id].sort();
+      await setDoc(
+        chatRef,
+        stripUndefined({
+          chatId,
+          participants,
+          participantNames: {
+            [activeUid]: currentUser.name,
+            [targetUser.id]: targetUser.name
+          },
+          participantMatrics: {
+            ...(currentUser.matricNumber ? { [activeUid]: currentUser.matricNumber } : {}),
+            ...(targetUser.matricNumber ? { [targetUser.id]: targetUser.matricNumber } : {})
+          },
+          participantInstitutions: {
+            ...(currentUser.institutionId ? { [activeUid]: currentUser.institutionId } : {}),
+            ...(targetUser.institutionId ? { [targetUser.id]: targetUser.institutionId } : {})
+          },
+          participantAvatars: {
+            ...(currentUser.avatarUrl ? { [activeUid]: currentUser.avatarUrl } : {}),
+            ...(targetUser.avatarUrl ? { [targetUser.id]: targetUser.avatarUrl } : {})
+          },
+          unreadCounts: {
+            [activeUid]: 0,
+            [targetUser.id]: 0
+          },
+          messagesCount: 0,
+          createdAt: now,
+          updatedAt: now
+        })
+      );
+    } else {
+      await updateDoc(
+        chatRef,
+        stripUndefined({
+          [`participantNames.${activeUid}`]: currentUser.name,
+          [`participantNames.${targetUser.id}`]: targetUser.name,
+          ...(currentUser.matricNumber ? { [`participantMatrics.${activeUid}`]: currentUser.matricNumber } : {}),
+          ...(targetUser.matricNumber ? { [`participantMatrics.${targetUser.id}`]: targetUser.matricNumber } : {}),
+          ...(currentUser.institutionId ? { [`participantInstitutions.${activeUid}`]: currentUser.institutionId } : {}),
+          ...(targetUser.institutionId ? { [`participantInstitutions.${targetUser.id}`]: targetUser.institutionId } : {}),
+          ...(currentUser.avatarUrl ? { [`participantAvatars.${activeUid}`]: currentUser.avatarUrl } : {}),
+          ...(targetUser.avatarUrl ? { [`participantAvatars.${targetUser.id}`]: targetUser.avatarUrl } : {}),
+          updatedAt: now
+        })
+      ).catch(() => {});
+    }
     return chatId;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `privateChats/${chatId}`);
@@ -2254,9 +2485,10 @@ export async function openOrCreateDirectChat(
 
 export function subscribeToMyPrivateChats(
   userId: string,
-  callback: (chats: ChatMetadata[]) => void
+  callback: (chats: ChatMetadata[]) => void,
+  onError?: (errMessage: string) => void
 ): () => void {
-  if (!userId) {
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) {
     callback([]);
     return () => {};
   }
@@ -2284,7 +2516,8 @@ export function subscribeToMyPrivateChats(
         callback(chats);
       },
       (err) => {
-        console.warn('[subscribeToMyPrivateChats warning]:', err);
+        console.warn('[subscribeToMyPrivateChats warning]:', err?.message || err);
+        onError?.(formatFirestoreErrorMessage(err, 'load your private conversations'));
         callback([]);
       }
     );
@@ -2293,16 +2526,57 @@ export function subscribeToMyPrivateChats(
   }
 }
 
+function mapPrivateMessageDoc(chatId: string, docSnap: QueryDocumentSnapshot<DocumentData>): PrivateMessage {
+  const data = docSnap.data() || {};
+  const img =
+    typeof data.imageUrl === 'string' && data.imageUrl.trim().length > 0
+      ? data.imageUrl.trim()
+      : undefined;
+  const attachmentUrl =
+    typeof data.attachmentUrl === 'string' && data.attachmentUrl.trim().length > 0
+      ? data.attachmentUrl.trim()
+      : undefined;
+  return {
+    id: docSnap.id,
+    chatId,
+    senderId: String(data.senderId || ''),
+    senderName: String(data.senderName || 'Campus User'),
+    text: typeof data.text === 'string' ? data.text : '',
+    ...(img ? { imageUrl: img } : {}),
+    ...(attachmentUrl ? { attachmentUrl } : {}),
+    ...(data.attachmentType ? { attachmentType: data.attachmentType as ChatAttachmentType } : {}),
+    ...(data.attachmentName ? { attachmentName: String(data.attachmentName) } : {}),
+    ...(typeof data.attachmentSize === 'number' ? { attachmentSize: data.attachmentSize } : {}),
+    ...(typeof data.audioDurationSec === 'number' ? { audioDurationSec: data.audioDurationSec } : {}),
+    ...(data.replyTo && typeof data.replyTo === 'object' ? { replyTo: data.replyTo as PrivateMessageReplyRef } : {}),
+    createdAt: toIsoString(data.createdAt),
+    timestamp: data.timestamp || Date.now(),
+    delivered: data.delivered !== false,
+    ...(data.deliveredAt ? { deliveredAt: toIsoString(data.deliveredAt) } : {}),
+    seen: Boolean(data.seen),
+    ...(data.seenAt ? { seenAt: toIsoString(data.seenAt) } : {}),
+    ...(data.isDeleted ? { isDeleted: true } : {}),
+    ...(data.deletedAt ? { deletedAt: toIsoString(data.deletedAt) } : {}),
+    ...(data.deletedBy ? { deletedBy: String(data.deletedBy) } : {})
+  };
+}
+
 export function subscribeToPrivateMessages(
   chatId: string,
-  callback: (messages: PrivateMessage[]) => void
+  callback: (messages: PrivateMessage[]) => void,
+  onError?: (errMessage: string) => void,
+  pageSize = 50
 ): () => void {
+  if (!chatId || !auth.currentUser) {
+    callback([]);
+    return () => {};
+  }
   const path = `privateChats/${chatId}/messages`;
   try {
     const q = query(
       collection(db, path),
-      orderBy('createdAt', 'asc'),
-      limit(120)
+      orderBy('createdAt', 'desc'),
+      limit(pageSize)
     );
 
     return onSnapshot(
@@ -2310,34 +2584,44 @@ export function subscribeToPrivateMessages(
       (snapshot) => {
         const list: PrivateMessage[] = [];
         snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const img = typeof data.imageUrl === 'string' && data.imageUrl.trim().length > 0
-            ? data.imageUrl.trim()
-            : undefined;
-          list.push({
-            id: docSnap.id,
-            chatId,
-            senderId: data.senderId,
-            senderName: data.senderName,
-            text: data.text || '',
-            ...(img ? { imageUrl: img } : {}),
-            createdAt: toIsoString(data.createdAt),
-            timestamp: data.timestamp || Date.now(),
-            seen: Boolean(data.seen),
-            seenAt: data.seenAt
-          });
+          list.push(mapPrivateMessageDoc(chatId, docSnap));
         });
+        list.reverse();
         callback(list);
       },
       (err) => {
-        console.error('[subscribeToPrivateMessages error]:', err);
+        console.warn('[subscribeToPrivateMessages error]:', err?.message || err);
+        onError?.(formatFirestoreErrorMessage(err, 'load messages in this conversation'));
         callback([]);
       }
     );
-  } catch (err) {
-    console.error('[subscribeToPrivateMessages setup error]:', err);
+  } catch (err: any) {
+    console.warn('[subscribeToPrivateMessages setup error]:', err?.message || err);
+    onError?.('Unable to open live message stream right now.');
     return () => {};
   }
+}
+
+export async function loadOlderPrivateMessages(
+  chatId: string,
+  oldestCreatedAt: string,
+  pageSize = 40
+): Promise<{ messages: PrivateMessage[]; hasMore: boolean }> {
+  if (!chatId || !oldestCreatedAt || !auth.currentUser) {
+    return { messages: [], hasMore: false };
+  }
+  const path = `privateChats/${chatId}/messages`;
+  const q = query(
+    collection(db, path),
+    where('createdAt', '<', oldestCreatedAt),
+    orderBy('createdAt', 'desc'),
+    limit(pageSize + 1)
+  );
+  const snap = await getDocs(q);
+  const hasMore = snap.docs.length > pageSize;
+  const sliced = snap.docs.slice(0, pageSize).map((d) => mapPrivateMessageDoc(chatId, d));
+  sliced.reverse();
+  return { messages: sliced, hasMore };
 }
 
 export async function sendPrivateMessage(
@@ -2347,61 +2631,160 @@ export async function sendPrivateMessage(
     senderName: string;
     text?: string;
     imageUrl?: string | null;
+    attachmentUrl?: string | null;
+    attachmentType?: ChatAttachmentType;
+    attachmentName?: string;
+    attachmentSize?: number;
+    audioDurationSec?: number;
+    replyTo?: PrivateMessageReplyRef;
     participants?: string[];
   }
 ): Promise<void> {
+  const activeUid = await ensureMessagingAuthSession();
+  if (activeUid !== msg.senderId) {
+    throw new Error('Authentication mismatch. Please refresh or sign back in before sending messages.');
+  }
+
   const msgId = `pmsg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const msgRef = doc(db, `privateChats/${chatId}/messages`, msgId);
   const chatRef = doc(db, 'privateChats', chatId);
 
+  const cleanText = (msg.text || '').trim();
+  const cleanImage = typeof msg.imageUrl === 'string' && msg.imageUrl.trim().length > 0 ? msg.imageUrl.trim() : undefined;
+  const cleanAttachmentUrl =
+    typeof msg.attachmentUrl === 'string' && msg.attachmentUrl.trim().length > 0
+      ? msg.attachmentUrl.trim()
+      : undefined;
+
+  const effectiveType: ChatAttachmentType | undefined =
+    msg.attachmentType || (cleanImage ? 'image' : undefined);
+
   const payload: Record<string, any> = {
     id: msgId,
     chatId,
-    senderId: msg.senderId,
+    senderId: activeUid,
     senderName: msg.senderName,
-    text: (msg.text || '').trim(),
+    text: cleanText,
+    ...(cleanImage ? { imageUrl: cleanImage } : {}),
+    ...(cleanAttachmentUrl ? { attachmentUrl: cleanAttachmentUrl } : {}),
+    ...(effectiveType ? { attachmentType: effectiveType } : {}),
+    ...(msg.attachmentName ? { attachmentName: msg.attachmentName.slice(0, 140) } : {}),
+    ...(typeof msg.attachmentSize === 'number' ? { attachmentSize: msg.attachmentSize } : {}),
+    ...(typeof msg.audioDurationSec === 'number' ? { audioDurationSec: msg.audioDurationSec } : {}),
+    ...(msg.replyTo
+      ? {
+          replyTo: stripUndefined({
+            id: msg.replyTo.id,
+            senderId: msg.replyTo.senderId,
+            senderName: msg.replyTo.senderName.slice(0, 100),
+            ...(msg.replyTo.text ? { text: msg.replyTo.text.slice(0, 160) } : {}),
+            ...(msg.replyTo.attachmentType ? { attachmentType: msg.replyTo.attachmentType } : {}),
+            ...(msg.replyTo.attachmentName ? { attachmentName: msg.replyTo.attachmentName.slice(0, 80) } : {})
+          })
+        }
+      : {}),
     createdAt: now,
     timestamp: Date.now(),
+    delivered: true,
+    deliveredAt: now,
     seen: false
   };
 
-  if (typeof msg.imageUrl === 'string' && msg.imageUrl.trim().length > 0) {
-    payload.imageUrl = msg.imageUrl.trim();
-  }
+  const previewText =
+    cleanText ||
+    (effectiveType === 'image'
+      ? 'Photo'
+      : effectiveType === 'audio'
+      ? 'Voice note'
+      : effectiveType === 'document'
+      ? `File: ${msg.attachmentName || 'Document'}`
+      : 'Attachment');
+
+  const participantsList = Array.isArray(msg.participants) && msg.participants.length >= 2
+    ? Array.from(new Set([activeUid, ...msg.participants])).sort()
+    : [];
+  const receiverId = participantsList.find((id) => id !== activeUid);
 
   try {
-    // Write/merge parent chat room BEFORE adding message so participant-scoped security rules validate immediately
-    await setDoc(
-      chatRef,
-      stripUndefined({
-        chatId,
-        ...(Array.isArray(msg.participants) && msg.participants.length > 0 ? { participants: msg.participants } : {}),
-        lastMessageText: payload.text || (payload.imageUrl ? 'Photo' : ''),
-        lastMessageTime: now,
-        lastSenderId: msg.senderId,
-        updatedAt: now
-      }),
-      { merge: true }
-    );
+    const existingChatSnap = await getDoc(chatRef);
+    if (!existingChatSnap.exists()) {
+      if (participantsList.length < 2) {
+        throw new Error('Missing recipient details for conversation.');
+      }
+      await setDoc(
+        chatRef,
+        stripUndefined({
+          chatId,
+          participants: participantsList,
+          lastMessageText: previewText.slice(0, 240),
+          lastMessageTime: now,
+          lastSenderId: activeUid,
+          ...(effectiveType ? { lastAttachmentType: effectiveType } : {}),
+          messagesCount: 1,
+          unreadCounts: {
+            [activeUid]: 0,
+            ...(receiverId ? { [receiverId]: 1 } : {})
+          },
+          createdAt: now,
+          updatedAt: now
+        })
+      );
+    } else {
+      await updateDoc(
+        chatRef,
+        stripUndefined({
+          lastMessageText: previewText.slice(0, 240),
+          lastMessageTime: now,
+          lastSenderId: activeUid,
+          ...(effectiveType ? { lastAttachmentType: effectiveType } : {}),
+          messagesCount: increment(1),
+          ...(receiverId ? { [`unreadCounts.${receiverId}`]: increment(1) } : {}),
+          [`unreadCounts.${activeUid}`]: 0,
+          updatedAt: now
+        })
+      );
+    }
 
     await setDoc(msgRef, stripUndefined(payload));
 
-    const receiverId = Array.isArray(msg.participants)
-      ? msg.participants.find((id) => id !== msg.senderId)
-      : undefined;
     if (receiverId) {
       await emitSocialNotification({
         userId: receiverId,
         type: 'message',
         title: `New message from ${msg.senderName}`,
-        body: (payload.text || 'Sent you an image attachment').slice(0, 140),
+        body: previewText.slice(0, 140),
         targetType: 'chat',
-        targetId: msg.senderId
+        targetId: activeUid
       });
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, `privateChats/${chatId}/messages`);
+  }
+}
+
+export async function deletePrivateMessage(
+  chatId: string,
+  messageId: string,
+  currentUserId: string
+): Promise<void> {
+  if (!chatId || !messageId || !currentUserId) return;
+  const activeUid = auth.currentUser?.uid;
+  if (!activeUid || activeUid !== currentUserId) {
+    throw new Error('Please sign in again to delete your message.');
+  }
+  const msgRef = doc(db, `privateChats/${chatId}/messages`, messageId);
+  try {
+    await updateDoc(msgRef, {
+      text: 'This message was deleted.',
+      imageUrl: '',
+      attachmentUrl: '',
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy: activeUid
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `privateChats/${chatId}/messages/${messageId}`);
   }
 }
 
@@ -2410,15 +2793,12 @@ export async function setChatTypingStatus(
   userId: string,
   isTyping: boolean
 ): Promise<void> {
+  if (!chatId || !userId || auth.currentUser?.uid !== userId) return;
   try {
     const chatRef = doc(db, 'privateChats', chatId);
-    await setDoc(
-      chatRef,
-      {
-        [`typing.${userId}`]: isTyping ? Date.now() : 0
-      },
-      { merge: true }
-    );
+    await updateDoc(chatRef, {
+      [`typing.${userId}`]: isTyping ? Date.now() : 0
+    });
   } catch {
     // Non-blocking
   }
@@ -2428,19 +2808,23 @@ export function subscribeToChatMetadata(
   chatId: string,
   callback: (meta: ChatMetadata | null) => void
 ): () => void {
+  if (!chatId || !auth.currentUser) {
+    callback(null);
+    return () => {};
+  }
   try {
     const chatRef = doc(db, 'privateChats', chatId);
     return onSnapshot(
       chatRef,
       (snapshot) => {
         if (snapshot.exists()) {
-          callback(snapshot.data() as ChatMetadata);
+          callback({ ...(snapshot.data() as ChatMetadata), chatId: snapshot.id });
         } else {
           callback(null);
         }
       },
       (err) => {
-        console.warn('[subscribeToChatMetadata error]:', err);
+        console.warn('[subscribeToChatMetadata warning]:', err?.message || err);
         callback(null);
       }
     );
@@ -2453,19 +2837,34 @@ export async function markPrivateMessagesSeen(
   chatId: string,
   readerId: string
 ): Promise<void> {
+  if (!chatId || !readerId || auth.currentUser?.uid !== readerId) return;
   try {
     const q = query(
       collection(db, `privateChats/${chatId}/messages`),
-      limit(25)
+      orderBy('createdAt', 'desc'),
+      limit(60)
     );
     const snap = await getDocs(q);
     const now = new Date().toISOString();
-    snap.forEach(async (d) => {
+    const updates: Promise<void>[] = [];
+    snap.forEach((d) => {
       const data = d.data();
       if (data.senderId !== readerId && !data.seen) {
-        await updateDoc(d.ref, { seen: true, seenAt: now });
+        updates.push(
+          updateDoc(d.ref, {
+            delivered: true,
+            seen: true,
+            seenAt: now
+          }).catch(() => {})
+        );
       }
     });
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+    await updateDoc(doc(db, 'privateChats', chatId), {
+      [`unreadCounts.${readerId}`]: 0
+    }).catch(() => {});
   } catch {
     // Non-blocking
   }

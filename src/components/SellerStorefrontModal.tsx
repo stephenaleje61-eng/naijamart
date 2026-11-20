@@ -13,6 +13,8 @@ import { fetchSellerStorefront } from '../services/api.js';
 import { ProductCard } from './ProductCard.js';
 import { DirectChatTarget } from './FriendsPage.js';
 import { CeoVerifiedBadge } from './CeoVerifiedBadge.js';
+import { useAuth } from '../context/AuthContext.js';
+import { canMessageTargetUser, shouldShowTargetPhone } from '../utils/privacy.js';
 
 interface SellerStorefrontModalProps {
   sellerId: string | null;
@@ -29,11 +31,13 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
   onAddToCart,
   onStartDirectChat
 }) => {
+  const { user } = useAuth();
   const [seller, setSeller] = useState<(SellerProfile & { totalListings: number }) | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sellerId) return;
@@ -63,7 +67,18 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
     }
   };
 
+  const sellerPrivacySubject = seller
+    ? { id: seller.userId, institutionId: seller.institutionId, privacy: seller.privacy }
+    : null;
+  const canShowPhone = seller?.privacy
+    ? shouldShowTargetPhone(sellerPrivacySubject, user?.id)
+    : true;
+  const messageCheck = seller?.privacy
+    ? canMessageTargetUser(sellerPrivacySubject, user, false)
+    : { allowed: true };
+
   const buildWhatsAppHref = (): string | null => {
+    if (!canShowPhone) return null;
     const raw = seller?.whatsappNumber?.trim();
     if (!raw) return null;
     let cleaned = raw.replace(/[^0-9]/g, '');
@@ -130,7 +145,7 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                 <div className="flex flex-wrap items-center gap-3 text-xs text-white/90 mt-1">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#D4A62A]" />
-                    {seller?.city || 'Wukari'}, {seller?.state || 'Taraba'}
+                    {[seller?.city, seller?.state].filter(Boolean).join(', ') || 'Nigeria'}
                   </span>
                   <span>•</span>
                   <span>{products.length} Active Listings</span>
@@ -153,6 +168,12 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    if (!messageCheck.allowed) {
+                      setPrivacyNotice(
+                        messageCheck.reason || 'Messaging restricted by seller privacy settings.'
+                      );
+                      return;
+                    }
                     onClose();
                     onStartDirectChat({
                       id: seller.userId,
@@ -183,6 +204,11 @@ export const SellerStorefrontModal: React.FC<SellerStorefrontModalProps> = ({
 
         {/* Content Area */}
         <div className="p-6 overflow-y-auto flex-1 bg-[#F4F8F5]">
+          {privacyNotice && (
+            <div className="mb-4 p-3 rounded-xl bg-[#FFF8DB] border border-[#D4A62A] text-xs font-bold text-[#10251D]">
+              {privacyNotice}
+            </div>
+          )}
           {seller?.description && (
             <div className="p-4 bg-white rounded-2xl border border-[#E5E7EB] text-xs sm:text-sm text-[#333333] mb-6">
               <strong className="block text-[#10251D] font-black mb-1">About this Seller:</strong>

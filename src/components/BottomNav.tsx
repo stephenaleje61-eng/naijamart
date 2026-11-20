@@ -27,7 +27,8 @@ export type AppView =
   | 'leaderboards'
   | 'gpa'
   | 'orders'
-  | 'account';
+  | 'account'
+  | 'settings';
 
 interface BottomNavProps {
   currentView: AppView;

@@ -70,7 +70,8 @@ import {
   CampusBookListing,
   AppSettings,
   UserSubscription,
-  AppNotification
+  AppNotification,
+  UserSettingsDocument
 } from './types.js';
 import { fetchProducts, fetchCategories, recordSiteVisit } from './services/api.js';
 import { Header } from './components/Header.js';
@@ -223,6 +224,15 @@ import {
   activateGuestMode
 } from './utils/studentAuth.js';
 import { getProductDisplayImage } from './utils/productImages.js';
+import { SettingsPage } from './components/settings/SettingsPage.js';
+import {
+  createDefaultUserSettings,
+  reactivateUserAccount,
+  registerOrHeartbeatSession,
+  subscribeToCurrentSessionRevocation,
+  subscribeToUserSettings
+} from './services/settings.js';
+import { applyAppearanceSettings } from './utils/theme.js';
 
 const CART_STORAGE_KEY = 'fu_market_cart';
 
@@ -262,6 +272,7 @@ function resolveViewFromPath(): { view: AppView; universitySlug?: string } {
   if (path === '/gpa-cgpa-calculator' || path === '/gpa') return { view: 'gpa' };
   if (path === '/orders') return { view: 'orders' };
   if (path === '/account') return { view: 'account' };
+  if (path === '/settings' || path.startsWith('/settings/')) return { view: 'settings' };
   if (path.startsWith('/requests') || path.includes('requests.html')) return { view: 'requests' };
   if (path.startsWith('/hub') || path.includes('hub.html')) return { view: 'hub' };
   if (path.startsWith('/friends') || path.includes('friends.html')) return { view: 'friends' };
@@ -316,6 +327,8 @@ function getTargetPathForView(view: AppView): string {
       return '/orders';
     case 'account':
       return '/account';
+    case 'settings':
+      return '/settings';
     case 'requests':
       return '/requests.html';
     case 'hub':
@@ -406,6 +419,10 @@ function MainMarketplace() {
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
+  const [userSettings, setUserSettings] = useState<UserSettingsDocument>(() =>
+    createDefaultUserSettings(user)
+  );
+  const [reactivatingAccount, setReactivatingAccount] = useState<boolean>(false);
 
   // Live previews for homepage sections
   const [allStudentRequests, setAllStudentRequests] = useState<StudentRequest[]>([]);
@@ -545,6 +562,27 @@ function MainMarketplace() {
     const unsub = subscribeToUserSubscriptions(firebaseUser.uid, setUserSubscriptions);
     return () => unsub();
   }, [firebaseUser?.uid, firebaseUser?.isAnonymous]);
+
+  useEffect(() => {
+    const unsub = subscribeToUserSettings(user?.id, user, (next) => {
+      setUserSettings(next);
+      applyAppearanceSettings(next.appearance);
+    });
+    return () => unsub();
+  }, [user?.id, firebaseUser?.uid]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid || firebaseUser.isAnonymous || user?.id !== firebaseUser.uid) {
+      return;
+    }
+    registerOrHeartbeatSession(user.id).catch(() => {});
+    const unsubRevocation = subscribeToCurrentSessionRevocation(user.id, () => {
+      logout();
+      setNotificationToast('This device session was signed out remotely.');
+      setTimeout(() => setNotificationToast(null), 4000);
+    });
+    return () => unsubRevocation();
+  }, [firebaseUser?.uid, firebaseUser?.isAnonymous, user?.id]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
@@ -1196,7 +1234,7 @@ function MainMarketplace() {
     setShowAuthModal(true);
   };
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, _type: 'success' | 'error' | 'info' = 'success') => {
     setNotificationToast(msg);
     setTimeout(() => setNotificationToast(null), 3500);
   };
@@ -1510,7 +1548,7 @@ function MainMarketplace() {
     currentView === 'leaderboards';
 
   return (
-    <div className="min-h-screen bg-[#F4F7F5] text-[#202B26] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F4F7F5] dark:bg-slate-950 text-[#202B26] dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <OfflineIndicator />
 
       {/* Toast Notification */}
@@ -1518,6 +1556,45 @@ function MainMarketplace() {
         <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50 bg-[#075B3B] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold border-2 border-[#F2C94C]">
           <CheckCircle2 className="w-4 h-4 text-[#F2C94C]" />
           <span>{notificationToast}</span>
+        </div>
+      )}
+
+      {user?.isDeactivated && (
+        <div className="bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 px-4 py-2.5 text-xs">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-100 font-semibold">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Your account is currently deactivated. Reactivate it to restore full marketplace visibility.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={reactivatingAccount}
+                onClick={async () => {
+                  setReactivatingAccount(true);
+                  try {
+                    await reactivateUserAccount(user.id);
+                    await refreshUser();
+                    showToast('Welcome back! Your account has been reactivated.');
+                  } catch {
+                    showToast('Unable to reactivate right now. Please try again.', 'error');
+                  } finally {
+                    setReactivatingAccount(false);
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-[#16834A] hover:bg-[#0B8050] text-white font-bold transition cursor-pointer disabled:opacity-60"
+              >
+                {reactivatingAccount ? 'Reactivating...' : 'Reactivate My Account'}
+              </button>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1629,6 +1706,7 @@ function MainMarketplace() {
         <CampusGpaCalculatorPage
           selectedInstitutionId={selectedInstitutionId}
           institutions={institutions}
+          userSettings={userSettings}
           onBackToHome={() => navigateToView('home')}
           onOpenAuth={() => handleOpenAuth('login', 'buyer')}
         />
@@ -1659,6 +1737,46 @@ function MainMarketplace() {
               navigateToView(target as AppView);
             }
           }}
+        />
+      ) : currentView === 'settings' ? (
+        <SettingsPage
+          user={user}
+          institutions={institutions}
+          userSettings={userSettings}
+          unreadMessagesCount={unreadNotificationsCount}
+          onUserUpdated={() => {
+            refreshUser().catch(() => {});
+          }}
+          onSettingsUpdated={(next) => {
+            setUserSettings(next);
+            applyAppearanceSettings(next.appearance);
+          }}
+          onInstitutionActivated={(instId, camp) => handleSelectInstitution(instId, camp, false)}
+          onBackHome={() => navigateToView('home')}
+          onNavigateOrders={() => navigateToView('orders')}
+          onNavigateMessages={() => navigateToView('friends')}
+          onNavigateGpa={() => navigateToView('gpa')}
+          onOpenMyProducts={() => setShowSellerDashboard(true)}
+          onOpenAuthModal={(mode = 'login') => handleOpenAuth(mode, 'buyer')}
+          onOpenCeoSection={(section) => {
+            if (isAuthorizedCeo(user)) {
+              navigateCeoRoute(isCeoRouteAuthorized ? 'ceo-admin' : 'ceo-login', null, section);
+            }
+          }}
+          onOpenAdminDashboard={() => {
+            if (isAuthorizedCeo(user)) {
+              setAdminInitialTab('overview');
+              setShowAdminDashboard(true);
+            }
+          }}
+          onOpenMasterControl={() => {
+            if (isAuthorizedCeo(user)) setShowCeoMasterControl(true);
+          }}
+          onLogout={() => {
+            logout();
+            navigateToView('home');
+          }}
+          onShowToast={showToast}
         />
       ) : (
         <>
@@ -3137,6 +3255,7 @@ function MainMarketplace() {
           selectedInstitutionId={selectedInstitutionId}
           selectedCampus={selectedCampus}
           institutions={institutions}
+          userSettings={userSettings}
           onClose={() => setShowSellModal(false)}
           onSuccess={handleProductPostSuccess}
           onViewProduct={(product) => {
@@ -3516,6 +3635,7 @@ function MainMarketplace() {
           }
           showToast('Campus profile & settings saved.');
         }}
+        onOpenFullSettings={() => navigateToView('settings')}
         onRequireLogin={() => handleOpenAuth('login', 'buyer')}
       />
 

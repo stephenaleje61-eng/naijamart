@@ -6,6 +6,7 @@ import {
   Calculator,
   Heart,
   Package,
+  Settings,
   ShoppingBag,
   Store,
   Truck,
@@ -109,7 +110,7 @@ export const BuyerOrdersAccountPage: React.FC<BuyerOrdersAccountPageProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Multi-Role Ecosystem Shortcuts */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <button
             type="button"
             onClick={() => onNavigateView('seller')}
@@ -154,6 +155,15 @@ export const BuyerOrdersAccountPage: React.FC<BuyerOrdersAccountPageProps> = ({
             <Calculator className="w-5 h-5 text-[#087443]" />
             <div className="text-xs font-black">GPA &amp; CGPA Sync</div>
             <div className="text-[11px] text-[#556B60]">Academic calculator</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigateView('settings')}
+            className="p-3.5 bg-white border border-[#16834A]/40 hover:border-[#16834A] rounded-2xl text-left space-y-1 transition"
+          >
+            <Settings className="w-5 h-5 text-[#16834A]" />
+            <div className="text-xs font-black">Settings &amp; Privacy</div>
+            <div className="text-[11px] text-[#556B60]">Account, theme &amp; university</div>
           </button>
         </div>
 

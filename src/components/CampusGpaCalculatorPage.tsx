@@ -22,7 +22,8 @@ import {
   GpaSemesterRecord,
   GradingScaleGrade,
   Institution,
-  InstitutionGradingConfig
+  InstitutionGradingConfig,
+  UserSettingsDocument
 } from '../types.js';
 import {
   DEFAULT_INSTITUTION_ID,
@@ -34,6 +35,7 @@ import {
   GPA_MANDATORY_DISCLAIMER,
   STANDARD_NIGERIAN_4_0_GRADES,
   STANDARD_NIGERIAN_5_0_GRADES,
+  STANDARD_NIGERIAN_7_0_GRADES,
   calculateCumulativeMetrics,
   calculateSemesterMetrics,
   computeTargetGpaPrediction,
@@ -50,6 +52,7 @@ import {
 interface CampusGpaCalculatorPageProps {
   selectedInstitutionId?: string;
   institutions?: Institution[];
+  userSettings?: UserSettingsDocument;
   onBackToHome: () => void;
   onOpenAuth?: () => void;
 }
@@ -76,19 +79,32 @@ function createEmptySemester(index: number): GpaSemesterRecord {
 export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = ({
   selectedInstitutionId = DEFAULT_INSTITUTION_ID,
   institutions = VERIFIED_NIGERIAN_INSTITUTIONS,
+  userSettings,
   onBackToHome,
   onOpenAuth
 }) => {
   const { user, firebaseUser } = useAuth();
   const effectiveUid = firebaseUser?.uid || user?.id;
 
+  const preferredScaleModeFromSettings = (
+    scale?: string
+  ): 'standard_5' | 'standard_4' | 'standard_7' | 'custom' => {
+    if (scale === '4.0') return 'standard_4';
+    if (scale === '7.0') return 'standard_7';
+    if (scale === 'custom') return 'custom';
+    return 'standard_5';
+  };
+
   const [institutionId, setInstitutionId] = useState<string>(
-    selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId
+    user?.institutionId ||
+      (selectedInstitutionId === 'all' ? DEFAULT_INSTITUTION_ID : selectedInstitutionId)
   );
-  const [scaleMode, setScaleMode] = useState<'standard_5' | 'standard_4' | 'custom' | 'institution'>('standard_5');
+  const [scaleMode, setScaleMode] = useState<
+    'standard_5' | 'standard_4' | 'standard_7' | 'custom' | 'institution'
+  >(() => preferredScaleModeFromSettings(userSettings?.academic?.defaultGpaScale));
   const [institutionConfig, setInstitutionConfig] = useState<InstitutionGradingConfig | null>(null);
   const [customGrades, setCustomGrades] = useState<GradingScaleGrade[]>(STANDARD_NIGERIAN_5_0_GRADES);
-  const [customScaleMax, setCustomScaleMax] = useState<5 | 4>(5);
+  const [customScaleMax, setCustomScaleMax] = useState<7 | 5 | 4>(5);
   const [semesters, setSemesters] = useState<GpaSemesterRecord[]>(() => {
     const guest = loadGuestAcademicRecord();
     if (guest && Array.isArray(guest.semesters) && guest.semesters.length > 0) {
@@ -97,8 +113,10 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
     return [createEmptySemester(0)];
   });
 
-  // Target CGPA predictor controls
-  const [targetCgpa, setTargetCgpa] = useState<number>(4.5);
+  // Target CGPA predictor controls (synced from Academic Preferences when available)
+  const [targetCgpa, setTargetCgpa] = useState<number>(
+    () => userSettings?.academic?.targetCgpa || 4.5
+  );
   const [upcomingUnits, setUpcomingUnits] = useState<number>(21);
 
   const [savingCloud, setSavingCloud] = useState(false);
@@ -109,6 +127,17 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
     () => getInstitutionById(institutionId, institutions),
     [institutionId, institutions]
   );
+
+  // Apply updated Academic Preferences defaults when userSettings changes
+  useEffect(() => {
+    if (!userSettings?.academic) return;
+    if (userSettings.academic.targetCgpa > 0) {
+      setTargetCgpa(userSettings.academic.targetCgpa);
+    }
+    if (scaleMode !== 'institution') {
+      setScaleMode(preferredScaleModeFromSettings(userSettings.academic.defaultGpaScale));
+    }
+  }, [userSettings?.academic?.defaultGpaScale, userSettings?.academic?.targetCgpa]);
 
   // Load saved cloud record when signed in
   useEffect(() => {
@@ -123,9 +152,11 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
         if (rec.institutionId) setInstitutionId(rec.institutionId);
         if (Array.isArray(rec.customGrades) && rec.customGrades.length > 0) {
           setCustomGrades(rec.customGrades);
-          setCustomScaleMax(rec.scaleMax === 4 ? 4 : 5);
+          setCustomScaleMax(rec.scaleMax === 4 ? 4 : rec.scaleMax === 7 ? 7 : 5);
         } else if (rec.scaleMax === 4) {
           setScaleMode('standard_4');
+        } else if (rec.scaleMax === 7) {
+          setScaleMode('standard_7');
         }
       })
       .catch(() => {});
@@ -144,7 +175,7 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
         if (cfg && cfg.grades.length > 0) {
           setScaleMode('institution');
         } else if (scaleMode === 'institution') {
-          setScaleMode('standard_5');
+          setScaleMode(preferredScaleModeFromSettings(userSettings?.academic?.defaultGpaScale));
         }
       })
       .catch(() => {
@@ -155,8 +186,9 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
     };
   }, [institutionId]);
 
-  const activeScaleMax: 5 | 4 = useMemo(() => {
+  const activeScaleMax: 7 | 5 | 4 = useMemo(() => {
     if (scaleMode === 'standard_4') return 4;
+    if (scaleMode === 'standard_7') return 7;
     if (scaleMode === 'institution' && institutionConfig) return institutionConfig.scaleMax;
     if (scaleMode === 'custom') return customScaleMax;
     return 5;
@@ -164,6 +196,7 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
 
   const activeGrades: GradingScaleGrade[] = useMemo(() => {
     if (scaleMode === 'standard_4') return STANDARD_NIGERIAN_4_0_GRADES;
+    if (scaleMode === 'standard_7') return STANDARD_NIGERIAN_7_0_GRADES;
     if (scaleMode === 'institution' && institutionConfig && institutionConfig.grades.length > 0) {
       return institutionConfig.grades;
     }
@@ -465,6 +498,8 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
                 ? institutionConfig.scaleLabel
                 : scaleMode === 'standard_4'
                 ? 'Nigerian 4.0 Scale'
+                : scaleMode === 'standard_7'
+                ? 'Nigerian 7.0 Scale'
                 : scaleMode === 'custom'
                 ? `Custom ${customScaleMax}.0 Scale`
                 : 'Nigerian 5.0 Standard'}
@@ -472,7 +507,7 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
             <div className="mt-2 text-[11px] text-[#556B60]">
               {scaleMode === 'institution' && institutionConfig?.isVerifiedOfficial
                 ? 'Admin-verified scale configuration'
-                : 'Select 5.0, 4.0, or Custom Scale below'}
+                : 'Select 5.0, 4.0, 7.0, or Custom Scale below'}
             </div>
           </div>
         </div>
@@ -523,6 +558,17 @@ export const CampusGpaCalculatorPage: React.FC<CampusGpaCalculatorPageProps> = (
                   }`}
                 >
                   4.0 Scale
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScaleMode('standard_7')}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                    scaleMode === 'standard_7'
+                      ? 'bg-[#087443] text-white border-[#087443]'
+                      : 'bg-[#F4F8F5] text-[#10251D] border-[#D8E5DD]'
+                  }`}
+                >
+                  7.0 Scale
                 </button>
                 {institutionConfig && (
                   <button

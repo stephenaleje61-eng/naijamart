@@ -17,6 +17,24 @@ service firebase.storage {
         request.resource.size <= 5 * 1024 * 1024;
     }
 
+    function isUnder10MB() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 10 * 1024 * 1024;
+    }
+
+    function isChatAudioOrDocument() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 10 * 1024 * 1024 && (
+          request.resource.contentType.matches('audio/.*') ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'text/plain'
+        );
+    }
+
     // Products: public buyers read product photos; authenticated guests or sellers upload to own folder
     match /products/{sellerId}/{fileName} {
       allow read: if true;
@@ -38,10 +56,17 @@ service firebase.storage {
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Hub chat attachments
+    // Hub chat attachments (images, audio, docs)
     match /hub_chats/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isSignedIn() && request.auth.uid == userId && isImage() && isUnder5MB();
+      allow create, update: if isSignedIn() && request.auth.uid == userId && ((isImage() && isUnder5MB()) || isChatAudioOrDocument()) && isUnder10MB();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Direct 1-on-1 private chat attachments (images, voice notes, documents)
+    match /chat_attachments/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == userId && ((isImage() && isUnder5MB()) || isChatAudioOrDocument()) && isUnder10MB();
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
