@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Package,
   RefreshCw,
+  ShieldAlert,
   ShoppingBag,
   Smartphone,
   Store,
@@ -22,7 +23,8 @@ import {
   TrendingUp,
   UserCheck,
   UserPlus,
-  Users
+  Users,
+  UserX
 } from 'lucide-react';
 import { collection, getDocs, limit, onSnapshot, query } from 'firebase/firestore';
 import {
@@ -122,6 +124,15 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
     (propStudentPostsCount ?? 0) + (propRequestsCount ?? 0)
   );
   const [messagesCount, setMessagesCount] = useState<number>(propMessagesCount ?? 0);
+  const [hubMessagesCount, setHubMessagesCount] = useState<number>(0);
+  const [privateMessagesCount, setPrivateMessagesCount] = useState<number>(0);
+  const [privateChatsCount, setPrivateChatsCount] = useState<number>(0);
+  const [friendRequestsTotal, setFriendRequestsTotal] = useState<number>(0);
+  const [friendRequestsPending, setFriendRequestsPending] = useState<number>(0);
+  const [friendRequestsAccepted, setFriendRequestsAccepted] = useState<number>(0);
+  const [conversationReportsCount, setConversationReportsCount] = useState<number>(0);
+  const [conversationReportsPending, setConversationReportsPending] = useState<number>(0);
+  const [scamAndListingReportsCount, setScamAndListingReportsCount] = useState<number>(0);
   const [activeHubIds, setActiveHubIds] = useState<Set<string>>(() => new Set());
   const [membershipsCount, setMembershipsCount] = useState<number>(propMembershipsCount ?? 0);
 
@@ -209,7 +220,12 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
         instSnap,
         svcSnap,
         adSnap,
-        memSnap
+        memSnap,
+        friendReqSnap,
+        convReportSnap,
+        scamReportSnap,
+        reportsSnap,
+        huxReportsSnap
       ] = await Promise.all([
         !propVisitors ? fetchAdminAnalyticsSummary(30) : Promise.resolve(propVisitors),
         !propProducts ? getAllProductsFromFirestoreForAdmin() : Promise.resolve(propProducts),
@@ -227,7 +243,12 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
         !propInstitutions ? getDocs(query(collection(db, 'institutions'), limit(400))).catch(() => null) : Promise.resolve(null),
         !propServices ? getDocs(query(collection(db, 'services'), limit(400))).catch(() => null) : Promise.resolve(null),
         !propAds ? getDocs(query(collection(db, 'advertisements'), limit(300))).catch(() => null) : Promise.resolve(null),
-        getDocs(query(collection(db, 'communityMemberships'), limit(500))).catch(() => null)
+        getDocs(query(collection(db, 'communityMemberships'), limit(500))).catch(() => null),
+        getDocs(query(collection(db, 'friendRequests'), limit(500))).catch(() => null),
+        getDocs(query(collection(db, 'conversationReports'), limit(300))).catch(() => null),
+        getDocs(query(collection(db, 'scamReports'), limit(300))).catch(() => null),
+        getDocs(query(collection(db, 'reports'), limit(300))).catch(() => null),
+        getDocs(query(collection(db, 'huxReports'), limit(300))).catch(() => null)
       ]);
 
       if (visitorRes) setVisitors(visitorRes);
@@ -269,13 +290,30 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
       setPostsItems(combinedPosts);
       setPostsCount(combinedPosts.length);
 
+      const hubMsgCount = hubMsgSnap?.size || 0;
       const privMsgs = (privChatsSnap?.docs || []).reduce((acc, d) => {
         const data = d.data() as any;
         const c = Number(data?.messagesCount || 0);
         return acc + (c > 0 ? c : data?.lastMessageText || data?.lastMessageTime ? 1 : 0);
       }, 0);
-      const totalMsgs = (hubMsgSnap?.size || 0) + privMsgs;
+      setHubMessagesCount(hubMsgCount);
+      setPrivateMessagesCount(privMsgs);
+      setPrivateChatsCount(privChatsSnap?.size || 0);
+      const totalMsgs = hubMsgCount + privMsgs;
       setMessagesCount(propMessagesCount !== undefined ? Math.max(propMessagesCount, totalMsgs) : totalMsgs);
+
+      const reqDocs = friendReqSnap?.docs || [];
+      setFriendRequestsTotal(reqDocs.length);
+      setFriendRequestsPending(reqDocs.filter((d) => (d.data() as any)?.status === 'pending').length);
+      setFriendRequestsAccepted(reqDocs.filter((d) => (d.data() as any)?.status === 'accepted').length);
+
+      const convDocs = convReportSnap?.docs || [];
+      setConversationReportsCount(convDocs.length);
+      setConversationReportsPending(convDocs.filter((d) => (d.data() as any)?.status === 'pending').length);
+
+      const scamTotal =
+        (scamReportSnap?.size || 0) + (reportsSnap?.size || 0) + (huxReportsSnap?.size || 0);
+      setScamAndListingReportsCount(scamTotal);
 
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
       const hubSet = new Set<string>();
@@ -490,6 +528,14 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
     const activeAdsCount = ads.filter((a) => a.status === 'active' && !a.isDeleted).length;
     const activeServicesCount = services.filter((s) => s.status === 'active').length;
 
+    const suspendedUsersCount = liveUsers.filter((u) => Boolean(u.isSuspended)).length;
+    const representedInstitutions = new Set<string>();
+    for (const u of liveUsers) if (u.institutionId) representedInstitutions.add(u.institutionId);
+    for (const p of products) if (p.institutionId) representedInstitutions.add(p.institutionId);
+    for (const post of postsItems) if (post.institutionId) representedInstitutions.add(post.institutionId);
+    for (const acc of accomItems) if (acc.institutionId) representedInstitutions.add(acc.institutionId);
+    const universitiesRepresentedCount = representedInstitutions.size;
+
     return {
       totalUsers,
       totalSellers,
@@ -497,6 +543,8 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
       totalStudents,
       totalAgents,
       totalActiveUsers,
+      suspendedUsersCount,
+      universitiesRepresentedCount,
       regToday,
       regThisWeek,
       regThisMonth,
@@ -1025,6 +1073,97 @@ export const AdminOverviewAnalytics: React.FC<AdminOverviewAnalyticsProps> = ({
           <strong className="text-lg font-black text-[#D4A62A] tabular-nums mt-1 block">
             {pendingReportsCount.toLocaleString()}
           </strong>
+        </div>
+      </div>
+
+      {/* Messaging, Community & Safety Analytics (Live Database) */}
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-black text-[#10251D]">
+              Messaging, Community &amp; Safety Analytics (Live Database)
+            </h3>
+            <p className="text-[11px] text-[#555555]">
+              Real-time overview of direct chats, friend requests, campus reach, and safety reports
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-[#F4F8F5] border border-[#E5E7EB] text-[11px] font-bold text-[#075B3B]">
+            {computed.universitiesRepresentedCount.toLocaleString()} Universities Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Messages Split</span>
+              <MessageSquare className="w-3.5 h-3.5 text-[#075B3B]" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {(hubMessagesCount + privateMessagesCount).toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">
+              {hubMessagesCount.toLocaleString()} hub · {privateMessagesCount.toLocaleString()} direct
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Private Threads</span>
+              <MessageCircle className="w-3.5 h-3.5 text-[#075B3B]" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {privateChatsCount.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">1-on-1 student &amp; seller chats</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Friend Requests</span>
+              <UserPlus className="w-3.5 h-3.5 text-[#075B3B]" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {friendRequestsTotal.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">
+              {friendRequestsAccepted} accepted · {friendRequestsPending} pending
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Chat Reports</span>
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {conversationReportsCount.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">
+              {conversationReportsPending.toLocaleString()} awaiting review
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Scam &amp; Item Reports</span>
+              <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {scamAndListingReportsCount.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">Anti-scam &amp; listing flags</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#F4F8F5] border border-[#E5E7EB]">
+            <div className="flex items-center justify-between text-[#555555] text-[11px] font-bold">
+              <span>Suspended Accounts</span>
+              <UserX className="w-3.5 h-3.5 text-red-600" />
+            </div>
+            <p className="text-lg font-black text-[#10251D] tabular-nums mt-1">
+              {computed.suspendedUsersCount.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-[#6B7280]">Moderation enforcement</p>
+          </div>
         </div>
       </div>
     </div>

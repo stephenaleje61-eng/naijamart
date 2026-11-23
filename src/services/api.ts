@@ -150,7 +150,7 @@ export const safeFetchJson = async (
   endpoint: string,
   options: RequestInit & { timeoutMs?: number; baseOverride?: string } = {}
 ) => {
-  const { timeoutMs = 4500, baseOverride, ...fetchOptions } = options;
+  const { timeoutMs = 10000, baseOverride, ...fetchOptions } = options;
   const base = baseOverride !== undefined ? baseOverride : getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const fullUrl = base ? `${base}${cleanEndpoint}` : cleanEndpoint;
@@ -160,26 +160,36 @@ export const safeFetchJson = async (
     ...(fetchOptions.headers as Record<string, string> || {})
   };
 
-  const controller = new AbortController();
-  const timeoutTimer = setTimeout(() => controller.abort(), timeoutMs);
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+  const maxAttempts = method === 'GET' && !fetchOptions.signal ? 2 : 1;
 
-  let res: Response;
-  try {
-    res = await fetch(fullUrl, {
-      ...fetchOptions,
-      headers: mergedHeaders,
-      signal: fetchOptions.signal || controller.signal
-    });
-  } catch (networkErr: any) {
-    if (networkErr?.name === 'AbortError') {
-      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds while contacting NIGERIA CAMPUS MARKET server.`);
+  let res!: Response;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      res = await fetch(fullUrl, {
+        ...fetchOptions,
+        headers: mergedHeaders,
+        signal: fetchOptions.signal || controller.signal
+      });
+      clearTimeout(timeoutTimer);
+      break;
+    } catch (networkErr: any) {
+      clearTimeout(timeoutTimer);
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        continue;
+      }
+      if (networkErr?.name === 'AbortError') {
+        throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds while contacting NIGERIA CAMPUS MARKET server.`);
+      }
+      console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
+      throw new Error(
+        `Unable to connect to NIGERIA CAMPUS MARKET backend server at ${fullUrl}. Please check your internet connection.`
+      );
     }
-    console.error(`[Network Connection Failed] Unable to reach ${fullUrl}:`, networkErr);
-    throw new Error(
-      `Unable to connect to NIGERIA CAMPUS MARKET backend server at ${fullUrl}. Please check your internet connection.`
-    );
-  } finally {
-    clearTimeout(timeoutTimer);
   }
 
   const contentType = res.headers.get('content-type') || '';

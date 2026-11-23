@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Offline — NIGERIA CAMPUS MARKET</title>
-    <meta name="theme-color" content="#087443" />
+    <meta name="theme-color" content="#F68B1F" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
     <style>
       * {
@@ -14,8 +14,8 @@
         margin: 0;
         min-height: 100vh;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background-color: #f4f8f5;
-        color: #10251d;
+        background-color: #f7f7f7;
+        color: #303030;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -25,37 +25,37 @@
         width: 100%;
         max-width: 440px;
         background: #ffffff;
-        border: 1px solid #d9e5df;
-        border-radius: 24px;
+        border: 1px solid #eeeeee;
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 20px 50px rgba(16, 37, 29, 0.12);
+        box-shadow: 0 20px 50px rgba(34, 34, 34, 0.12);
         text-align: center;
       }
       .header {
-        background: linear-gradient(135deg, #10251d 0%, #087443 100%);
+        background: linear-gradient(135deg, #ff6a00 0%, #f68b1f 100%);
         color: #ffffff;
         padding: 28px 24px;
-        border-bottom: 4px solid #d4a62a;
+        border-bottom: 4px solid #222222;
       }
       .logo {
-        width: 68px;
-        height: 68px;
+        width: 72px;
+        height: 72px;
         border-radius: 18px;
-        border: 2px solid #d4a62a;
+        border: 2px solid #ffffff;
         background: #ffffff;
         margin-bottom: 12px;
       }
       .badge {
         display: inline-block;
-        background: #d4a62a;
-        color: #10251d;
+        background: #222222;
+        color: #ffffff;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        padding: 4px 10px;
+        padding: 4px 12px;
         border-radius: 999px;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
       }
       h1 {
         margin: 0;
@@ -67,10 +67,37 @@
         padding: 24px;
       }
       p {
-        margin: 0 0 18px 0;
+        margin: 0 0 16px 0;
         font-size: 14px;
         line-height: 1.6;
-        color: #374151;
+        color: #303030;
+      }
+      .status {
+        display: none;
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.5;
+      }
+      .status.visible {
+        display: block;
+      }
+      .status.checking {
+        background: #fff4eb;
+        color: #222222;
+        border: 1px solid #f68b1f;
+      }
+      .status.error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+      }
+      .status.success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
       }
       .actions {
         display: flex;
@@ -91,20 +118,24 @@
         cursor: pointer;
         border: none;
       }
+      button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
       .primary {
-        background: #087443;
+        background: #ff6a00;
         color: #ffffff;
       }
       .secondary {
-        background: #f4f8f5;
-        color: #10251d;
-        border: 1px solid #d9e5df;
+        background: #f7f7f7;
+        color: #222222;
+        border: 1px solid #eeeeee;
       }
       .footer {
         margin-top: 18px;
         font-size: 11px;
         color: #6b7280;
-        font-weight: 600;
+        font-weight: 700;
       }
     </style>
   </head>
@@ -112,23 +143,162 @@
     <main class="card">
       <div class="header">
         <img src="/pwa-192x192.png" alt="NIGERIA CAMPUS MARKET" class="logo" />
-        <div class="badge">Offline Mode</div>
+        <div><span class="badge">Connection Interrupted</span></div>
         <h1>NIGERIA CAMPUS MARKET</h1>
       </div>
       <div class="body">
         <p>
-          You appear to be offline right now. Reconnect to mobile data or campus Wi-Fi to browse live listings, hostels, jobs, and student messages across Nigeria.
+          We could not reach the NIGERIA CAMPUS MARKET server right now. Check your mobile data (4G/5G) or campus Wi-Fi and tap Retry Connection below.
         </p>
+
+        <div id="connection-status" class="status" role="status" aria-live="polite"></div>
+
         <div class="actions">
-          <button type="button" class="primary" onclick="window.location.reload()">
+          <button type="button" id="retry-btn" class="primary">
             Retry Connection
           </button>
-          <a href="/" class="secondary">Return to Home</a>
+          <a href="/" id="home-btn" class="secondary">Return to Home</a>
         </div>
         <div class="footer">
-          Buy. Sell. Connect. Grow Across Nigerian Campuses.
+          Shop Faster, Anytime, Anywhere — Learn. Connect. Buy. Sell. Grow.
         </div>
       </div>
     </main>
+
+    <script>
+      (function () {
+        var retryBtn = document.getElementById('retry-btn');
+        var homeBtn = document.getElementById('home-btn');
+        var statusEl = document.getElementById('connection-status');
+        var isChecking = false;
+
+        function setStatus(type, message) {
+          if (!statusEl) return;
+          statusEl.className = 'status visible ' + type;
+          statusEl.textContent = message;
+        }
+
+        async function refreshServiceWorkerBeforeNavigate() {
+          if (!('serviceWorker' in navigator)) return;
+          try {
+            var regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+              regs.map(function (reg) {
+                return reg.update().catch(function () {});
+              })
+            );
+          } catch (_) {
+            // Non-fatal
+          }
+        }
+
+        async function testServerReachability() {
+          var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          var timeoutId = controller
+            ? setTimeout(function () {
+                controller.abort();
+              }, 5000)
+            : null;
+
+          try {
+            var healthRes = await fetch('/api/health?probe=' + Date.now(), {
+              method: 'GET',
+              cache: 'no-store',
+              headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+              signal: controller ? controller.signal : undefined
+            });
+            if (healthRes && healthRes.ok) {
+              return true;
+            }
+          } catch (_) {
+            // Fall through to manifest/root check
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+          }
+
+          var fallbackController =
+            typeof AbortController !== 'undefined' ? new AbortController() : null;
+          var fallbackTimeout = fallbackController
+            ? setTimeout(function () {
+                fallbackController.abort();
+              }, 4000)
+            : null;
+
+          try {
+            var rootRes = await fetch('/manifest.json?probe=' + Date.now(), {
+              method: 'HEAD',
+              cache: 'no-store',
+              signal: fallbackController ? fallbackController.signal : undefined
+            });
+            return Boolean(rootRes && rootRes.ok);
+          } catch (_) {
+            return false;
+          } finally {
+            if (fallbackTimeout) clearTimeout(fallbackTimeout);
+          }
+        }
+
+        async function attemptRecovery(userTriggered) {
+          if (isChecking) return;
+          isChecking = true;
+
+          if (userTriggered && retryBtn) {
+            retryBtn.disabled = true;
+            retryBtn.textContent = 'Checking Connection...';
+            setStatus('checking', 'Testing live connection to NIGERIA CAMPUS MARKET...');
+          }
+
+          var reachable = await testServerReachability();
+          if (reachable) {
+            setStatus('success', 'Connection active! Loading NIGERIA CAMPUS MARKET...');
+            await refreshServiceWorkerBeforeNavigate();
+            var targetUrl = window.location.pathname === '/offline.html' ? '/' : window.location.pathname + window.location.search;
+            if (!targetUrl || targetUrl === '/offline.html') targetUrl = '/';
+            window.location.replace(targetUrl);
+            return;
+          }
+
+          if (userTriggered) {
+            setStatus(
+              'error',
+              'Still unable to reach the server. Verify your mobile data or Wi-Fi is turned on and try again.'
+            );
+          }
+
+          if (retryBtn) {
+            retryBtn.disabled = false;
+            retryBtn.textContent = 'Retry Connection';
+          }
+          isChecking = false;
+        }
+
+        if (retryBtn) {
+          retryBtn.addEventListener('click', function () {
+            attemptRecovery(true);
+          });
+        }
+
+        if (homeBtn) {
+          homeBtn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            attemptRecovery(true);
+          });
+        }
+
+        window.addEventListener('online', function () {
+          attemptRecovery(false);
+        });
+
+        // Immediately verify on load so online 4G visitors never remain stuck on offline.html
+        attemptRecovery(false);
+
+        // Gently check every 8 seconds while page is visible until connection restores
+        setInterval(function () {
+          if (document.visibilityState === 'visible') {
+            attemptRecovery(false);
+          }
+        }, 8000);
+      })();
+    </script>
   </body>
 </html>

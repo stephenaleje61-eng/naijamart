@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Crown,
+  Download,
   FileText,
   Globe,
   GraduationCap,
@@ -101,6 +102,7 @@ interface SettingsPageProps {
   onOpenMasterControl: () => void;
   onLogout: () => void;
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  onOpenDownloadApp?: () => void;
 }
 
 const SECTION_META: Record<SettingsSectionId, { title: string; subtitle: string }> = {
@@ -192,7 +194,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onOpenAdminDashboard,
   onOpenMasterControl,
   onLogout,
-  onShowToast
+  onShowToast,
+  onOpenDownloadApp
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('overview');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -928,6 +931,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       desc="View our terms, privacy policy & guidelines"
                       onClick={() => openProtectedSection('terms')}
                     />
+                    {onOpenDownloadApp && (
+                      <SettingRowButton
+                        icon={<Download className="w-4 h-4 text-[#FF6A00]" />}
+                        iconBg="bg-[#FFF4EB] dark:bg-orange-950/50"
+                        title="Download Campus App"
+                        desc="Install mobile web app (PWA) or Android APK"
+                        onClick={onOpenDownloadApp}
+                      />
+                    )}
                   </div>
                 </section>
 

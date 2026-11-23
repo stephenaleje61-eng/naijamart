@@ -163,7 +163,11 @@ async function startServer() {
         express.static(distPath, {
           maxAge: '7d',
           setHeaders(res, filePath) {
-            if (filePath.endsWith('.html')) {
+            if (
+              filePath.endsWith('.html') ||
+              filePath.endsWith('service-worker.js') ||
+              filePath.endsWith('manifest.json')
+            ) {
               res.setHeader('Cache-Control', 'no-cache');
             }
           }

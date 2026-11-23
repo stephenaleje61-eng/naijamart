@@ -4,48 +4,48 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  --color-ncm-forest: #075B3B;
-  --color-ncm-emerald: #0B8050;
-  --color-ncm-emerald-dark: #075B3B;
-  --color-ncm-navy: #202B26;
-  --color-ncm-navy-dark: #202B26;
-  --color-ncm-gold: #F2C94C;
-  --color-ncm-gold-bright: #F2C94C;
-  --color-ncm-bg: #F4F7F5;
+  --color-ncm-forest: #F68B1F;
+  --color-ncm-emerald: #FF6A00;
+  --color-ncm-emerald-dark: #E05A00;
+  --color-ncm-navy: #222222;
+  --color-ncm-navy-dark: #222222;
+  --color-ncm-gold: #FF6A00;
+  --color-ncm-gold-bright: #F68B1F;
+  --color-ncm-bg: #F7F7F7;
   --color-ncm-white: #FFFFFF;
 
   /* Backwards-compatible CSS token aliases */
-  --color-nuh-emerald: #0B8050;
-  --color-nuh-emerald-dark: #075B3B;
-  --color-nuh-navy: #202B26;
-  --color-nuh-navy-dark: #202B26;
-  --color-nuh-gold: #F2C94C;
-  --color-nuh-gold-bright: #F2C94C;
-  --color-nuh-charcoal: #202B26;
-  --color-nuh-bg: #F4F7F5;
+  --color-nuh-emerald: #F68B1F;
+  --color-nuh-emerald-dark: #FF6A00;
+  --color-nuh-navy: #222222;
+  --color-nuh-navy-dark: #222222;
+  --color-nuh-gold: #FF6A00;
+  --color-nuh-gold-bright: #F68B1F;
+  --color-nuh-charcoal: #303030;
+  --color-nuh-bg: #F7F7F7;
   --color-nuh-white: #FFFFFF;
 
-  --color-fu-green: #075B3B;
-  --color-fu-green-dark: #075B3B;
-  --color-fu-gold: #F2C94C;
-  --color-fu-gold-bright: #F2C94C;
-  --color-fu-charcoal: #202B26;
-  --color-fu-bg: #F4F7F5;
+  --color-fu-green: #F68B1F;
+  --color-fu-green-dark: #FF6A00;
+  --color-fu-gold: #FF6A00;
+  --color-fu-gold-bright: #F68B1F;
+  --color-fu-charcoal: #303030;
+  --color-fu-bg: #F7F7F7;
 }
 
 @layer base {
   html,
   body {
-    background-color: #F4F7F5;
-    color: #202B26;
+    background-color: #F7F7F7;
+    color: #303030;
     color-scheme: light;
     font-family: var(--font-sans);
   }
 
   html.dark,
   html.dark body {
-    background-color: #0B1220;
-    color: #E2E8F0;
+    background-color: #121212;
+    color: #F3F4F6;
     color-scheme: dark;
   }
 
@@ -66,20 +66,20 @@
     font-family: var(--font-display);
   }
 
-  /* Forest Green, Emerald & Gold scrollbars */
+  /* Orange & Soft Grey scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #F4F7F5;
+    background: #F7F7F7;
   }
   ::-webkit-scrollbar-thumb {
-    background: #075B3B;
+    background: #F68B1F;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #0B8050;
+    background: #FF6A00;
   }
 }
 

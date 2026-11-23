@@ -38,6 +38,7 @@ import {
 import bcrypt from 'bcryptjs';
 import activeFirebaseConfig from './firebaseConfig.js';
 import { isValidImageUrl } from '../utils/productImages.js';
+import { verifyRealConnectivity } from '../utils/networkMonitor.js';
 export { isValidImageUrl };
 import { matchesProductCategory, normalizeProductCategoryId } from '../constants/categories.js';
 import { DEFAULT_INSTITUTION_ID, belongsToInstitution } from '../constants/institutions.js';
@@ -270,7 +271,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 // 3. Test Connection on App Boot
 export async function testConnection(): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!(await verifyRealConnectivity(3500))) {
     return false;
   }
   try {
@@ -1052,7 +1053,7 @@ export async function registerAccountInFirebase(payload: {
     throw new Error('Please enter your shop or business name.');
   }
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!(await verifyRealConnectivity(3500))) {
     throw new Error('Unable to connect. Please check your internet connection and try again.');
   }
 
@@ -1168,7 +1169,7 @@ export async function loginAccountInFirebase(
   if (!password) {
     throw new Error('Please enter your password.');
   }
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!(await verifyRealConnectivity(3500))) {
     throw new Error('Unable to connect. Please check your internet connection and try again.');
   }
 

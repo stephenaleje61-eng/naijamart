@@ -40,11 +40,18 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
   const hasPlayStore = Boolean(appSettings.playStoreUrl && appSettings.playStoreUrl.trim());
 
   const handleAndroidInstall = async () => {
+    if (isInstalled) {
+      onShowToast('APP ALREADY INSTALLED on your device!');
+      onOpenInstallModal();
+      return;
+    }
     const res = await onTriggerInstall();
     if (res === 'accepted') {
       onShowToast('NIGERIA CAMPUS MARKET installed on your device!');
     } else if (res === 'dismissed') {
-      onShowToast('Install dismissed. You can install anytime from this section.');
+      onShowToast('Install dismissed. Follow the browser menu guide anytime.');
+      setExpandedGuide('android');
+      onOpenInstallModal();
     } else {
       setExpandedGuide('android');
       onOpenInstallModal();
@@ -54,7 +61,7 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
   return (
     <section
       id="download-wukarimart"
-      className="bg-gradient-to-br from-[#10251D] via-[#0E2E21] to-[#087443] text-white rounded-3xl p-6 sm:p-8 lg:p-10 border-b-4 border-[#D4A62A] shadow-xl scroll-mt-24"
+      className="bg-[#FFFFFF] text-[#303030] rounded-2xl p-5 sm:p-8 border border-[#EEEEEE] border-b-4 border-b-[#F68B1F] shadow-sm scroll-mt-24"
     >
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Top Heading Banner */}
@@ -63,43 +70,53 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
             <img
               src="/pwa-192x192.png"
               alt="NIGERIA CAMPUS MARKET App"
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-[#D4A62A] bg-white shrink-0 shadow-lg"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-[#F68B1F] bg-white shrink-0 shadow-sm"
             />
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-[#D4A62A] text-[#10251D]">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-[#FFF4EB] text-[#FF6A00] border border-[#F68B1F]/30">
                   <Smartphone className="w-3.5 h-3.5" />
                   <span>Installable Campus App v{appSettings.appVersion || '2.0.0'}</span>
                 </span>
                 {isInstalled && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-white/15 text-[#D4A62A] border border-[#D4A62A]/40">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Installed on Device</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[#222222] text-[#FFFFFF]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#F68B1F]" />
+                    <span>APP ALREADY INSTALLED</span>
                   </span>
                 )}
               </div>
-              <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
-                DOWNLOAD NIGERIA UNIVERSITY MARKET
+              <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#222222]">
+                DOWNLOAD OUR APP – SHOP FASTER, ANYTIME, ANYWHERE.
               </h2>
-              <p className="text-xs sm:text-sm text-white/85 max-w-2xl leading-relaxed">
-                Take your university marketplace everywhere. Buy, sell, connect and chat directly from your device.
+              <p className="text-xs sm:text-sm text-[#303030]/80 max-w-2xl leading-relaxed">
+                Take your campus marketplace everywhere. Buy, sell, chat, connect and discover opportunities across Nigerian universities.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-white/90">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15">
-              <Zap className="w-3.5 h-3.5 text-[#D4A62A]" />
-              <span>Instant Campus Loading</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15">
-              <WifiOff className="w-3.5 h-3.5 text-[#D4A62A]" />
-              <span>Offline Fallback Ready</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D4A62A]" />
-              <span>Zero App Store Fees</span>
-            </span>
+          <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleAndroidInstall}
+              className="px-6 py-3 rounded-xl bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-xs sm:text-sm font-black inline-flex items-center justify-center gap-2 shadow-sm transition cursor-pointer whitespace-nowrap"
+            >
+              {isInstalled ? <CheckCircle2 className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+              <span>{isInstalled ? 'APP ALREADY INSTALLED' : 'DOWNLOAD APP'}</span>
+            </button>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#303030]/75">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F7F7F7] border border-[#EEEEEE]">
+                <Zap className="w-3 h-3 text-[#FF6A00]" />
+                <span>Fast Loading</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F7F7F7] border border-[#EEEEEE]">
+                <WifiOff className="w-3 h-3 text-[#FF6A00]" />
+                <span>Offline Ready</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F7F7F7] border border-[#EEEEEE]">
+                <ShieldCheck className="w-3 h-3 text-[#FF6A00]" />
+                <span>Free</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -109,31 +126,31 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
           <div
             className={`rounded-2xl p-5 flex flex-col justify-between gap-4 transition border ${
               deviceType === 'android'
-                ? 'bg-white text-[#10251D] border-[#D4A62A] ring-2 ring-[#D4A62A]'
-                : 'bg-white text-[#10251D] border-[#D9E5DF]'
+                ? 'bg-[#FFF9F4] text-[#222222] border-[#F68B1F] ring-1 ring-[#F68B1F]'
+                : 'bg-[#F7F7F7] text-[#222222] border-[#EEEEEE]'
             }`}
           >
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
-                <div className="w-11 h-11 rounded-2xl bg-[#087443] text-[#D4A62A] flex items-center justify-center shadow-xs">
+                <div className="w-11 h-11 rounded-2xl bg-[#FF6A00] text-[#FFFFFF] flex items-center justify-center shadow-xs">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 {deviceType === 'android' && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#222222] text-[#FFFFFF] text-[10px] font-black uppercase">
                     Your Device
                   </span>
                 )}
               </div>
               <div>
-                <h3 className="text-base font-black text-[#10251D]">Android</h3>
-                <p className="text-xs font-bold text-[#087443]">Download for Android</p>
+                <h3 className="text-base font-black text-[#222222]">Android</h3>
+                <p className="text-xs font-bold text-[#FF6A00]">Download for Android</p>
               </div>
-              <p className="text-xs text-[#555555] leading-relaxed">
+              <p className="text-xs text-[#303030]/80 leading-relaxed">
                 Install straight to your Android home screen for full-screen marketplace speed, hostel browsing, and student chat.
               </p>
 
               {(expandedGuide === 'android' || (!isInstallable && !isInstalled)) && (
-                <ol className="text-[11px] text-[#374151] bg-[#F4F8F5] border border-[#D9E5DF] rounded-xl p-3 space-y-1 list-decimal list-inside">
+                <ol className="text-[11px] text-[#303030] bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl p-3 space-y-1 list-decimal list-inside">
                   <li>Open in Google Chrome or Edge on Android.</li>
                   <li>
                     Tap browser menu (<strong>⋮</strong>) and choose{' '}
@@ -145,17 +162,17 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
 
             <div className="space-y-2 pt-1">
               {isInstalled ? (
-                <div className="w-full py-2.5 px-4 rounded-xl bg-[#087443]/10 border border-[#087443]/30 text-[#087443] text-xs font-black flex items-center justify-center gap-1.5">
+                <div className="w-full py-2.5 px-4 rounded-xl bg-[#FFF4EB] border border-[#F68B1F]/40 text-[#FF6A00] text-xs font-black flex items-center justify-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>App Installed</span>
+                  <span>APP ALREADY INSTALLED</span>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={handleAndroidInstall}
-                  className="w-full py-3 px-4 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl bg-[#F68B1F] hover:bg-[#FF6A00] text-white text-xs font-black flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
                 >
-                  <Download className="w-4 h-4 text-[#D4A62A]" />
+                  <Download className="w-4 h-4" />
                   <span>{isInstallable ? 'Install Android App Now' : 'Download for Android'}</span>
                 </button>
               )}
@@ -166,9 +183,9 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => onTrackExternalDownload('apk_download')}
-                  className="w-full py-2 px-3 rounded-xl bg-[#10251D] hover:bg-black text-[#D4A62A] text-[11px] font-black flex items-center justify-center gap-1.5 transition"
+                  className="w-full py-2 px-3 rounded-xl bg-[#222222] hover:bg-[#303030] text-[#FFFFFF] text-[11px] font-black flex items-center justify-center gap-1.5 transition"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-3.5 h-3.5 text-[#F68B1F]" />
                   <span>Direct Android APK</span>
                 </a>
               )}
@@ -178,10 +195,10 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => onTrackExternalDownload('playstore_click')}
-                  className="w-full py-2 px-3 rounded-xl border border-[#D9E5DF] hover:border-[#087443] text-[#10251D] text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
+                  className="w-full py-2 px-3 rounded-xl border border-[#EEEEEE] hover:border-[#F68B1F] bg-[#FFFFFF] text-[#222222] text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
                 >
                   <span>Google Play Store</span>
-                  <ExternalLink className="w-3 h-3 text-[#087443]" />
+                  <ExternalLink className="w-3 h-3 text-[#FF6A00]" />
                 </a>
               )}
             </div>
@@ -191,34 +208,34 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
           <div
             className={`rounded-2xl p-5 flex flex-col justify-between gap-4 transition border ${
               deviceType === 'iphone'
-                ? 'bg-white text-[#10251D] border-[#D4A62A] ring-2 ring-[#D4A62A]'
-                : 'bg-white text-[#10251D] border-[#D9E5DF]'
+                ? 'bg-[#FFF9F4] text-[#222222] border-[#F68B1F] ring-1 ring-[#F68B1F]'
+                : 'bg-[#F7F7F7] text-[#222222] border-[#EEEEEE]'
             }`}
           >
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
-                <div className="w-11 h-11 rounded-2xl bg-[#10251D] text-[#D4A62A] flex items-center justify-center shadow-xs">
+                <div className="w-11 h-11 rounded-2xl bg-[#222222] text-[#F68B1F] flex items-center justify-center shadow-xs">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 {deviceType === 'iphone' && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#FF6A00] text-[#FFFFFF] text-[10px] font-black uppercase">
                     Your Device
                   </span>
                 )}
               </div>
               <div>
-                <h3 className="text-base font-black text-[#10251D]">iPhone</h3>
-                <p className="text-xs font-bold text-[#087443]">Install on iPhone</p>
+                <h3 className="text-base font-black text-[#222222]">iPhone</h3>
+                <p className="text-xs font-bold text-[#FF6A00]">Install on iPhone</p>
               </div>
-              <p className="text-xs text-[#555555] leading-relaxed">
+              <p className="text-xs text-[#303030]/80 leading-relaxed">
                 Add NIGERIA CAMPUS MARKET directly to your iPhone Home Screen in Safari for a native-style app icon and fast campus access.
               </p>
 
               {(expandedGuide === 'iphone' || deviceType === 'iphone') && (
-                <ol className="text-[11px] text-[#374151] bg-[#F4F8F5] border border-[#D9E5DF] rounded-xl p-3 space-y-1 list-decimal list-inside">
+                <ol className="text-[11px] text-[#303030] bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl p-3 space-y-1 list-decimal list-inside">
                   <li>Open this site in Safari on your iPhone.</li>
                   <li>
-                    Tap <Share className="w-3 h-3 inline text-[#087443]" /> <strong>Share</strong> at the bottom of Safari.
+                    Tap <Share className="w-3 h-3 inline text-[#FF6A00]" /> <strong>Share</strong> at the bottom of Safari.
                   </li>
                   <li>
                     Scroll and tap <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.
@@ -233,9 +250,9 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
                 setExpandedGuide((prev) => (prev === 'iphone' ? null : 'iphone'));
                 onOpenInstallModal();
               }}
-              className="w-full py-3 px-4 rounded-xl bg-[#10251D] hover:bg-black text-[#D4A62A] text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl bg-[#222222] hover:bg-[#303030] text-[#FFFFFF] text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <Share className="w-4 h-4" />
+              <Share className="w-4 h-4 text-[#F68B1F]" />
               <span>Install on iPhone</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
@@ -245,34 +262,34 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
           <div
             className={`rounded-2xl p-5 flex flex-col justify-between gap-4 transition border ${
               deviceType === 'ipad'
-                ? 'bg-white text-[#10251D] border-[#D4A62A] ring-2 ring-[#D4A62A]'
-                : 'bg-white text-[#10251D] border-[#D9E5DF]'
+                ? 'bg-[#FFF9F4] text-[#222222] border-[#F68B1F] ring-1 ring-[#F68B1F]'
+                : 'bg-[#F7F7F7] text-[#222222] border-[#EEEEEE]'
             }`}
           >
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
-                <div className="w-11 h-11 rounded-2xl bg-[#087443] text-white flex items-center justify-center shadow-xs">
-                  <Tablet className="w-5 h-5 text-[#D4A62A]" />
+                <div className="w-11 h-11 rounded-2xl bg-[#F68B1F] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Tablet className="w-5 h-5" />
                 </div>
                 {deviceType === 'ipad' && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#D4A62A] text-[#10251D] text-[10px] font-black uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#FF6A00] text-[#FFFFFF] text-[10px] font-black uppercase">
                     Your Device
                   </span>
                 )}
               </div>
               <div>
-                <h3 className="text-base font-black text-[#10251D]">iPad</h3>
-                <p className="text-xs font-bold text-[#087443]">Install on iPad</p>
+                <h3 className="text-base font-black text-[#222222]">iPad</h3>
+                <p className="text-xs font-bold text-[#FF6A00]">Install on iPad</p>
               </div>
-              <p className="text-xs text-[#555555] leading-relaxed">
+              <p className="text-xs text-[#303030]/80 leading-relaxed">
                 Launch NIGERIA CAMPUS MARKET across wide iPad screens for side-by-side product discovery, GPA tools, and hostel comparison.
               </p>
 
               {(expandedGuide === 'ipad' || deviceType === 'ipad') && (
-                <ol className="text-[11px] text-[#374151] bg-[#F4F8F5] border border-[#D9E5DF] rounded-xl p-3 space-y-1 list-decimal list-inside">
+                <ol className="text-[11px] text-[#303030] bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl p-3 space-y-1 list-decimal list-inside">
                   <li>Open this page in iPadOS Safari.</li>
                   <li>
-                    Tap <Share className="w-3 h-3 inline text-[#087443]" /> <strong>Share</strong> in the top toolbar.
+                    Tap <Share className="w-3 h-3 inline text-[#FF6A00]" /> <strong>Share</strong> in the top toolbar.
                   </li>
                   <li>
                     Choose <strong>Add to Home Screen</strong> → tap <strong>Add</strong>.
@@ -287,9 +304,9 @@ export const DownloadAppSection: React.FC<DownloadAppSectionProps> = ({
                 setExpandedGuide((prev) => (prev === 'ipad' ? null : 'ipad'));
                 onOpenInstallModal();
               }}
-              className="w-full py-3 px-4 rounded-xl bg-[#F4F8F5] hover:bg-[#087443] hover:text-white border border-[#D9E5DF] text-[#10251D] text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl bg-[#FFFFFF] hover:bg-[#FF6A00] hover:text-white border border-[#EEEEEE] hover:border-[#FF6A00] text-[#222222] text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <Tablet className="w-4 h-4 text-[#D4A62A]" />
+              <Tablet className="w-4 h-4 text-[#F68B1F]" />
               <span>Install on iPad</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>

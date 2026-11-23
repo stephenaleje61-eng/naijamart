@@ -53,13 +53,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   return (
     <nav
       aria-label="Mobile Campus Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#172B24] border-t-2 border-[#D4A62A] shadow-2xl px-1.5 flex items-center justify-around sm:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#FFFFFF] border-t border-[#EEEEEE] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-1.5 flex items-center justify-around sm:hidden"
     >
       <button
         type="button"
         onClick={() => onNavigate('home')}
         className={`min-h-[44px] min-w-[54px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-          isHomeActive ? 'text-[#D4A62A] font-black bg-[#087443]' : 'text-white/85 hover:text-white font-semibold'
+          isHomeActive ? 'text-[#FFFFFF] font-black bg-[#FF6A00] shadow-xs' : 'text-[#303030] hover:text-[#F68B1F] font-semibold'
         }`}
       >
         <Home className={`w-4 h-4 ${isHomeActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -70,7 +70,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         type="button"
         onClick={() => onNavigate('marketplace')}
         className={`min-h-[44px] min-w-[54px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-          isMarketActive ? 'text-[#D4A62A] font-black bg-[#087443]' : 'text-white/85 hover:text-white font-semibold'
+          isMarketActive ? 'text-[#FFFFFF] font-black bg-[#FF6A00] shadow-xs' : 'text-[#303030] hover:text-[#F68B1F] font-semibold'
         }`}
       >
         <ShoppingBag className={`w-4 h-4 ${isMarketActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -87,10 +87,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }
         }}
         className={`min-h-[44px] min-w-[54px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-          isNetworkActive ? 'text-[#D4A62A] font-black bg-[#087443]' : 'text-white/90 hover:text-[#D4A62A] font-semibold'
+          isNetworkActive ? 'text-[#FFFFFF] font-black bg-[#FF6A00] shadow-xs' : 'text-[#303030] hover:text-[#F68B1F] font-semibold'
         }`}
       >
-        <GraduationCap className="w-4 h-4 text-[#D4A62A]" />
+        <GraduationCap className={`w-4 h-4 ${isNetworkActive ? 'text-[#FFFFFF]' : 'text-[#F68B1F]'}`} />
         <span className="text-[10px] mt-0.5 tracking-tight">Campuses</span>
       </button>
 
@@ -98,13 +98,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         type="button"
         onClick={() => onNavigate('orders')}
         className={`min-h-[44px] min-w-[54px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative whitespace-nowrap shrink-0 cursor-pointer ${
-          isOrdersActive ? 'text-[#D4A62A] font-black bg-[#087443]' : 'text-white/85 hover:text-white font-semibold'
+          isOrdersActive ? 'text-[#FFFFFF] font-black bg-[#FF6A00] shadow-xs' : 'text-[#303030] hover:text-[#F68B1F] font-semibold'
         }`}
       >
         <div className="relative">
           <ClipboardList className={`w-4 h-4 ${isOrdersActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
           {ordersBadgeCount > 0 && (
-            <span className="absolute -top-1.5 -right-2 bg-[#D4A62A] text-[#172B24] text-[9px] font-black px-1 rounded-full tabular-nums">
+            <span className="absolute -top-1.5 -right-2 bg-[#FF6A00] text-[#FFFFFF] border border-white text-[9px] font-black px-1 rounded-full tabular-nums">
               {ordersBadgeCount}
             </span>
           )}
@@ -116,11 +116,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         type="button"
         onClick={() => onNavigate('account')}
         className={`min-h-[44px] min-w-[54px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-          isAccountActive ? 'text-[#D4A62A] font-black bg-[#087443]' : 'text-white/85 hover:text-white font-semibold'
+          isAccountActive ? 'text-[#FFFFFF] font-black bg-[#FF6A00] shadow-xs' : 'text-[#303030] hover:text-[#F68B1F] font-semibold'
         }`}
       >
         <UserIcon className={`w-4 h-4 ${isAccountActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-        <span className="text-[10px] mt-0.5 tracking-tight">Network</span>
+        <span className="text-[10px] mt-0.5 tracking-tight">Account</span>
       </button>
     </nav>
   );

@@ -188,11 +188,12 @@
   },
   "gradingConfigs": {},
   "visitorAnalytics": {
-    "lifetimeVisits": 24,
+    "lifetimeVisits": 26,
     "uniqueVisitorIds": [
       "verify-test-1",
       "20fdccef-bf69-4b80-a90d-12c3ebadbb3c",
-      "5ad8708c-e54c-473a-8841-ae0086f17162"
+      "5ad8708c-e54c-473a-8841-ae0086f17162",
+      "b1565214-b834-4d75-9084-51198724cbc0"
     ],
     "dailyBuckets": {
       "2026-11-18": {
@@ -218,6 +219,18 @@
         "iphone": 0,
         "ipad": 0,
         "desktop": 23,
+        "other": 0
+      },
+      "2026-11-23": {
+        "date": "2026-11-23",
+        "totalVisits": 2,
+        "uniqueVisitorIds": [
+          "b1565214-b834-4d75-9084-51198724cbc0"
+        ],
+        "android": 2,
+        "iphone": 0,
+        "ipad": 0,
+        "desktop": 0,
         "other": 0
       }
     }

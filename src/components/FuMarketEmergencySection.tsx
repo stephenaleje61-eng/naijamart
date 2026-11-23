@@ -101,19 +101,19 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
   return (
     <section
       id="fu-market-campus-emergency"
-      className="scroll-mt-24 rounded-3xl overflow-hidden border border-[#0F1E3D]/15 bg-white shadow-sm"
+      className="scroll-mt-24 rounded-2xl overflow-hidden border border-[#EEEEEE] bg-[#FFFFFF] shadow-xs"
     >
-      {/* Royal Navy Safety Banner Header */}
-      <div className="bg-[#10251D] text-white p-5 sm:p-7 border-b border-[#18362B]">
+      {/* Safety Banner Header */}
+      <div className="bg-[#222222] text-[#FFFFFF] p-5 sm:p-7 border-b border-[#EEEEEE]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl">
-            <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#DC2626] text-white">
+            <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded bg-[#DC2626] text-[#FFFFFF]">
               National Campus Safety Desk
             </span>
-            <h2 className="font-display text-xl sm:text-2xl font-black tracking-tight text-white">
-              NIGERIA CAMPUS MARKET CAMPUS EMERGENCY &amp; HELP CENTRE
+            <h2 className="font-display text-xl sm:text-2xl font-black tracking-tight text-[#FFFFFF]">
+              NIGERIA CAMPUS MARKET EMERGENCY &amp; HELP CENTRE
             </h2>
-            <p className="text-xs sm:text-sm text-white/85 font-medium">
+            <p className="text-xs sm:text-sm text-[#FFFFFF]/80 font-medium">
               Your Safety Matters. Get Help. Report Concerns. Stay Informed.
             </p>
           </div>
@@ -122,9 +122,9 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
             <button
               type="button"
               onClick={onOpenTrackReport}
-              className="min-h-[44px] px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white text-xs font-black rounded-xl inline-flex items-center gap-2 transition"
+              className="min-h-[44px] px-4 py-2 bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 border border-[#FFFFFF]/25 text-[#FFFFFF] text-xs font-black rounded-xl inline-flex items-center gap-2 transition"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 text-[#F68B1F]" />
               <span>Track Report Status</span>
             </button>
 
@@ -134,8 +134,8 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
                 onClick={handleToggleAlerts}
                 className={`min-h-[44px] px-4 py-2 text-xs font-black rounded-xl inline-flex items-center gap-2 transition ${
                   notifyOptedIn
-                    ? 'bg-[#087443] hover:bg-[#065D36] text-white border border-[#16A34A]'
-                    : 'bg-white text-[#0F1E3D] hover:bg-[#F8FAFC]'
+                    ? 'bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF]'
+                    : 'bg-[#FFFFFF] text-[#222222] hover:bg-[#F7F7F7]'
                 }`}
               >
                 {notifyOptedIn ? (
@@ -145,7 +145,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
                   </>
                 ) : (
                   <>
-                    <BellOff className="w-4 h-4" />
+                    <BellOff className="w-4 h-4 text-[#F68B1F]" />
                     <span>Enable Safety Alerts</span>
                   </>
                 )}
@@ -156,7 +156,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
               <button
                 type="button"
                 onClick={onOpenAdminEmergency}
-                className="min-h-[44px] px-4 py-2 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
+                className="min-h-[44px] px-4 py-2 bg-[#F68B1F] hover:bg-[#FF6A00] text-[#FFFFFF] text-xs font-black rounded-xl inline-flex items-center gap-1.5 transition"
               >
                 <Sliders className="w-4 h-4" />
                 <span>Manage Emergency Centre</span>
@@ -166,7 +166,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
         </div>
 
         {(notifyFeedback || permissionState === 'denied') && (
-          <p className="text-[11px] text-white/85 mt-3">
+          <p className="text-[11px] text-[#FFFFFF]/85 mt-3">
             {notifyFeedback ||
               'Browser notifications are currently blocked in your browser settings.'}
           </p>
@@ -174,26 +174,26 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
       </div>
 
       {/* Body */}
-      <div className="p-5 sm:p-6 space-y-5 bg-white">
-        {/* Live Official Safety Announcement Strip (Only when real active alerts exist) */}
+      <div className="p-5 sm:p-6 space-y-5 bg-[#FFFFFF]">
+        {/* Live Official Safety Announcement Strip */}
         {urgentAnnouncement && (
           <div
             className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${
               urgentAnnouncement.severity === 'urgent'
                 ? 'bg-[#FEF2F2] border-[#FECACA] text-[#7F1D1D]'
                 : urgentAnnouncement.severity === 'important'
-                ? 'bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]'
-                : 'bg-[#F8FAFC] border-[#CBD5E1] text-[#0F1E3D]'
+                ? 'bg-[#FFF4E8] border-[#F68B1F]/40 text-[#222222]'
+                : 'bg-[#F7F7F7] border-[#EEEEEE] text-[#222222]'
             }`}
           >
             <div className="flex items-start gap-3">
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white ${
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-[#FFFFFF] ${
                   urgentAnnouncement.severity === 'urgent'
                     ? 'bg-[#DC2626]'
                     : urgentAnnouncement.severity === 'important'
-                    ? 'bg-[#D97706]'
-                    : 'bg-[#0F1E3D]'
+                    ? 'bg-[#FF6A00]'
+                    : 'bg-[#222222]'
                 }`}
               >
                 <Megaphone className="w-4 h-4" />
@@ -220,11 +220,11 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           </div>
         )}
 
-        {/* Quick Verified Emergency Contacts Strip (Strictly real verified records only) */}
+        {/* Quick Verified Emergency Contacts Strip */}
         {verifiedContacts.length > 0 && (
-          <div className="p-3.5 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-black text-[#087443]">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-[#FFF4E8] border border-[#F68B1F]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-black text-[#222222]">
+              <CheckCircle2 className="w-4 h-4 text-[#FF6A00] shrink-0" />
               <span>Verified Quick-Dial Numbers:</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +232,7 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
                 <a
                   key={contact.id}
                   href={buildEmergencyCallHref(contact.phone)}
-                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black inline-flex items-center gap-1.5 transition"
+                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-xs font-black inline-flex items-center gap-1.5 transition"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>
@@ -250,14 +250,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={() => onOpenContacts('all')}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#0F1E3D] hover:bg-[#16294F] text-white text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#222222] hover:bg-[#303030] text-[#FFFFFF] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#F68B1F] text-[#FFFFFF] flex items-center justify-center shrink-0">
               <Phone className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Emergency Contacts</span>
-              <span className="text-[11px] text-white/80 tabular-nums">
+              <span className="text-[11px] text-[#FFFFFF]/80 tabular-nums">
                 {contacts.length > 0
                   ? `${verifiedContacts.length} verified · ${contacts.length} listed`
                   : 'Verified campus & local lines'}
@@ -269,14 +269,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={() => onOpenReportEmergency()}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#DC2626] hover:bg-[#B91C1C] text-[#FFFFFF] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FFFFFF]/15 flex items-center justify-center shrink-0">
               <AlertOctagon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Report an Emergency</span>
-              <span className="text-[11px] text-white/90">
+              <span className="text-[11px] text-[#FFFFFF]/90">
                 Urgent incident &amp; Help Centre log
               </span>
             </div>
@@ -286,14 +286,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={onOpenSecurityConcern}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#CBD5E1] text-[#0F1E3D] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#F7F7F7] hover:bg-[#FFF4E8] border border-[#EEEEEE] hover:border-[#F68B1F] text-[#222222] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#0F1E3D] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#222222] text-[#F68B1F] flex items-center justify-center shrink-0">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Report a Security Concern</span>
-              <span className="text-[11px] text-[#475569]">
+              <span className="text-[11px] text-[#666666]">
                 Confidential safety &amp; scam alerts
               </span>
             </div>
@@ -303,14 +303,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={() => onOpenContacts('medical')}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#FEF2F2] border border-[#CBD5E1] hover:border-[#FECACA] text-[#0F1E3D] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#F7F7F7] hover:bg-[#FEF2F2] border border-[#EEEEEE] hover:border-[#FECACA] text-[#222222] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#DC2626] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#DC2626] text-[#FFFFFF] flex items-center justify-center shrink-0">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Medical Assistance</span>
-              <span className="text-[11px] text-[#475569]">
+              <span className="text-[11px] text-[#666666]">
                 University Health Centre &amp; clinic
               </span>
             </div>
@@ -320,14 +320,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={() => onOpenContacts('fire')}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#FEF2F2] border border-[#CBD5E1] hover:border-[#FECACA] text-[#0F1E3D] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#F7F7F7] hover:bg-[#FEF2F2] border border-[#EEEEEE] hover:border-[#FECACA] text-[#222222] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#B91C1C] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#B91C1C] text-[#FFFFFF] flex items-center justify-center shrink-0">
               <Flame className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Fire Emergency</span>
-              <span className="text-[11px] text-[#475569]">
+              <span className="text-[11px] text-[#666666]">
                 Fire &amp; Rescue lines &amp; evacuation
               </span>
             </div>
@@ -337,14 +337,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={onOpenLostAndFound}
-            className="min-h-[60px] p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#ECFDF5] border border-[#CBD5E1] hover:border-[#A7F3D0] text-[#0F1E3D] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] p-4 rounded-2xl bg-[#F7F7F7] hover:bg-[#FFF4E8] border border-[#EEEEEE] hover:border-[#F68B1F] text-[#222222] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#087443] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#F68B1F] text-[#FFFFFF] flex items-center justify-center shrink-0">
               <PackageSearch className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Lost and Found</span>
-              <span className="text-[11px] text-[#475569] tabular-nums">
+              <span className="text-[11px] text-[#666666] tabular-nums">
                 {lostFoundCount > 0
                   ? `${lostFoundCount} active campus item${lostFoundCount === 1 ? '' : 's'}`
                   : 'Phones, ID cards, wallets & bags'}
@@ -356,14 +356,14 @@ export const FuMarketEmergencySection: React.FC<FuMarketEmergencySectionProps> =
           <button
             type="button"
             onClick={onOpenSafetyInfo}
-            className="min-h-[60px] sm:col-span-2 p-4 rounded-2xl bg-[#ECFDF5] hover:bg-[#D1FAE5] border border-[#A7F3D0] text-[#087443] text-left flex items-center gap-3 transition"
+            className="min-h-[60px] sm:col-span-2 p-4 rounded-2xl bg-[#FFF4E8] hover:bg-[#FFE9D2] border border-[#F68B1F]/35 text-[#222222] text-left flex items-center gap-3 transition"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#087443] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FF6A00] text-[#FFFFFF] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="font-black text-sm block">Campus Safety Information</span>
-              <span className="text-[11px] text-[#065D36]">
+              <span className="text-[11px] text-[#303030]">
                 Personal safety, night movement, scam awareness, phone theft tips &amp; emergency procedures
               </span>
             </div>

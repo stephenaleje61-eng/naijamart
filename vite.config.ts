@@ -10,6 +10,10 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'service-worker.ts',
+        manifestFilename: 'manifest.json',
         registerType: 'autoUpdate',
         includeAssets: [
           'icon.svg',
@@ -24,10 +28,10 @@ export default defineConfig(() => {
         manifest: {
           id: '/',
           name: 'NIGERIA CAMPUS MARKET',
-          short_name: 'NG Campus Market',
+          short_name: 'NCM Market',
           description: "Buy. Sell. Connect. Grow Across Nigerian Campuses. Nigeria's National University & Polytechnic Marketplace, Food, Accommodation, Academic & Student Network.",
-          theme_color: '#087443',
-          background_color: '#F4F8F5',
+          theme_color: '#F68B1F',
+          background_color: '#F7F7F7',
           display: 'standalone',
           orientation: 'portrait-primary',
           start_url: '/',
@@ -54,49 +58,15 @@ export default defineConfig(() => {
             },
           ],
         },
-        workbox: {
+        injectManifest: {
+          rollupFormat: 'iife',
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          navigateFallback: '/offline.html',
-          navigateFallbackDenylist: [/^\/api\//, /^\/auth\//, /^\/uploads\//],
-          runtimeCaching: [
-            {
-              urlPattern: /^.*\/api\/(ceo|payments|admin|auth)\/.*/i,
-              handler: 'NetworkOnly',
-            },
-            {
-              urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'firebase-storage-images',
-                expiration: {
-                  maxEntries: 200,
-                  maxAgeSeconds: 60 * 60 * 24 * 30,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            {
-              urlPattern: /\/uploads\/.*/i,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'uploaded-product-images',
-                expiration: {
-                  maxEntries: 150,
-                  maxAgeSeconds: 60 * 60 * 24 * 14,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-          ],
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
           type: 'module',
+          navigateFallbackAllowlist: [],
         },
       }),
     ],

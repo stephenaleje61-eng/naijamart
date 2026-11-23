@@ -12,6 +12,7 @@ import {
   isValidImageFormat
 } from '../utils/imagePersistence.js';
 import activeFirebaseConfig from './firebaseConfig.js';
+import { verifyRealConnectivity } from '../utils/networkMonitor.js';
 
 function configureStorageLimits(instance: ReturnType<typeof getStorage>) {
   instance.maxUploadRetryTime = 15000;
@@ -469,7 +470,7 @@ export async function uploadImageToFirebaseStorage(
     throw new Error('Only JPG, JPEG, PNG, and WebP images are allowed.');
   }
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!(await verifyRealConnectivity(3500))) {
     throw new Error('No internet connection. Please reconnect and try again.');
   }
 
@@ -845,7 +846,7 @@ export async function uploadChatAttachment(
     });
   }
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!(await verifyRealConnectivity(3500))) {
     throw new Error('No internet connection. Please reconnect and try sending your attachment.');
   }
 

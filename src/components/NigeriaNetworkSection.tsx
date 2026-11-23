@@ -168,19 +168,20 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
   return (
     <section
       id="nigeria-university-network"
-      className="bg-white rounded-2xl border border-[#D9E5DF] p-5 sm:p-6 shadow-xs space-y-5"
+      className="bg-[#FFFFFF] rounded-2xl border border-[#EEEEEE] p-5 sm:p-6 shadow-xs space-y-5"
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#087443]">
-            <Compass className="w-4 h-4 text-[#D4A62A]" />
-            <span>NIGERIA UNIVERSITY NETWORK</span>
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#FF6A00]">
+            <Compass className="w-4 h-4 text-[#F68B1F]" />
+            <span>NIGERIA CAMPUS MARKET — NATIONAL NETWORK</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-[#172B24] mt-0.5">
+          <h2 className="text-lg sm:text-xl font-extrabold text-[#222222] mt-0.5">
             Universities, Polytechnics &amp; Student Communities Across 36 States + FCT
           </h2>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Active Campus: <strong className="text-[#087443]">{activeInstitution.name}</strong> ({selectedCampus || activeInstitution.campus})
+          <p className="text-xs text-[#666666] mt-0.5">
+            Discover products, services, accommodation and opportunities across Nigerian universities and polytechnics. Active Campus:{' '}
+            <strong className="text-[#FF6A00]">{activeInstitution.name}</strong> ({selectedCampus || activeInstitution.campus})
           </p>
         </div>
 
@@ -188,7 +189,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
           <select
             value={activeInstitution.campus || selectedCampus}
             onChange={(e) => onSelectInstitution(activeInstitution, e.target.value)}
-            className="px-3 py-2 rounded-xl border border-[#D9E5DF] bg-[#F5F8F6] text-xs font-bold text-[#172B24]"
+            className="px-3 py-2 rounded-xl border border-[#EEEEEE] bg-[#F7F7F7] text-xs font-bold text-[#222222]"
             aria-label="Select Campus"
           >
             {activeInstitution.campuses.map((c) => (
@@ -201,7 +202,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
           <button
             type="button"
             onClick={() => onOpenCommunityPage(activeInstitution)}
-            className="px-4 py-2 rounded-xl bg-[#087443] hover:bg-[#065D36] text-white text-xs font-extrabold flex items-center gap-1.5 transition"
+            className="px-4 py-2 rounded-xl bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-xs font-extrabold flex items-center gap-1.5 transition"
           >
             <span>Open {activeInstitution.shortName} Community</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -210,28 +211,28 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
       </div>
 
       {networkNotice && (
-        <div className="px-4 py-2.5 rounded-xl bg-emerald-50 border border-[#087443]/30 text-xs font-bold text-[#087443]">
+        <div className="px-4 py-2.5 rounded-xl bg-[#FFF4E8] border border-[#F68B1F]/30 text-xs font-bold text-[#222222]">
           {networkNotice}
         </div>
       )}
 
       {/* Search & Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-[#F5F8F6] p-3 rounded-xl border border-[#D9E5DF]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-[#F7F7F7] p-3 rounded-xl border border-[#EEEEEE]">
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#666666] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search university, acronym, state..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#D9E5DF] bg-white text-xs font-medium text-[#172B24] focus:outline-none focus:border-[#087443]"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#EEEEEE] bg-[#FFFFFF] text-xs font-medium text-[#303030] focus:outline-none focus:border-[#F68B1F]"
           />
         </div>
 
         <select
           value={stateFilter}
           onChange={(e) => setStateFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-[#D9E5DF] bg-white text-xs font-bold text-[#172B24]"
+          className="px-3 py-2 rounded-xl border border-[#EEEEEE] bg-[#FFFFFF] text-xs font-bold text-[#222222]"
         >
           <option value="All">All 36 States &amp; FCT</option>
           {NIGERIAN_STATES_AND_FCT.map((st) => (
@@ -244,7 +245,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as any)}
-          className="px-3 py-2 rounded-xl border border-[#D9E5DF] bg-white text-xs font-bold text-[#172B24]"
+          className="px-3 py-2 rounded-xl border border-[#EEEEEE] bg-[#FFFFFF] text-xs font-bold text-[#222222]"
         >
           <option value="All">All Institution Types</option>
           <option value="Federal University">Federal Universities</option>
@@ -268,23 +269,23 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
               key={inst.id}
               className={`rounded-xl border p-3.5 transition flex flex-col justify-between gap-3 ${
                 isSelected
-                  ? 'border-[#087443] bg-[#F5F8F6]'
-                  : 'border-[#D9E5DF] bg-white hover:border-[#087443]/60'
+                  ? 'border-[#FF6A00] bg-[#FFF4E8]/50'
+                  : 'border-[#EEEEEE] bg-[#FFFFFF] hover:border-[#F68B1F]'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md bg-[#172B24] text-[#D4A62A] text-[10px] font-extrabold">
+                    <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[#F68B1F] text-[10px] font-extrabold">
                       {inst.shortName}
                     </span>
-                    <span className="text-[10px] font-bold text-[#087443]">{inst.type}</span>
+                    <span className="text-[10px] font-bold text-[#FF6A00]">{inst.type}</span>
                   </div>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-[#172B24] mt-1.5 line-clamp-2">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[#222222] mt-1.5 line-clamp-2">
                     {inst.name}
                   </h3>
-                  <p className="text-[11px] text-slate-600 mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-[#087443] shrink-0" />
+                  <p className="text-[11px] text-[#666666] mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#F68B1F] shrink-0" />
                     <span>
                       {inst.location}, {inst.state}
                     </span>
@@ -292,21 +293,21 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                 </div>
 
                 {count > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-[#D9E5DF] text-[10px] font-bold text-[#172B24] shrink-0">
-                    <Users className="w-3 h-3 text-[#087443]" />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FFFFFF] border border-[#EEEEEE] text-[10px] font-bold text-[#222222] shrink-0">
+                    <Users className="w-3 h-3 text-[#F68B1F]" />
                     <span className="tabular-nums">{count}</span>
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 pt-2 border-t border-[#D9E5DF]/60">
+              <div className="flex items-center gap-1.5 pt-2 border-t border-[#EEEEEE]">
                 <button
                   type="button"
                   onClick={() => onSelectInstitution(inst, inst.campus)}
                   className={`flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition ${
                     isSelected
-                      ? 'bg-[#172B24] text-white'
-                      : 'bg-[#F5F8F6] text-[#172B24] hover:bg-slate-200'
+                      ? 'bg-[#222222] text-[#FFFFFF]'
+                      : 'bg-[#F7F7F7] text-[#222222] hover:bg-[#EEEEEE]'
                   }`}
                 >
                   {isSelected ? 'Selected' : 'Switch Here'}
@@ -318,8 +319,8 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                   onClick={() => handleToggleMembership(inst)}
                   className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
                     isJoined
-                      ? 'bg-emerald-50 text-[#087443] border border-[#087443]/30'
-                      : 'bg-[#087443] text-white hover:bg-[#065D36]'
+                      ? 'bg-[#FFF4E8] text-[#FF6A00] border border-[#F68B1F]/40'
+                      : 'bg-[#F68B1F] text-[#FFFFFF] hover:bg-[#FF6A00]'
                   }`}
                 >
                   {isJoined && <CheckCircle2 className="w-3 h-3" />}
@@ -329,7 +330,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenCommunityPage(inst)}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#D4A62A]/15 hover:bg-[#D4A62A]/30 text-[#172B24] text-[11px] font-extrabold transition"
+                  className="px-2.5 py-1.5 rounded-lg bg-[#F7F7F7] hover:bg-[#FFF4E8] text-[#222222] text-[11px] font-extrabold transition"
                 >
                   Hub
                 </button>
@@ -340,18 +341,18 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
       </div>
 
       {/* Discover Students Across Campuses (Real registered users only) */}
-      <div className="pt-4 border-t border-[#D9E5DF] space-y-3">
+      <div className="pt-4 border-t border-[#EEEEEE] space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-[#087443]" />
-            <h3 className="text-sm font-extrabold text-[#172B24]">
+            <Building2 className="w-4 h-4 text-[#F68B1F]" />
+            <h3 className="text-sm font-extrabold text-[#222222]">
               Discover Students Across Campuses
             </h3>
           </div>
           <select
             value={studentFilterInst}
             onChange={(e) => setStudentFilterInst(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-[#D9E5DF] bg-[#F5F8F6] text-xs font-bold text-[#172B24]"
+            className="px-2.5 py-1.5 rounded-lg border border-[#EEEEEE] bg-[#F7F7F7] text-xs font-bold text-[#222222]"
           >
             <option value="all">All Institutions ({knownUsers.length})</option>
             <option value={activeInstitution.id}>{activeInstitution.shortName} Only</option>
@@ -359,7 +360,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
         </div>
 
         {discoverStudents.length === 0 ? (
-          <p className="text-xs text-slate-600 bg-[#F5F8F6] rounded-xl p-4 border border-[#D9E5DF]">
+          <p className="text-xs text-[#666666] bg-[#F7F7F7] rounded-xl p-4 border border-[#EEEEEE]">
             No other registered students match your filter yet. Students who sign in or update their campus profile appear here automatically.
           </p>
         ) : (
@@ -371,10 +372,10 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
               return (
                 <div
                   key={peer.id}
-                  className="p-3.5 rounded-xl bg-[#F5F8F6] border border-[#D9E5DF] flex flex-col justify-between gap-3"
+                  className="p-3.5 rounded-xl bg-[#F7F7F7] border border-[#EEEEEE] flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-[#172B24] text-[#D4A62A] font-extrabold flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-[#222222] text-[#F68B1F] font-extrabold flex items-center justify-center shrink-0 overflow-hidden">
                       {peer.avatarUrl ? (
                         <img src={peer.avatarUrl} alt={peer.name} className="w-full h-full object-cover" />
                       ) : (
@@ -383,18 +384,18 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <p className="text-xs font-extrabold text-[#172B24] truncate">{peer.name}</p>
+                        <p className="text-xs font-extrabold text-[#222222] truncate">{peer.name}</p>
                         {(peer.isVerified || peer.ceoVerified) && (
-                          <BadgeCheck className="w-3.5 h-3.5 text-[#087443] shrink-0" />
+                          <BadgeCheck className="w-3.5 h-3.5 text-[#F68B1F] shrink-0" />
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-600 truncate">
+                      <p className="text-[10px] text-[#666666] truncate">
                         {canShowUni
                           ? `${peerInst?.shortName || 'Nigeria Hub'}${peer.department ? ` · ${peer.department}` : ''}`
                           : 'Private Campus Profile'}
                       </p>
                       {canShowUni && peer.levelOfStudy && (
-                        <p className="text-[10px] font-semibold text-[#087443]">{peer.levelOfStudy}</p>
+                        <p className="text-[10px] font-semibold text-[#FF6A00]">{peer.levelOfStudy}</p>
                       )}
                     </div>
                   </div>
@@ -403,7 +404,7 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                     <button
                       type="button"
                       onClick={() => handleConnectStudent(peer)}
-                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#087443] hover:bg-[#065D36] text-white text-[11px] font-bold flex items-center justify-center gap-1 transition"
+                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-[11px] font-bold flex items-center justify-center gap-1 transition"
                     >
                       <UserPlus className="w-3 h-3" />
                       <span>Add Friend</span>
@@ -427,11 +428,11 @@ export const NigeriaNetworkSection: React.FC<NigeriaNetworkSectionProps> = ({
                         }}
                         className={`py-1.5 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition ${
                           msgCheck.allowed
-                            ? 'bg-white border-[#D9E5DF] hover:border-[#087443] text-[#172B24]'
-                            : 'bg-slate-100 border-slate-200 text-slate-500'
+                            ? 'bg-[#FFFFFF] border-[#EEEEEE] hover:border-[#F68B1F] text-[#222222]'
+                            : 'bg-[#EEEEEE] border-[#EEEEEE] text-[#888888]'
                         }`}
                       >
-                        <MessageCircle className="w-3 h-3 text-[#087443]" />
+                        <MessageCircle className="w-3 h-3 text-[#F68B1F]" />
                         <span>Chat</span>
                       </button>
                     )}

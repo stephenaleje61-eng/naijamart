@@ -140,17 +140,17 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
   return (
     <div id="fu-market-services" className="space-y-6">
       {/* SECTION A: FEATURED SERVICES – PROMOTE YOUR BUSINESS */}
-      <section className="bg-white border border-[#E5E7EB] rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#E5E7EB]">
+      <section className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#EEEEEE]">
           <div>
-            <p className="text-xs font-extrabold text-[#087443] tracking-wide">
+            <p className="text-xs font-extrabold text-[#FF6A00] tracking-wide">
               Priority Campus Placement
             </p>
-            <h2 className="font-display text-lg sm:text-xl font-black text-[#10251D] flex items-center gap-2 mt-0.5">
-              <Star className="w-5 h-5 text-[#D4A62A] fill-[#D4A62A] shrink-0" />
+            <h2 className="font-display text-lg sm:text-xl font-black text-[#222222] flex items-center gap-2 mt-0.5">
+              <Star className="w-5 h-5 text-[#F68B1F] fill-[#F68B1F] shrink-0" />
               <span>FEATURED SERVICES – PROMOTE YOUR BUSINESS</span>
             </h2>
-            <p className="text-xs text-[#555555] mt-0.5">
+            <p className="text-xs text-[#666666] mt-0.5">
               Boost your service to the top of NIGERIA CAMPUS MARKET with verified Homepage, Weekly, or Monthly placements.
             </p>
           </div>
@@ -158,9 +158,9 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
           <button
             type="button"
             onClick={onOpenProviderDashboard}
-            className="px-4 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition flex items-center gap-2 self-start lg:self-auto whitespace-nowrap shrink-0 cursor-pointer"
+            className="px-4 py-2.5 bg-[#F68B1F] hover:bg-[#FF6A00] text-[#FFFFFF] text-xs font-black rounded-xl transition flex items-center gap-2 self-start lg:self-auto whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <Star className="w-4 h-4 text-[#D4A62A]" />
+            <Star className="w-4 h-4 text-[#FFFFFF]" />
             <span>Promote My Service</span>
           </button>
         </div>
@@ -181,18 +181,18 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             {SERVICE_PROMOTION_PLANS.map((plan) => (
               <div
                 key={plan.id}
-                className="p-4 rounded-2xl border border-[#E5E7EB] bg-[#F4F8F5] flex flex-col justify-between gap-3"
+                className="p-4 rounded-2xl border border-[#EEEEEE] bg-[#F7F7F7] flex flex-col justify-between gap-3"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-black text-[#10251D]">{plan.name}</h3>
-                  <p className="text-xl font-black text-[#087443] tabular-nums">
+                  <h3 className="text-sm font-black text-[#222222]">{plan.name}</h3>
+                  <p className="text-xl font-black text-[#FF6A00] tabular-nums">
                     {formatNaira(plan.priceNaira)}
-                    <span className="text-xs font-normal text-[#555555]">
+                    <span className="text-xs font-normal text-[#666666]">
                       {' '}
                       · {plan.durationDays} days
                     </span>
                   </p>
-                  <p className="text-xs text-[#555555]">{plan.placementLabel}</p>
+                  <p className="text-xs text-[#666666]">{plan.placementLabel}</p>
                 </div>
                 <button
                   type="button"
@@ -203,7 +203,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                       onPostService();
                     }
                   }}
-                  className="w-full px-3.5 py-2 bg-white hover:bg-[#087443] hover:text-white border border-[#E5E7EB] hover:border-[#087443] text-xs font-bold text-[#10251D] rounded-xl transition cursor-pointer"
+                  className="w-full px-3.5 py-2 bg-[#FFFFFF] hover:bg-[#F68B1F] hover:text-[#FFFFFF] border border-[#EEEEEE] hover:border-[#F68B1F] text-xs font-bold text-[#222222] rounded-xl transition cursor-pointer"
                 >
                   Select in Provider Dashboard
                 </button>
@@ -213,19 +213,19 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
         )}
       </section>
 
-      {/* SECTION B: FU MARKET SERVICES – FIND ANY SERVICE YOU NEED */}
-      <section className="bg-white border border-[#E5E7EB] rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
+      {/* SECTION B: STUDENT SERVICES DIRECTORY */}
+      <section className="bg-[#FFFFFF] border border-[#EEEEEE] rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
         {/* Header Row */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#E5E7EB]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#EEEEEE]">
           <div className="space-y-1 max-w-2xl">
-            <p className="text-xs font-extrabold text-[#087443]">
+            <p className="text-xs font-extrabold text-[#FF6A00]">
               {instShort} Student &amp; Local Services Directory
             </p>
-            <h2 className="font-display text-xl sm:text-2xl font-black text-[#10251D] flex items-center gap-2">
-              <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 text-[#087443] shrink-0" />
+            <h2 className="font-display text-xl sm:text-2xl font-black text-[#222222] flex items-center gap-2">
+              <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 text-[#F68B1F] shrink-0" />
               <span>NIGERIA CAMPUS MARKET SERVICES – FIND ANY SERVICE YOU NEED</span>
             </h2>
-            <p className="text-xs sm:text-sm text-[#555555]">
+            <p className="text-xs sm:text-sm text-[#666666]">
               Discover trusted services offered by students and businesses around {instShort}.
             </p>
           </div>
@@ -234,7 +234,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             <button
               type="button"
               onClick={onPostService}
-              className="px-5 py-3 bg-[#D4A62A] hover:bg-[#E0B43B] text-[#10251D] text-xs sm:text-sm font-black rounded-xl transition flex items-center gap-2 min-h-[44px] whitespace-nowrap cursor-pointer"
+              className="px-5 py-3 bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-xs sm:text-sm font-black rounded-xl transition flex items-center gap-2 min-h-[44px] whitespace-nowrap cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>POST YOUR SERVICE</span>
@@ -243,9 +243,9 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             <button
               type="button"
               onClick={onOpenProviderDashboard}
-              className="px-4 py-3 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 min-h-[44px] whitespace-nowrap cursor-pointer"
+              className="px-4 py-3 bg-[#222222] hover:bg-[#303030] text-[#FFFFFF] text-xs font-bold rounded-xl transition flex items-center gap-1.5 min-h-[44px] whitespace-nowrap cursor-pointer"
             >
-              <LayoutDashboard className="w-4 h-4 text-[#D4A62A]" />
+              <LayoutDashboard className="w-4 h-4 text-[#F68B1F]" />
               <span>Provider Dashboard</span>
             </button>
 
@@ -253,7 +253,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
               <button
                 type="button"
                 onClick={onOpenAdminServices}
-                className="px-4 py-3 bg-[#10251D] hover:bg-[#065D36] text-[#D4A62A] text-xs font-black rounded-xl transition flex items-center gap-1.5 min-h-[44px] whitespace-nowrap cursor-pointer"
+                className="px-4 py-3 bg-[#FFF4E8] hover:bg-[#F68B1F] hover:text-[#FFFFFF] border border-[#F68B1F] text-[#FF6A00] text-xs font-black rounded-xl transition flex items-center gap-1.5 min-h-[44px] whitespace-nowrap cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Manage Services</span>
@@ -263,16 +263,16 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
         </div>
 
         {/* Search & Filter Controls */}
-        <div className="space-y-3 bg-[#F4F8F5] border border-[#E5E7EB] rounded-2xl p-4">
+        <div className="space-y-3 bg-[#F7F7F7] border border-[#EEEEEE] rounded-2xl p-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
             <div className="md:col-span-5 relative">
-              <Search className="w-4 h-4 text-[#087443] absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-[#F68B1F] absolute left-3 top-2.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search services, category, location or price..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl focus:border-[#F68B1F] outline-none text-[#303030]"
               />
             </div>
 
@@ -281,7 +281,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 aria-label="Filter by service category"
-                className="w-full px-3 py-2 text-xs font-bold bg-white border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
+                className="w-full px-3 py-2 text-xs font-bold bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl focus:border-[#F68B1F] outline-none text-[#222222]"
               >
                 <option value="all">All Categories ({categories.length})</option>
                 {categories.map((cat) => (
@@ -293,12 +293,12 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             </div>
 
             <div className="md:col-span-2 relative">
-              <MapPin className="w-3.5 h-3.5 text-[#087443] absolute left-2.5 top-2.5 pointer-events-none" />
+              <MapPin className="w-3.5 h-3.5 text-[#F68B1F] absolute left-2.5 top-2.5 pointer-events-none" />
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
                 aria-label="Filter by location"
-                className="w-full pl-8 pr-2 py-2 text-xs font-bold bg-white border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
+                className="w-full pl-8 pr-2 py-2 text-xs font-bold bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl focus:border-[#F68B1F] outline-none text-[#222222]"
               >
                 <option value="all">All Locations</option>
                 {distinctLocations.map((loc) => (
@@ -314,7 +314,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as ServiceSortKey)}
                 aria-label="Sort services"
-                className="w-full px-3 py-2 text-xs font-bold bg-white border border-[#E5E7EB] rounded-xl focus:border-[#087443] outline-none"
+                className="w-full px-3 py-2 text-xs font-bold bg-[#FFFFFF] border border-[#EEEEEE] rounded-xl focus:border-[#F68B1F] outline-none text-[#222222]"
               >
                 <option value="newest">Recently posted</option>
                 <option value="price-asc">Lowest price</option>
@@ -324,10 +324,10 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#E5E7EB]">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EEEEEE]">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-bold text-[#10251D] flex items-center gap-1">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#087443]" />
+              <span className="font-bold text-[#222222] flex items-center gap-1">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#F68B1F]" />
                 <span>Price &amp; Availability:</span>
               </span>
               <input
@@ -336,16 +336,16 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 placeholder="Min ₦"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
-                className="w-24 px-2.5 py-1.5 bg-white border border-[#E5E7EB] rounded-lg text-xs tabular-nums outline-none focus:border-[#087443]"
+                className="w-24 px-2.5 py-1.5 bg-[#FFFFFF] border border-[#EEEEEE] rounded-lg text-xs tabular-nums outline-none focus:border-[#F68B1F]"
               />
-              <span className="text-[#555555]">–</span>
+              <span className="text-[#666666]">–</span>
               <input
                 type="number"
                 min={0}
                 placeholder="Max ₦"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                className="w-24 px-2.5 py-1.5 bg-white border border-[#E5E7EB] rounded-lg text-xs tabular-nums outline-none focus:border-[#087443]"
+                className="w-24 px-2.5 py-1.5 bg-[#FFFFFF] border border-[#EEEEEE] rounded-lg text-xs tabular-nums outline-none focus:border-[#F68B1F]"
               />
 
               <button
@@ -353,8 +353,8 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 onClick={() => setAvailableOnly((v) => !v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
                   availableOnly
-                    ? 'bg-[#087443] border-[#087443] text-white'
-                    : 'bg-white border-[#E5E7EB] text-[#333333] hover:border-[#087443]'
+                    ? 'bg-[#FF6A00] border-[#FF6A00] text-[#FFFFFF]'
+                    : 'bg-[#FFFFFF] border-[#EEEEEE] text-[#303030] hover:border-[#F68B1F]'
                 }`}
               >
                 Available providers only
@@ -364,15 +364,15 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#10251D] text-white flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#222222] text-[#FFFFFF] flex items-center gap-1 cursor-pointer"
                 >
-                  <X className="w-3 h-3 text-[#D4A62A]" />
+                  <X className="w-3 h-3 text-[#F68B1F]" />
                   <span>Reset</span>
                 </button>
               )}
             </div>
 
-            <span className="text-xs text-[#555555] tabular-nums">
+            <span className="text-xs text-[#666666] tabular-nums">
               {filteredServices.length}{' '}
               {filteredServices.length === 1 ? 'service found' : 'services found'}
             </span>
@@ -385,8 +385,8 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
               onClick={() => setSelectedCategory('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
                 selectedCategory === 'all'
-                  ? 'bg-[#087443] text-[#D4A62A]'
-                  : 'bg-white border border-[#E5E7EB] text-[#444444] hover:border-[#087443]'
+                  ? 'bg-[#FF6A00] text-[#FFFFFF]'
+                  : 'bg-[#FFFFFF] border border-[#EEEEEE] text-[#303030] hover:border-[#F68B1F]'
               }`}
             >
               All Services
@@ -398,8 +398,8 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 onClick={() => setSelectedCategory(cat.name)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
                   selectedCategory === cat.name
-                    ? 'bg-[#087443] text-[#D4A62A]'
-                    : 'bg-white border border-[#E5E7EB] text-[#444444] hover:border-[#087443]'
+                    ? 'bg-[#FF6A00] text-[#FFFFFF]'
+                    : 'bg-[#FFFFFF] border border-[#EEEEEE] text-[#303030] hover:border-[#F68B1F]'
                 }`}
               >
                 {cat.name}
@@ -414,19 +414,19 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
             {[1, 2, 3].map((slot) => (
               <div
                 key={slot}
-                className="h-72 rounded-2xl border border-[#E5E7EB] bg-[#F4F8F5] animate-pulse"
+                className="h-72 rounded-2xl border border-[#EEEEEE] bg-[#F7F7F7] animate-pulse"
               />
             ))}
           </div>
         ) : filteredServices.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-[#E5E7EB] bg-[#F4F8F5] text-center space-y-3">
-            <Briefcase className="w-10 h-10 text-[#087443] mx-auto" />
-            <h3 className="text-sm sm:text-base font-black text-[#10251D]">
+          <div className="p-8 rounded-2xl border border-[#EEEEEE] bg-[#F7F7F7] text-center space-y-3">
+            <Briefcase className="w-10 h-10 text-[#F68B1F] mx-auto" />
+            <h3 className="text-sm sm:text-base font-black text-[#222222]">
               {hasFilters
                 ? 'No services match your current filters'
                 : `No student services posted for ${instShort} yet — be the first provider!`}
             </h3>
-            <p className="text-xs text-[#555555] max-w-md mx-auto">
+            <p className="text-xs text-[#666666] max-w-md mx-auto">
               {hasFilters
                 ? `Try clearing your search or category filter to discover services around ${instShort}.`
                 : 'Offer barbing, braiding, laundry, repairs, design, tutoring, catering, typing, or any campus skill.'}
@@ -436,7 +436,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-white border border-[#E5E7EB] text-[#10251D] text-xs font-bold rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-[#FFFFFF] border border-[#EEEEEE] text-[#222222] text-xs font-bold rounded-xl cursor-pointer"
                 >
                   Clear Filters
                 </button>
@@ -444,7 +444,7 @@ export const FuMarketServicesSection: React.FC<FuMarketServicesSectionProps> = (
               <button
                 type="button"
                 onClick={onPostService}
-                className="px-5 py-2.5 bg-[#087443] hover:bg-[#065D36] text-white text-xs font-black rounded-xl transition cursor-pointer"
+                className="px-5 py-2.5 bg-[#FF6A00] hover:bg-[#F68B1F] text-[#FFFFFF] text-xs font-black rounded-xl transition cursor-pointer"
               >
                 POST YOUR SERVICE
               </button>
